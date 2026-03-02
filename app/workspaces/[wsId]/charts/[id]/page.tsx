@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { fetchChart } from "./actions";
 import { createClient } from "@/utils/supabase/server";

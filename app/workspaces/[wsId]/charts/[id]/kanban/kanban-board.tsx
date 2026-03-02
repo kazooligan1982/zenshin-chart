@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, LayoutGrid, GitBranch, Zap } from "lucide-react";
+import { Search, LayoutGrid, ListTree, Zap } from "lucide-react";
 
 interface Action {
   id: string;
@@ -405,7 +405,7 @@ export function KanbanBoard({ projectId, currentUserId = "", currentUser = null,
                 {t("kanbanTab")}
               </TabsTrigger>
               <TabsTrigger value="tree" className="flex items-center gap-2 text-zenshin-navy/60 data-[state=active]:bg-white data-[state=active]:text-zenshin-navy data-[state=active]:shadow-sm hover:text-zenshin-navy transition-colors">
-                <GitBranch className="w-4 h-4" />
+                <ListTree className="w-4 h-4" />
                 {t("treeTab")}
               </TabsTrigger>
             </TabsList>
