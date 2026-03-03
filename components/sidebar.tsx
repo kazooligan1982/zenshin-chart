@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
   Home,
-  LayoutDashboard,
+  Gauge,
   Users,
   Settings,
   Edit3,
@@ -399,7 +399,7 @@ export function Sidebar(props?: SidebarProps) {
         </div>
 
         <SidebarItem
-          icon={LayoutDashboard}
+          icon={Gauge}
           label={t("dashboard")}
           href={wsId ? `/workspaces/${wsId}/dashboard` : "/dashboard"}
           active={wsId ? pathname === `/workspaces/${wsId}/dashboard` : pathname === "/dashboard"}

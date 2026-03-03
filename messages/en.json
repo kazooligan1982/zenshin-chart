@@ -498,6 +498,12 @@
   "snapshot": {
     "title": "Snapshots",
     "comparisonMode": "Comparison mode",
+    "exitCompare": "Exit compare",
+    "readyToCompare": "Ready to compare",
+    "selectSecondSnapshot": "Select second snapshot",
+    "selectFirstSnapshot": "Select 2 snapshots to compare",
+    "selected": "selected",
+    "cancel": "Cancel",
     "comparisonHistory": "Comparison history",
     "manual": "Manual",
     "auto": "Auto",

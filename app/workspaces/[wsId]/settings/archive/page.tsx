@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { getTranslations } from "next-intl/server";
 import { Archive, FolderOpen } from "lucide-react";
 import { getArchivedCharts } from "@/app/charts/actions";

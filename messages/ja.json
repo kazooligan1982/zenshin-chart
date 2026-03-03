@@ -498,6 +498,12 @@
   "snapshot": {
     "title": "スナップショット",
     "comparisonMode": "比較モード",
+    "exitCompare": "比較を終了",
+    "readyToCompare": "比較の準備ができました",
+    "selectSecondSnapshot": "2つ目のスナップショットを選択",
+    "selectFirstSnapshot": "比較する2つのスナップショットを選択",
+    "selected": "選択済み",
+    "cancel": "キャンセル",
     "comparisonHistory": "比較履歴",
     "manual": "手動",
     "auto": "自動",

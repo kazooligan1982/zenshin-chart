@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { createClient } from "@/utils/supabase/server";
 import { notFound } from "next/navigation";
 import { getWorkspaceMembers } from "@/lib/workspace";
