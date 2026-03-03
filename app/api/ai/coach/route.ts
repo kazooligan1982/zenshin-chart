@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
 
   const { chartData, messages, language, mode = "analyze", text } = await req.json();
   const isStructurize = mode === "structurize";
+  const isSnapshotAnalyze = mode === "snapshot_analyze";
 
   if (!isStructurize && !chartData) {
     return NextResponse.json({ error: "Chart data is required" }, { status: 400 });
@@ -28,9 +29,11 @@ export async function POST(req: NextRequest) {
   const isChat = mode === "chat";
   const systemPrompt = isStructurize
     ? (language === "en" ? STRUCTURIZE_PROMPT_EN : STRUCTURIZE_PROMPT_JA)
-    : isChat
-      ? (language === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_JA)
-      : (language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA);
+    : isSnapshotAnalyze
+      ? (language === "en" ? SNAPSHOT_ANALYZE_PROMPT_EN : SNAPSHOT_ANALYZE_PROMPT_JA)
+      : isChat
+        ? (language === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_JA)
+        : (language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA);
 
   if (isStructurize) {
     const MAX_RETRIES = 3;
@@ -534,3 +537,35 @@ const CHAT_SYSTEM_PROMPT_EN = `You are the AI Assistant of ZENSHIN CHART. You an
 - Ask questions to prompt user insights
 - Be concise and focused
 - Respond in the user's language (English)`;
+
+const SNAPSHOT_ANALYZE_PROMPT_EN = `You are the AI Coach of ZENSHIN CHART. You analyze a snapshot of a user's structural tension chart and provide clear, actionable insights based on Robert Fritz's methodology.
+
+## Your Analysis Framework
+1. **Overall Health**: Is the chart well-structured? Are Visions clear and compelling? Are Realities honest and specific?
+2. **Tension Quality**: Are the tensions between Vision and Reality creating productive structural tension? Or are there signs of oscillation?
+3. **Action Momentum**: Are actions progressing? Are there stalled or overdue actions?
+4. **Key Observations**: What patterns do you notice? What's working well? What needs attention?
+
+## Response Format
+Respond in clear, concise sections. Use markdown formatting.
+- Start with a one-line summary (emoji + bold text)
+- Then 3-4 key insights, each 1-2 sentences
+- End with 1-2 specific recommendations
+
+Keep your response under 300 words. Be direct and practical, not generic.`;
+
+const SNAPSHOT_ANALYZE_PROMPT_JA = `あなたはZENSHIN CHARTのAIコーチです。ユーザーの構造的テンションチャートのスナップショットを分析し、ロバート・フリッツの方法論に基づいた明確で実行可能なインサイトを提供します。
+
+## 分析フレームワーク
+1. **全体の健全性**: チャートは適切に構造化されていますか？ビジョンは明確で魅力的ですか？リアリティは正直で具体的ですか？
+2. **テンションの質**: ビジョンとリアリティの間のテンションは生産的な構造的テンションを生み出していますか？揺り戻しの兆候はありませんか？
+3. **アクションの推進力**: アクションは進んでいますか？停滞しているアクションや期限切れのアクションはありますか？
+4. **重要な観察**: どのようなパターンに気づきますか？うまくいっていることは？注意が必要なことは？
+
+## 回答形式
+明確で簡潔なセクションで回答してください。マークダウン形式を使用してください。
+- 一行のサマリーから始める（絵文字 + 太字テキスト）
+- 3〜4つの重要なインサイト（各1〜2文）
+- 1〜2つの具体的な推奨事項で締める
+
+回答は300語以内に収めてください。一般的ではなく、直接的で実用的な内容にしてください。`;
