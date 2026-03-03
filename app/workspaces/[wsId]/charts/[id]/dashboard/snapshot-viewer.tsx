@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { ja, enUS } from "date-fns/locale";
 
@@ -26,6 +27,7 @@ interface Snapshot {
 
 interface SnapshotViewerProps {
   snapshot: Snapshot;
+  autoOpen?: boolean;
 }
 
 interface SnapshotDetail {
@@ -44,12 +46,13 @@ interface SnapshotDetail {
   };
 }
 
-export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
+export function SnapshotViewer({ snapshot, autoOpen = false }: SnapshotViewerProps) {
   const t = useTranslations("snapshot");
   const currentLocale = useLocale();
   const dateLocale = currentLocale === "ja" ? ja : enUS;
   const [isOpen, setIsOpen] = useState(false);
   const [detailData, setDetailData] = useState<SnapshotDetail | null>(null);
+  const [jsonCopied, setJsonCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +84,12 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
     }
   };
 
+  useEffect(() => {
+    if (autoOpen) {
+      handleOpen();
+    }
+  }, [autoOpen]);
+
   const handleClose = () => {
     setIsOpen(false);
     setDetailData(null);
@@ -105,7 +114,7 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
     <>
       <Button
         onClick={handleOpen}
-        className="text-xs bg-black text-white px-3 py-1.5 rounded-full hover:bg-gray-800 transition-colors"
+        className="text-xs bg-zenshin-navy text-white px-3 py-1.5 rounded-lg hover:bg-zenshin-navy/90 transition-colors"
       >
         {t("viewData")}
       </Button>
@@ -198,7 +207,28 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
 
               {/* JSONデータ */}
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">{t("rawData")}</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-700">{t("rawData")}</h3>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(
+                          JSON.stringify(detailData.data, null, 2)
+                        );
+                        toast.success(t("jsonCopied"));
+                        setJsonCopied(true);
+                        setTimeout(() => setJsonCopied(false), 2000);
+                      } catch {
+                        toast.error(t("copyFailed"));
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded px-2 py-1 transition-colors"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {jsonCopied ? t("jsonCopyDone") : t("jsonCopyLabel")}
+                  </button>
+                </div>
                 <div className="rounded-md bg-muted p-4 overflow-auto max-h-[400px] w-full border border-gray-200">
                   <pre className="text-xs whitespace-pre-wrap break-all">
                     {JSON.stringify(detailData.data, null, 2)}

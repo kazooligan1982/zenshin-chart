@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SnapshotViewer } from "./snapshot-viewer";
 import { ChartSwitcher } from "@/components/chart-switcher";
+import { AICoachButton } from "@/components/ai-coach-button";
 import { snapshotDataToChartDataForAI } from "@/lib/ai/snapshot-to-chart-data";
 import ReactMarkdown from "react-markdown";
 import { fetchChart } from "../actions";
@@ -27,13 +28,14 @@ import {
   ArrowRight,
   GitCompare,
   X,
-  Check,
   Save,
   ChevronDown,
   Link2,
   Trash2,
   Sparkles,
   Loader2,
+  MoreHorizontal,
+  Bot,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja, enUS } from "date-fns/locale";
@@ -66,6 +68,7 @@ interface Comparison {
   title: string;
   description: string | null;
   diff_summary: any;
+  ai_analysis?: string | null;
   created_at: string;
 }
 
@@ -79,6 +82,58 @@ function getSnapshotStats(data: any) {
   const tensions = Array.isArray(data.tensions) ? data.tensions.length : 0;
   const actions = Array.isArray(data.actions) ? data.actions.length : 0;
   return { visions, realities, tensions, actions };
+}
+
+function SnapshotMoreMenu({
+  onDelete,
+  onCopyUrl,
+}: {
+  onDelete: () => void;
+  onCopyUrl: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(!open);
+        }}
+        className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-8 z-20 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-40">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopyUrl();
+                setOpen(false);
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              {("Copy URL")}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+                setOpen(false);
+              }}
+              className="w-full text-left px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {("Delete")}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function SnapshotsPage() {
@@ -98,7 +153,11 @@ export default function SnapshotsPage() {
     return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: dateLocale });
   };
   const params = useParams();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const projectId = params?.id as string;
+  const wsId = params?.wsId as string | undefined;
+  const isWorkspace = pathname?.includes("/workspaces/");
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
@@ -114,11 +173,25 @@ export default function SnapshotsPage() {
   const [compareSnapshot2, setCompareSnapshot2] = useState<Snapshot | null>(null);
   const [diffs, setDiffs] = useState<any[]>([]);
   const [showDiffs, setShowDiffs] = useState(false);
+  const [comparisonAnalysisResult, setComparisonAnalysisResult] = useState<string | null>(null);
+  const [comparisonAnalyzing, setComparisonAnalyzing] = useState(false);
   const [saveComparisonDialog, setSaveComparisonDialog] = useState(false);
   const [comparisonTitle, setComparisonTitle] = useState("");
   const [comparisonDescription, setComparisonDescription] = useState("");
   const [activeTab, setActiveTab] = useState<"snapshots" | "comparisons">("snapshots");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const cancelDescriptionEditRef = useRef(false);
+
+  useEffect(() => {
+    const snapshotId = searchParams.get("snapshot");
+    const viewMode = searchParams.get("view");
+    if (snapshotId && viewMode === "data" && snapshots.length > 0) {
+      const idx = snapshots.findIndex((s) => s.id === snapshotId);
+      if (idx >= 0 && idx >= displayCount) {
+        setDisplayCount(idx + 1);
+      }
+    }
+  }, [snapshots, searchParams, displayCount]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -236,8 +309,7 @@ export default function SnapshotsPage() {
   };
 
   const saveComparison = async () => {
-
-    if (!compareSnapshot1 || !compareSnapshot2) {
+    if (!compareBefore || !compareAfter) {
       console.error("[saveComparison] Missing snapshots");
       toast.warning(t("saveComparisonSelectSnapshots"));
       return;
@@ -255,17 +327,18 @@ export default function SnapshotsPage() {
       };
 
       const insertData = {
-        snapshot_before_id: compareSnapshot1.id,
-        snapshot_after_id: compareSnapshot2.id,
+        snapshot_before_id: compareBefore.id,
+        snapshot_after_id: compareAfter.id,
         title:
           comparisonTitle ||
-          `比較: ${format(new Date(compareSnapshot1.created_at), "MM/dd")} → ${format(
-            new Date(compareSnapshot2.created_at),
+          `比較: ${format(new Date(compareBefore.created_at), "MM/dd")} → ${format(
+            new Date(compareAfter.created_at),
             "MM/dd"
           )}`,
         description: comparisonDescription || null,
         diff_summary: diffSummary,
         diff_details: diffs,
+        ai_analysis: comparisonAnalysisResult || null,
         created_by: user?.id || null,
       };
 
@@ -348,10 +421,20 @@ export default function SnapshotsPage() {
     setCompareSnapshot2(null);
     setDiffs([]);
     setShowDiffs(false);
+    setComparisonAnalysisResult(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const isSelected = (snapshot: Snapshot) =>
     compareSnapshot1?.id === snapshot.id || compareSnapshot2?.id === snapshot.id;
+
+  const [compareBefore, compareAfter] = useMemo(() => {
+    if (!compareSnapshot1 || !compareSnapshot2) return [null, null];
+    const sorted = [compareSnapshot1, compareSnapshot2].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    return [sorted[0], sorted[1]];
+  }, [compareSnapshot1, compareSnapshot2]);
 
   const getSelectionNumber = (snapshot: Snapshot) => {
     if (compareSnapshot1?.id === snapshot.id) return 1;
@@ -359,30 +442,79 @@ export default function SnapshotsPage() {
     return null;
   };
 
+  const analyzeComparison = async () => {
+    if (!compareBefore || !compareAfter) return;
+    setComparisonAnalyzing(true);
+    setComparisonAnalysisResult(null);
+    try {
+      const added = diffs
+        .filter((d) => d.type === "added")
+        .map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" }));
+      const modified = diffs
+        .filter((d) => d.type === "modified")
+        .map((d) => ({
+          type: d.category,
+          content: d.item?.content || d.item?.title || "",
+          oldContent: d.before?.content || d.before?.title || "",
+        }));
+      const removed = diffs
+        .filter((d) => d.type === "removed")
+        .map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" }));
+
+      const chartDataForAI = snapshotDataToChartDataForAI(compareAfter.data, chartTitle || "");
+      const res = await fetch("/api/ai/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "comparison_analyze",
+          locale: currentLocale === "ja" ? "ja" : "en",
+          chartData: chartDataForAI,
+          comparisonData: {
+            before: {
+              snapshotId: compareBefore.id,
+              createdAt: compareBefore.created_at,
+              data: compareBefore.data,
+            },
+            after: {
+              snapshotId: compareAfter.id,
+              createdAt: compareAfter.created_at,
+              data: compareAfter.data,
+            },
+            diff: { added, modified, removed },
+            summary: {
+              addedCount: added.length,
+              modifiedCount: modified.length,
+              removedCount: removed.length,
+            },
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setComparisonAnalysisResult(data.analysis);
+    } catch (e) {
+      toast.error(t("errorOccurred"));
+    } finally {
+      setComparisonAnalyzing(false);
+    }
+  };
+
   const displayedSnapshots = snapshots.slice(0, displayCount);
   const hasMore = snapshots.length > displayCount;
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Camera className="w-6 h-6" />
-            {t("title")}
-          </h1>
-          {chartTitle && (
-            <ChartSwitcher currentChartTitle={chartTitle} subPage="snapshots" />
-          )}
-        </div>
-
-        <Button
-          variant={compareMode ? "default" : "outline"}
-          className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
-          onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
-        >
-          <GitCompare className="w-4 h-4 mr-2" />
-          {compareMode ? t("exitCompare") : t("comparisonMode")}
-        </Button>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <Camera className="w-6 h-6" />
+          {t("title")}
+        </h1>
+        {chartTitle && (
+          <ChartSwitcher currentChartTitle={chartTitle} subPage="snapshots" />
+        )}
       </div>
 
       {showDiffs && (
@@ -394,14 +526,14 @@ export default function SnapshotsPage() {
                   <div>
                     <p className="text-xs text-gray-500">{t("before")}</p>
                     <p className="font-medium">
-                      {formatDate(compareSnapshot1!.created_at)}
+                      {formatDate(compareBefore!.created_at)}
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">{t("after")}</p>
                     <p className="font-medium">
-                      {formatDate(compareSnapshot2!.created_at)}
+                      {formatDate(compareAfter!.created_at)}
                     </p>
                   </div>
                 </div>
@@ -431,6 +563,89 @@ export default function SnapshotsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <button
+            onClick={analyzeComparison}
+            disabled={comparisonAnalyzing}
+            className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all disabled:opacity-50"
+          >
+            {comparisonAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {currentLocale === "ja" ? "分析中..." : "Analyzing..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {currentLocale === "ja" ? "AIで変化を分析する" : "Analyze changes with AI"}
+              </>
+            )}
+          </button>
+
+          {comparisonAnalysisResult && (
+            <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-blue-100/60">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+                </div>
+                <button
+                  onClick={() => setComparisonAnalysisResult(null)}
+                  className="text-gray-300 hover:text-gray-500 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                <ReactMarkdown>{comparisonAnalysisResult}</ReactMarkdown>
+              </div>
+              <div className="px-4 py-2.5 border-t border-blue-100/60 bg-white/60">
+                <button
+                  onClick={() => {
+                    const comparisonDataForEscalation = {
+                      before: {
+                        snapshotId: compareBefore!.id,
+                        createdAt: compareBefore!.created_at,
+                        data: compareBefore!.data,
+                      },
+                      after: {
+                        snapshotId: compareAfter!.id,
+                        createdAt: compareAfter!.created_at,
+                        data: compareAfter!.data,
+                      },
+                      diff: {
+                        added: diffs.filter((d) => d.type === "added").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" })),
+                        modified: diffs.filter((d) => d.type === "modified").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "", oldContent: d.before?.content || d.before?.title || "" })),
+                        removed: diffs.filter((d) => d.type === "removed").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" })),
+                      },
+                      summary: {
+                        addedCount: diffs.filter((d) => d.type === "added").length,
+                        modifiedCount: diffs.filter((d) => d.type === "modified").length,
+                        removedCount: diffs.filter((d) => d.type === "removed").length,
+                      },
+                    };
+                    window.dispatchEvent(
+                      new CustomEvent("open-ai-coach", {
+                        detail: {
+                          mode: "chat",
+                          initialContext: {
+                            type: "comparison_escalation",
+                            analysisResult: comparisonAnalysisResult,
+                            comparisonData: comparisonDataForEscalation,
+                            chartName: chartTitle,
+                          },
+                        },
+                      })
+                    );
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-medium text-indigo-600 cursor-pointer hover:underline hover:text-blue-700 transition-colors duration-150"
+                >
+                  <Bot className="w-4 h-4" />
+                  {currentLocale === "ja" ? "AI Coach でもっと詳しく分析する →" : "Analyze deeper with AI Coach →"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {diffs.length > 0 ? (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -469,7 +684,7 @@ export default function SnapshotsPage() {
             </Card>
           )}
 
-          <Button variant="outline" onClick={() => setShowDiffs(false)} className="w-full">
+          <Button variant="outline" onClick={exitCompareMode} className="w-full">
             {t("closeDiffs")}
           </Button>
         </div>
@@ -515,16 +730,26 @@ export default function SnapshotsPage() {
               </div>
             </div>
           )}
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="snapshots" className="flex items-center gap-2">
-              <Camera className="w-4 h-4" />
-              {t("title")} ({snapshots.length})
-            </TabsTrigger>
-            <TabsTrigger value="comparisons" className="flex items-center gap-2">
-              <GitCompare className="w-4 h-4" />
-              {t("comparisonHistory")} ({comparisons.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-6">
+            <TabsList className="grid w-auto grid-cols-2">
+              <TabsTrigger value="snapshots" className="flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                {t("title")} ({snapshots.length})
+              </TabsTrigger>
+              <TabsTrigger value="comparisons" className="flex items-center gap-2">
+                <GitCompare className="w-4 h-4" />
+                {t("comparisonHistory")} ({comparisons.length})
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              variant={compareMode ? "default" : "outline"}
+              className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
+              onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
+            >
+              <GitCompare className="w-4 h-4 mr-2" />
+              {compareMode ? t("exitCompare") : t("comparisonMode")}
+            </Button>
+          </div>
 
           <TabsContent value="snapshots" className="space-y-3">
             {snapshots.length === 0 ? (
@@ -542,202 +767,242 @@ export default function SnapshotsPage() {
                       }`}
                       onClick={() => compareMode && handleSnapshotClick(snapshot)}
                     >
-                      <CardContent className="py-4 px-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-3 flex-1">
+                      <CardContent className="p-0">
+                        {/* Top bar: type + date + actions */}
+                        <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                          <div className="flex items-center gap-2.5">
                             {compareMode && getSelectionNumber(snapshot) && (
                               <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-medium shrink-0">
                                 {getSelectionNumber(snapshot)}
                               </div>
                             )}
-                            {snapshot.is_pinned && <Pin className="w-4 h-4 text-yellow-500 shrink-0 mt-1" />}
-                            <div className="flex-1 min-w-0">
-                              {/* 日時 + 相対時間 + バッジ */}
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <Badge
-                                  variant="outline"
-                                  className={`text-[10px] px-1.5 py-0 ${
-                                    snapshot.snapshot_type === "manual"
-                                      ? "border-gray-300 text-gray-500"
-                                      : "border-blue-300 text-blue-500"
-                                  }`}
-                                >
-                                  {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
-                                </Badge>
-                                <p className="font-medium text-sm">
-                                  {formatDate(snapshot.created_at)}
-                                </p>
-                                <span className="text-xs text-gray-400">
-                                  {formatRelativeTime(snapshot.created_at)}
-                                </span>
-                              </div>
-
-                              {/* V/R/T/A バッジ */}
-                              {(() => {
-                                const stats = getSnapshotStats(snapshot.data);
-                                return (
-                                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-100 text-sky-700">
-                                      Visions {stats.visions}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">
-                                      Realities {stats.realities}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zenshin-orange/15 text-zenshin-orange">
-                                      Tensions {stats.tensions}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zenshin-navy/10 text-zenshin-navy">
-                                      Actions {stats.actions}
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Description */}
-                              {editingId === snapshot.id ? (
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Input
-                                    value={editDescription}
-                                    onChange={(e) => setEditDescription(e.target.value)}
-                                    placeholder={t("descriptionPlaceholder")}
-                                    className="flex-1 h-8 text-sm"
-                                    autoFocus
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      saveDescription(snapshot.id);
-                                    }}
-                                  >
-                                    <Check className="w-4 h-4 text-green-600" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingId(null);
-                                    }}
-                                  >
-                                    <X className="w-4 h-4 text-gray-400" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <p
-                                  className="text-sm text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    startEdit(snapshot);
-                                  }}
-                                >
-                                  {snapshot.description || t("addDescription")}
-                                </p>
-                              )}
-
-                              {/* AI Inline Analysis */}
-                              {!compareMode && (
-                                <>
-                                  {analysisResults[snapshot.id] ? (
-                                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-1.5">
-                                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                                          <span className="text-xs font-medium text-blue-700">AI Coach Insight</span>
-                                        </div>
-                                        <button
-                                          className="text-[10px] text-gray-400 hover:text-gray-600"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setAnalysisResults((prev) => {
-                                              const next = { ...prev };
-                                              delete next[snapshot.id];
-                                              return next;
-                                            });
-                                          }}
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                      <div className="text-sm text-gray-700 prose prose-sm max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
-                                        <ReactMarkdown>{analysisResults[snapshot.id]}</ReactMarkdown>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 transition-colors disabled:opacity-50"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        analyzeSnapshot(snapshot as Snapshot & { data?: any });
-                                      }}
-                                      disabled={!!analyzingId}
-                                    >
-                                      {analyzingId === snapshot.id ? (
-                                        <>
-                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                          {currentLocale === "ja" ? "分析中..." : "Analyzing..."}
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Sparkles className="w-3.5 h-3.5" />
-                                          {currentLocale === "ja" ? "AIで分析する" : "Analyze with AI"}
-                                        </>
-                                      )}
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </div>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] px-1.5 py-0 uppercase tracking-wider ${
+                                snapshot.snapshot_type === "manual"
+                                  ? "border-gray-200 text-gray-500"
+                                  : "border-blue-200 text-blue-500"
+                              }`}
+                            >
+                              {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
+                            </Badge>
+                            <p className="text-sm font-semibold text-gray-800">
+                              {formatDate(snapshot.created_at)}
+                            </p>
+                            <span className="text-xs text-gray-400">
+                              {formatRelativeTime(snapshot.created_at)}
+                            </span>
                           </div>
                           {!compareMode && (
-                            <div className="flex items-center gap-1 self-start -mt-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
+                            <div className="flex items-center gap-1">
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   togglePin(snapshot);
                                 }}
+                                className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
+                                  snapshot.is_pinned
+                                    ? "text-amber-500 bg-amber-50"
+                                    : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+                                }`}
                               >
                                 {snapshot.is_pinned ? (
-                                  <PinOff className="w-4 h-4 text-yellow-500" />
+                                  <PinOff className="w-3.5 h-3.5" />
                                 ) : (
-                                  <Pin className="w-4 h-4 text-gray-400" />
+                                  <Pin className="w-3.5 h-3.5" />
                                 )}
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteTargetId(snapshot.id);
+                              </button>
+                              <SnapshotMoreMenu
+                                onDelete={() => setDeleteTargetId(snapshot.id)}
+                                onCopyUrl={async () => {
+                                  const base = window.location.origin;
+                                  const path = isWorkspace && wsId
+                                    ? `/workspaces/${wsId}/charts/${projectId}/dashboard`
+                                    : `/charts/${projectId}/dashboard`;
+                                  const url = `${base}${path}?snapshot=${snapshot.id}&view=data`;
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    toast.success(t("linkCopied"));
+                                  } catch {
+                                    toast.error(t("copyFailed"));
+                                  }
                                 }}
-                              >
-                                <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(window.location.href);
-                                }}
-                                title="Copy URL"
-                              >
-                                <Link2 className="w-4 h-4 text-gray-400" />
-                              </Button>
-                              <div onClick={(e) => e.stopPropagation()} className="ml-1">
-                                <SnapshotViewer snapshot={snapshot} />
-                              </div>
+                              />
                             </div>
                           )}
+                        </div>
+
+                        {/* VRTA Stats Grid */}
+                        {(() => {
+                          const stats = getSnapshotStats(snapshot.data);
+                          return (
+                            <div className="px-5 py-3">
+                              <div className="grid grid-cols-4 gap-2">
+                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-sky-50">
+                                  <span className="text-lg font-bold text-sky-700 leading-none">{stats.visions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-sky-600/70">Visions</span>
+                                </div>
+                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-emerald-50">
+                                  <span className="text-lg font-bold text-emerald-700 leading-none">{stats.realities}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-emerald-600/70">Realities</span>
+                                </div>
+                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-orange-50">
+                                  <span className="text-lg font-bold text-orange-600 leading-none">{stats.tensions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-orange-500/70">Tensions</span>
+                                </div>
+                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-slate-50">
+                                  <span className="text-lg font-bold text-slate-700 leading-none">{stats.actions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-slate-500/70">Actions</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Description */}
+                        <div className="px-5 pb-2">
+                          {editingId === snapshot.id ? (
+                            <Input
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              placeholder={t("descriptionPlaceholder")}
+                              className="h-8 text-sm"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  saveDescription(snapshot.id);
+                                }
+                                if (e.key === "Escape") {
+                                  e.preventDefault();
+                                  cancelDescriptionEditRef.current = true;
+                                  setEditDescription(snapshot.description || "");
+                                  setEditingId(null);
+                                }
+                              }}
+                              onBlur={() => {
+                                if (cancelDescriptionEditRef.current) {
+                                  cancelDescriptionEditRef.current = false;
+                                  return;
+                                }
+                                saveDescription(snapshot.id);
+                              }}
+                            />
+                          ) : (
+                            <p
+                              className={`text-sm cursor-pointer transition-colors ${
+                                snapshot.description
+                                  ? "text-gray-600"
+                                  : "text-gray-300 hover:text-gray-400"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEdit(snapshot);
+                              }}
+                            >
+                              {snapshot.description || t("addDescription")}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* AI Analysis */}
+                        {!compareMode && (
+                          <>
+                            {analysisResults[snapshot.id] ? (
+                              <div className="mx-5 mb-3">
+                                <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
+                                  <div className="flex items-center justify-between px-4 py-2 border-b border-blue-100/60">
+                                    <div className="flex items-center gap-1.5">
+                                      <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                                      <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAnalysisResults((prev) => {
+                                          const next = { ...prev };
+                                          delete next[snapshot.id];
+                                          return next;
+                                        });
+                                      }}
+                                      className="text-gray-300 hover:text-gray-500 transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                                    <ReactMarkdown>{analysisResults[snapshot.id]}</ReactMarkdown>
+                                  </div>
+                                  <div className="px-4 py-2.5 border-t border-blue-100/60 bg-white/60">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const handleEscalateToCoach = () => {
+                                          window.dispatchEvent(
+                                            new CustomEvent("open-ai-coach", {
+                                              detail: {
+                                                mode: "chat",
+                                                initialContext: {
+                                                  type: "snapshot_escalation",
+                                                  snapshotId: snapshot.id,
+                                                  analysisResult: analysisResults[snapshot.id],
+                                                  snapshotData: snapshot.data,
+                                                  chartName: chartTitle,
+                                                },
+                                              },
+                                            })
+                                          );
+                                        };
+                                        handleEscalateToCoach();
+                                      }}
+                                      className="inline-flex items-center gap-2 text-xs font-medium text-indigo-600 cursor-pointer hover:underline hover:text-blue-700 transition-colors duration-150"
+                                    >
+                                      <Bot className="w-4 h-4" />
+                                      {currentLocale === "ja" ? "AI Coach でもっと詳しく分析する →" : "Analyze deeper with AI Coach →"}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </>
+                        )}
+
+                        {/* Bottom bar: AI button + View Data */}
+                        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-50">
+                          {!compareMode && !analysisResults[snapshot.id] ? (
+                            <button
+                              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all disabled:opacity-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                analyzeSnapshot(snapshot as Snapshot & { data?: any });
+                              }}
+                              disabled={!!analyzingId}
+                            >
+                              {analyzingId === snapshot.id ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  {currentLocale === "ja" ? "分析中..." : "Analyzing..."}
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4" />
+                                  {currentLocale === "ja" ? "AIで分析する" : "Analyze with AI"}
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <div />
+                          )}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <SnapshotViewer
+                              snapshot={snapshot}
+                              autoOpen={
+                                searchParams.get("snapshot") === snapshot.id &&
+                                searchParams.get("view") === "data"
+                              }
+                            />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -771,7 +1036,7 @@ export default function SnapshotsPage() {
               </Card>
             ) : (
               comparisons.map((comp) => (
-                <Card key={comp.id} className="hover:bg-gray-50 transition-colors">
+                <Card key={comp.id} className="hover:bg-gray-50 transition-colors overflow-hidden">
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -796,6 +1061,17 @@ export default function SnapshotsPage() {
                         </span>
                       </div>
                     </div>
+                    {comp.ai_analysis && (
+                      <div className="mt-3 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
+                        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-blue-100/60">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                          <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+                        </div>
+                        <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                          <ReactMarkdown>{comp.ai_analysis}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))
@@ -816,8 +1092,8 @@ export default function SnapshotsPage() {
                 value={comparisonTitle}
                 onChange={(e) => setComparisonTitle(e.target.value)}
                 placeholder={`比較: ${
-                  compareSnapshot1 ? format(new Date(compareSnapshot1.created_at), "MM/dd") : ""
-                } → ${compareSnapshot2 ? format(new Date(compareSnapshot2.created_at), "MM/dd") : ""}`}
+                  compareBefore ? format(new Date(compareBefore.created_at), "MM/dd") : ""
+                } → ${compareAfter ? format(new Date(compareAfter.created_at), "MM/dd") : ""}`}
               />
             </div>
             <div>
@@ -859,6 +1135,11 @@ export default function SnapshotsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AICoachButton
+        chartData={snapshotDataToChartDataForAI({}, chartTitle || "")}
+        chartId={projectId}
+      />
     </div>
   );
 }

@@ -30,6 +30,23 @@ interface CreateStructurizeResult {
 
 export type StructuredItems = StructurizeResult;
 
+export interface SnapshotEscalationContext {
+  type: "snapshot_escalation";
+  snapshotId: string;
+  analysisResult: string;
+  snapshotData: any;
+  chartName: string;
+}
+
+export interface ComparisonEscalationContext {
+  type: "comparison_escalation";
+  analysisResult: string;
+  comparisonData: any;
+  chartName: string;
+}
+
+export type EscalationContext = SnapshotEscalationContext | ComparisonEscalationContext;
+
 interface AICoachButtonProps {
   chartData: ChartDataForAI;
   chartId?: string;
@@ -54,6 +71,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
   const [createLoading, setCreateLoading] = useState(false);
   const [createApplying, setCreateApplying] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [escalationContext, setEscalationContext] = useState<EscalationContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -70,6 +88,31 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
       inputRef.current.focus();
     }
   }, [isOpen, viewMode]);
+
+  const sendChatMessageRef = useRef<((userMessage?: string, contextOverride?: EscalationContext | null) => void) | null>(null);
+
+  useEffect(() => {
+    const handleOpenCoach = (e: Event) => {
+      const { initialContext } = (e as CustomEvent).detail || {};
+      setIsOpen(true);
+      setViewMode("chat");
+      setEscalationContext(initialContext ?? null);
+      setMessages([]);
+      const initialPrompt =
+        locale === "ja"
+          ? "この分析結果について深掘りしたいです。"
+          : "I'd like to dig deeper into this analysis.";
+      setInput("");
+      requestAnimationFrame(() => {
+        if (sendChatMessageRef.current) {
+          sendChatMessageRef.current(initialPrompt, initialContext);
+        }
+      });
+    };
+
+    window.addEventListener("open-ai-coach", handleOpenCoach as EventListener);
+    return () => window.removeEventListener("open-ai-coach", handleOpenCoach as EventListener);
+  }, [locale]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -130,14 +173,19 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     }
   };
 
-  const sendChatMessage = async (userMessage?: string) => {
+  const sendChatMessage = async (userMessage?: string, contextOverride?: EscalationContext | null) => {
     const messageToSend = userMessage ?? input.trim();
     if (!messageToSend) return;
 
-    const newMessages: Message[] = [...messages, { role: "user" as const, content: messageToSend }];
+    const newMessages: Message[] =
+      contextOverride
+        ? [{ role: "user" as const, content: messageToSend }]
+        : [...messages, { role: "user" as const, content: messageToSend }];
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
+
+    const ctx = contextOverride ?? escalationContext;
 
     try {
       const res = await fetch("/api/ai/coach", {
@@ -148,6 +196,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           language: locale,
           mode: "chat",
+          initialContext: ctx ?? undefined,
         }),
       });
 
@@ -160,6 +209,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
         ...newMessages,
         { role: "assistant", content: data.response },
       ]);
+      if (ctx) setEscalationContext(null);
     } catch (error) {
       console.error("AI Coach error:", error);
       setMessages([
@@ -175,6 +225,8 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
       setIsLoading(false);
     }
   };
+
+  sendChatMessageRef.current = sendChatMessage;
 
   const handleCategorize = async () => {
     if (!addText.trim()) return;
@@ -583,7 +635,33 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     return (
       <>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && !isLoading && (
+          {escalationContext && escalationContext.type === "snapshot_escalation" && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2 text-sm">
+              <p className="font-medium text-indigo-800 flex items-center gap-1.5">
+                <span>📸</span>
+                {locale === "ja" ? "スナップショット分析からの続き" : "Continued from snapshot analysis"}
+              </p>
+              {escalationContext.chartName && (
+                <p className="text-indigo-600/80 mt-0.5 text-xs">
+                  {locale === "ja" ? "チャート" : "Chart"}: {escalationContext.chartName}
+                </p>
+              )}
+            </div>
+          )}
+          {escalationContext && escalationContext.type === "comparison_escalation" && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2 text-sm">
+              <p className="font-medium text-indigo-800 flex items-center gap-1.5">
+                <span>📊</span>
+                {locale === "ja" ? "スナップショット比較分析からの続き" : "Continued from snapshot comparison analysis"}
+              </p>
+              {escalationContext.chartName && (
+                <p className="text-indigo-600/80 mt-0.5 text-xs">
+                  {locale === "ja" ? "チャート" : "Chart"}: {escalationContext.chartName}
+                </p>
+              )}
+            </div>
+          )}
+          {messages.length === 0 && !isLoading && !escalationContext && (
             <div className="text-center text-gray-400 text-sm mt-8">
               <Sparkles className="w-8 h-8 mx-auto mb-3 text-violet-300" />
               <p>{greeting}</p>

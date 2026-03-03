@@ -544,7 +544,14 @@
     "saveComparisonSelectSnapshots": "比較するSnapshotが選択されていません",
     "saveComparisonSuccess": "比較結果を保存しました！",
     "saveComparisonFailed": "保存に失敗しました",
-    "errorOccurred": "エラーが発生しました"
+    "errorOccurred": "エラーが発生しました",
+    "urlCopied": "URLをコピーしました",
+    "urlCopyFailed": "URLのコピーに失敗しました",
+    "linkCopied": "リンクをコピーしました",
+    "copyFailed": "コピーに失敗しました",
+    "jsonCopied": "JSONをコピーしました",
+    "jsonCopyLabel": "JSONをコピー",
+    "jsonCopyDone": "✓ コピー済み"
   },
   "account": {
     "profile": "プロフィール",
