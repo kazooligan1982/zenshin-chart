@@ -128,6 +128,7 @@ export function Sidebar(props?: SidebarProps) {
   };
 
   const isInChart = !!chartId;
+  const defaultChartId = chartId || (recentCharts.length > 0 ? recentCharts[0].id : null);
   const isExpanded = isHovered || isDropdownOpen;
 
   useEffect(() => {
@@ -369,7 +370,6 @@ export function Sidebar(props?: SidebarProps) {
             <div className="my-2 mx-3">
               <div className="h-px bg-white/5" />
             </div>
-
             <SidebarItem
               icon={Edit3}
               label={t("editorLabel")}
@@ -377,26 +377,29 @@ export function Sidebar(props?: SidebarProps) {
               active={pathname === `/workspaces/${wsId}/charts/${chartId}` || pathname === `/charts/${chartId}`}
               expanded={isExpanded}
             />
+          </>
+        )}
+        <div className="my-2 mx-3">
+          <div className="h-px bg-white/5" />
+        </div>
+        {defaultChartId && (
+          <>
             <SidebarItem
               icon={LayoutGrid}
               label={t("views")}
-              href={wsId ? `/workspaces/${wsId}/charts/${chartId}/kanban` : `/charts/${chartId}/kanban`}
+              href={wsId ? `/workspaces/${wsId}/charts/${defaultChartId}/kanban` : `/charts/${defaultChartId}/kanban`}
               active={pathname?.includes("/kanban")}
               expanded={isExpanded}
             />
             <SidebarItem
               icon={Camera}
               label={t("snapshot")}
-              href={wsId ? `/workspaces/${wsId}/charts/${chartId}/snapshots` : `/charts/${chartId}/snapshots`}
+              href={wsId ? `/workspaces/${wsId}/charts/${defaultChartId}/snapshots` : `/charts/${defaultChartId}/snapshots`}
               active={pathname?.includes("/snapshots")}
               expanded={isExpanded}
             />
           </>
         )}
-
-        <div className="my-2 mx-3">
-          <div className="h-px bg-white/5" />
-        </div>
 
         <SidebarItem
           icon={Gauge}

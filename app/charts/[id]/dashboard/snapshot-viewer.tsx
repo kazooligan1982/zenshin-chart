@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { ja, enUS } from "date-fns/locale";
 
 interface Snapshot {
   id: string;
@@ -45,6 +46,8 @@ interface SnapshotDetail {
 
 export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
   const t = useTranslations("snapshot");
+  const currentLocale = useLocale();
+  const dateLocale = currentLocale === "ja" ? ja : enUS;
   const [isOpen, setIsOpen] = useState(false);
   const [detailData, setDetailData] = useState<SnapshotDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -141,7 +144,9 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                 <div className="space-y-1">
                   <p className="text-xs text-gray-500 font-medium">{t("fetchedAt")}</p>
                   <p className="text-lg font-bold text-gray-800">
-                    {format(new Date(snapshot.created_at), "yyyy/MM/dd HH:mm")}
+                    {currentLocale === "ja"
+                      ? format(new Date(snapshot.created_at), "yyyy/MM/dd HH:mm", { locale: dateLocale })
+                      : format(new Date(snapshot.created_at), "MMM dd, yyyy HH:mm", { locale: dateLocale })}
                   </p>
                 </div>
 
@@ -151,11 +156,11 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                     variant="outline"
                     className={
                       snapshot.snapshot_type === "manual"
-                        ? "bg-blue-100 text-blue-700 border-blue-300 uppercase tracking-wide"
-                        : "bg-green-100 text-green-700 border-green-300 uppercase tracking-wide"
+                        ? "border-gray-300 text-gray-600"
+                        : "border-blue-300 text-blue-600"
                     }
                   >
-                    {snapshot.snapshot_type}
+                    {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
                   </Badge>
                 </div>
 
@@ -164,16 +169,16 @@ export function SnapshotViewer({ snapshot }: SnapshotViewerProps) {
                   <div className="col-span-1 md:col-span-2 space-y-1 mt-2">
                     <p className="text-xs text-gray-500 font-medium">{t("chartSummary")}</p>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                      <Badge variant="outline" className="bg-sky-100 text-sky-700 border-sky-200">
                         Visions: {stats.visions}
                       </Badge>
-                      <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
+                      <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200">
                         Realities: {stats.realities}
                       </Badge>
-                      <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                      <Badge variant="outline" className="bg-orange-100 text-orange-600 border-orange-200">
                         Tensions: {stats.tensions}
                       </Badge>
-                      <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                      <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
                         Actions: {stats.actions}
                       </Badge>
                     </div>
