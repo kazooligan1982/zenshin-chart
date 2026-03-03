@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -68,6 +68,7 @@ interface Comparison {
   title: string;
   description: string | null;
   diff_summary: any;
+  ai_analysis?: string | null;
   created_at: string;
 }
 
@@ -172,6 +173,8 @@ export default function SnapshotsPage() {
   const [compareSnapshot2, setCompareSnapshot2] = useState<Snapshot | null>(null);
   const [diffs, setDiffs] = useState<any[]>([]);
   const [showDiffs, setShowDiffs] = useState(false);
+  const [comparisonAnalysisResult, setComparisonAnalysisResult] = useState<string | null>(null);
+  const [comparisonAnalyzing, setComparisonAnalyzing] = useState(false);
   const [saveComparisonDialog, setSaveComparisonDialog] = useState(false);
   const [comparisonTitle, setComparisonTitle] = useState("");
   const [comparisonDescription, setComparisonDescription] = useState("");
@@ -306,8 +309,7 @@ export default function SnapshotsPage() {
   };
 
   const saveComparison = async () => {
-
-    if (!compareSnapshot1 || !compareSnapshot2) {
+    if (!compareBefore || !compareAfter) {
       console.error("[saveComparison] Missing snapshots");
       toast.warning(t("saveComparisonSelectSnapshots"));
       return;
@@ -325,17 +327,18 @@ export default function SnapshotsPage() {
       };
 
       const insertData = {
-        snapshot_before_id: compareSnapshot1.id,
-        snapshot_after_id: compareSnapshot2.id,
+        snapshot_before_id: compareBefore.id,
+        snapshot_after_id: compareAfter.id,
         title:
           comparisonTitle ||
-          `比較: ${format(new Date(compareSnapshot1.created_at), "MM/dd")} → ${format(
-            new Date(compareSnapshot2.created_at),
+          `比較: ${format(new Date(compareBefore.created_at), "MM/dd")} → ${format(
+            new Date(compareAfter.created_at),
             "MM/dd"
           )}`,
         description: comparisonDescription || null,
         diff_summary: diffSummary,
         diff_details: diffs,
+        ai_analysis: comparisonAnalysisResult || null,
         created_by: user?.id || null,
       };
 
@@ -418,15 +421,85 @@ export default function SnapshotsPage() {
     setCompareSnapshot2(null);
     setDiffs([]);
     setShowDiffs(false);
+    setComparisonAnalysisResult(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const isSelected = (snapshot: Snapshot) =>
     compareSnapshot1?.id === snapshot.id || compareSnapshot2?.id === snapshot.id;
 
+  const [compareBefore, compareAfter] = useMemo(() => {
+    if (!compareSnapshot1 || !compareSnapshot2) return [null, null];
+    const sorted = [compareSnapshot1, compareSnapshot2].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    return [sorted[0], sorted[1]];
+  }, [compareSnapshot1, compareSnapshot2]);
+
   const getSelectionNumber = (snapshot: Snapshot) => {
     if (compareSnapshot1?.id === snapshot.id) return 1;
     if (compareSnapshot2?.id === snapshot.id) return 2;
     return null;
+  };
+
+  const analyzeComparison = async () => {
+    if (!compareBefore || !compareAfter) return;
+    setComparisonAnalyzing(true);
+    setComparisonAnalysisResult(null);
+    try {
+      const added = diffs
+        .filter((d) => d.type === "added")
+        .map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" }));
+      const modified = diffs
+        .filter((d) => d.type === "modified")
+        .map((d) => ({
+          type: d.category,
+          content: d.item?.content || d.item?.title || "",
+          oldContent: d.before?.content || d.before?.title || "",
+        }));
+      const removed = diffs
+        .filter((d) => d.type === "removed")
+        .map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" }));
+
+      const chartDataForAI = snapshotDataToChartDataForAI(compareAfter.data, chartTitle || "");
+      const res = await fetch("/api/ai/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "comparison_analyze",
+          locale: currentLocale === "ja" ? "ja" : "en",
+          chartData: chartDataForAI,
+          comparisonData: {
+            before: {
+              snapshotId: compareBefore.id,
+              createdAt: compareBefore.created_at,
+              data: compareBefore.data,
+            },
+            after: {
+              snapshotId: compareAfter.id,
+              createdAt: compareAfter.created_at,
+              data: compareAfter.data,
+            },
+            diff: { added, modified, removed },
+            summary: {
+              addedCount: added.length,
+              modifiedCount: modified.length,
+              removedCount: removed.length,
+            },
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setComparisonAnalysisResult(data.analysis);
+    } catch (e) {
+      toast.error(t("errorOccurred"));
+    } finally {
+      setComparisonAnalyzing(false);
+    }
   };
 
   const displayedSnapshots = snapshots.slice(0, displayCount);
@@ -453,14 +526,14 @@ export default function SnapshotsPage() {
                   <div>
                     <p className="text-xs text-gray-500">{t("before")}</p>
                     <p className="font-medium">
-                      {formatDate(compareSnapshot1!.created_at)}
+                      {formatDate(compareBefore!.created_at)}
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">{t("after")}</p>
                     <p className="font-medium">
-                      {formatDate(compareSnapshot2!.created_at)}
+                      {formatDate(compareAfter!.created_at)}
                     </p>
                   </div>
                 </div>
@@ -490,6 +563,89 @@ export default function SnapshotsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <button
+            onClick={analyzeComparison}
+            disabled={comparisonAnalyzing}
+            className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all disabled:opacity-50"
+          >
+            {comparisonAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {currentLocale === "ja" ? "分析中..." : "Analyzing..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {currentLocale === "ja" ? "AIで変化を分析する" : "Analyze changes with AI"}
+              </>
+            )}
+          </button>
+
+          {comparisonAnalysisResult && (
+            <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-blue-100/60">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+                </div>
+                <button
+                  onClick={() => setComparisonAnalysisResult(null)}
+                  className="text-gray-300 hover:text-gray-500 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                <ReactMarkdown>{comparisonAnalysisResult}</ReactMarkdown>
+              </div>
+              <div className="px-4 py-2.5 border-t border-blue-100/60 bg-white/60">
+                <button
+                  onClick={() => {
+                    const comparisonDataForEscalation = {
+                      before: {
+                        snapshotId: compareBefore!.id,
+                        createdAt: compareBefore!.created_at,
+                        data: compareBefore!.data,
+                      },
+                      after: {
+                        snapshotId: compareAfter!.id,
+                        createdAt: compareAfter!.created_at,
+                        data: compareAfter!.data,
+                      },
+                      diff: {
+                        added: diffs.filter((d) => d.type === "added").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" })),
+                        modified: diffs.filter((d) => d.type === "modified").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "", oldContent: d.before?.content || d.before?.title || "" })),
+                        removed: diffs.filter((d) => d.type === "removed").map((d) => ({ type: d.category, content: d.item?.content || d.item?.title || "" })),
+                      },
+                      summary: {
+                        addedCount: diffs.filter((d) => d.type === "added").length,
+                        modifiedCount: diffs.filter((d) => d.type === "modified").length,
+                        removedCount: diffs.filter((d) => d.type === "removed").length,
+                      },
+                    };
+                    window.dispatchEvent(
+                      new CustomEvent("open-ai-coach", {
+                        detail: {
+                          mode: "chat",
+                          initialContext: {
+                            type: "comparison_escalation",
+                            analysisResult: comparisonAnalysisResult,
+                            comparisonData: comparisonDataForEscalation,
+                            chartName: chartTitle,
+                          },
+                        },
+                      })
+                    );
+                  }}
+                  className="inline-flex items-center gap-2 text-xs font-medium text-indigo-600 cursor-pointer hover:underline hover:text-blue-700 transition-colors duration-150"
+                >
+                  <Bot className="w-4 h-4" />
+                  {currentLocale === "ja" ? "AI Coach でもっと詳しく分析する →" : "Analyze deeper with AI Coach →"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {diffs.length > 0 ? (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -528,7 +684,7 @@ export default function SnapshotsPage() {
             </Card>
           )}
 
-          <Button variant="outline" onClick={() => setShowDiffs(false)} className="w-full">
+          <Button variant="outline" onClick={exitCompareMode} className="w-full">
             {t("closeDiffs")}
           </Button>
         </div>
@@ -880,7 +1036,7 @@ export default function SnapshotsPage() {
               </Card>
             ) : (
               comparisons.map((comp) => (
-                <Card key={comp.id} className="hover:bg-gray-50 transition-colors">
+                <Card key={comp.id} className="hover:bg-gray-50 transition-colors overflow-hidden">
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -905,6 +1061,17 @@ export default function SnapshotsPage() {
                         </span>
                       </div>
                     </div>
+                    {comp.ai_analysis && (
+                      <div className="mt-3 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
+                        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-blue-100/60">
+                          <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                          <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+                        </div>
+                        <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                          <ReactMarkdown>{comp.ai_analysis}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))
@@ -925,8 +1092,8 @@ export default function SnapshotsPage() {
                 value={comparisonTitle}
                 onChange={(e) => setComparisonTitle(e.target.value)}
                 placeholder={`比較: ${
-                  compareSnapshot1 ? format(new Date(compareSnapshot1.created_at), "MM/dd") : ""
-                } → ${compareSnapshot2 ? format(new Date(compareSnapshot2.created_at), "MM/dd") : ""}`}
+                  compareBefore ? format(new Date(compareBefore.created_at), "MM/dd") : ""
+                } → ${compareAfter ? format(new Date(compareAfter.created_at), "MM/dd") : ""}`}
               />
             </div>
             <div>

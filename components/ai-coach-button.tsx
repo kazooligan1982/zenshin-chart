@@ -38,6 +38,15 @@ export interface SnapshotEscalationContext {
   chartName: string;
 }
 
+export interface ComparisonEscalationContext {
+  type: "comparison_escalation";
+  analysisResult: string;
+  comparisonData: any;
+  chartName: string;
+}
+
+export type EscalationContext = SnapshotEscalationContext | ComparisonEscalationContext;
+
 interface AICoachButtonProps {
   chartData: ChartDataForAI;
   chartId?: string;
@@ -62,7 +71,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
   const [createLoading, setCreateLoading] = useState(false);
   const [createApplying, setCreateApplying] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [escalationContext, setEscalationContext] = useState<SnapshotEscalationContext | null>(null);
+  const [escalationContext, setEscalationContext] = useState<EscalationContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -80,7 +89,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     }
   }, [isOpen, viewMode]);
 
-  const sendChatMessageRef = useRef<((userMessage?: string, contextOverride?: SnapshotEscalationContext | null) => void) | null>(null);
+  const sendChatMessageRef = useRef<((userMessage?: string, contextOverride?: EscalationContext | null) => void) | null>(null);
 
   useEffect(() => {
     const handleOpenCoach = (e: Event) => {
@@ -164,7 +173,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     }
   };
 
-  const sendChatMessage = async (userMessage?: string, contextOverride?: SnapshotEscalationContext | null) => {
+  const sendChatMessage = async (userMessage?: string, contextOverride?: EscalationContext | null) => {
     const messageToSend = userMessage ?? input.trim();
     if (!messageToSend) return;
 
@@ -631,6 +640,19 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
               <p className="font-medium text-indigo-800 flex items-center gap-1.5">
                 <span>📸</span>
                 {locale === "ja" ? "スナップショット分析からの続き" : "Continued from snapshot analysis"}
+              </p>
+              {escalationContext.chartName && (
+                <p className="text-indigo-600/80 mt-0.5 text-xs">
+                  {locale === "ja" ? "チャート" : "Chart"}: {escalationContext.chartName}
+                </p>
+              )}
+            </div>
+          )}
+          {escalationContext && escalationContext.type === "comparison_escalation" && (
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2 text-sm">
+              <p className="font-medium text-indigo-800 flex items-center gap-1.5">
+                <span>📊</span>
+                {locale === "ja" ? "スナップショット比較分析からの続き" : "Continued from snapshot comparison analysis"}
               </p>
               {escalationContext.chartName && (
                 <p className="text-indigo-600/80 mt-0.5 text-xs">
