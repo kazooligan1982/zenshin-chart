@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useLocale } from "next-intl";
 import { getChartsHierarchy, type ProjectGroup } from "@/app/charts/actions";
 import { ChevronDown, BarChart3, ExternalLink } from "lucide-react";
@@ -77,14 +77,18 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
     fetchData();
   }, [wsId]);
 
+  const pathname = usePathname();
+  const isWorkspace = pathname?.includes("/workspaces/");
+
   const buildHref = (chartId: string) => {
     if (wsId) return `/workspaces/${wsId}/charts/${chartId}/${subPage}`;
     return `/charts/${chartId}/${subPage}`;
   };
 
-  const editorHref = wsId
-    ? `/workspaces/${wsId}/charts/${currentChartId}`
-    : `/charts/${currentChartId}`;
+  const buildEditorHref = (chartId: string) => {
+    if (isWorkspace && wsId) return `/workspaces/${wsId}/charts/${chartId}`;
+    return `/charts/${chartId}`;
+  };
 
   return (
     <div className="flex items-center gap-3 mt-2 flex-wrap">
@@ -100,24 +104,36 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
               {groupIndex > 0 && <DropdownMenuSeparator />}
               {/* Master */}
               <DropdownMenuItem asChild>
-                <Link
-                  href={buildHref(group.master.id)}
+                <div
                   className={`flex items-center gap-2 w-full py-2 ${
                     group.master.id === currentChartId ? "bg-blue-50" : ""
                   }`}
                 >
-                  <DepthBadge depth={group.master.depth} />
-                  <span className={`text-sm leading-snug flex-1 ${
-                    group.master.id === currentChartId ? "text-blue-700 font-medium" : ""
-                  }`}>
-                    {group.master.title}
-                  </span>
-                  {snapshotCounts[group.master.id] > 0 && (
-                    <span className="text-[10px] text-gray-400 shrink-0">
-                      📸 {snapshotCounts[group.master.id]}
+                  <Link
+                    href={buildHref(group.master.id)}
+                    className="flex items-center gap-2 flex-1 min-w-0"
+                  >
+                    <DepthBadge depth={group.master.depth} />
+                    <span className={`text-sm leading-snug flex-1 truncate ${
+                      group.master.id === currentChartId ? "text-blue-700 font-medium" : ""
+                    }`}>
+                      {group.master.title}
                     </span>
-                  )}
-                </Link>
+                    {snapshotCounts[group.master.id] > 0 && (
+                      <span className="text-[10px] text-gray-400 shrink-0">
+                        📸 {snapshotCounts[group.master.id]}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    href={buildEditorHref(group.master.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 p-1 rounded text-slate-400 hover:text-zenshin-navy transition-colors"
+                    title="エディターで開く"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                </div>
               </DropdownMenuItem>
               {/* Children by depth */}
               {Object.entries(group.layers)
@@ -125,25 +141,37 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
                 .map(([depth, charts]) =>
                   charts.map((chart) => (
                     <DropdownMenuItem key={chart.id} asChild>
-                      <Link
-                        href={buildHref(chart.id)}
+                      <div
                         className={`flex items-center gap-2 w-full py-2 ${
                           chart.id === currentChartId ? "bg-blue-50" : ""
                         }`}
                         style={{ paddingLeft: `${(Number(depth) - 1) * 16 + 8}px` }}
                       >
-                        <DepthBadge depth={chart.depth} />
-                        <span className={`text-sm leading-snug flex-1 ${
-                          chart.id === currentChartId ? "text-blue-700 font-medium" : ""
-                        }`}>
-                          {chart.title}
-                        </span>
-                        {snapshotCounts[chart.id] > 0 && (
-                          <span className="text-[10px] text-gray-400 shrink-0">
-                            📸 {snapshotCounts[chart.id]}
+                        <Link
+                          href={buildHref(chart.id)}
+                          className="flex items-center gap-2 flex-1 min-w-0"
+                        >
+                          <DepthBadge depth={chart.depth} />
+                          <span className={`text-sm leading-snug flex-1 truncate ${
+                            chart.id === currentChartId ? "text-blue-700 font-medium" : ""
+                          }`}>
+                            {chart.title}
                           </span>
-                        )}
-                      </Link>
+                          {snapshotCounts[chart.id] > 0 && (
+                            <span className="text-[10px] text-gray-400 shrink-0">
+                              📸 {snapshotCounts[chart.id]}
+                            </span>
+                          )}
+                        </Link>
+                        <Link
+                          href={buildEditorHref(chart.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="shrink-0 p-1 rounded text-slate-400 hover:text-zenshin-navy transition-colors"
+                          title="エディターで開く"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Link>
+                      </div>
                     </DropdownMenuItem>
                   ))
                 )}
@@ -151,14 +179,6 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Link
-        href={editorHref}
-        className="inline-flex items-center gap-1 text-xs text-zenshin-navy/40 hover:text-zenshin-navy/70 transition-colors shrink-0"
-        title="Open in Editor"
-      >
-        <ExternalLink className="w-3 h-3" />
-        Editor
-      </Link>
     </div>
   );
 }

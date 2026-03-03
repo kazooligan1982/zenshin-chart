@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { chartData, messages, language, mode = "analyze", text } = await req.json();
+  const { chartData, messages, language, mode = "analyze", text, initialContext } = await req.json();
   const isStructurize = mode === "structurize";
   const isSnapshotAnalyze = mode === "snapshot_analyze";
 
@@ -27,13 +27,28 @@ export async function POST(req: NextRequest) {
   }
 
   const isChat = mode === "chat";
-  const systemPrompt = isStructurize
+  const isSnapshotEscalation =
+    isChat &&
+    initialContext?.type === "snapshot_escalation" &&
+    initialContext?.analysisResult &&
+    initialContext?.chartName;
+
+  let systemPrompt = isStructurize
     ? (language === "en" ? STRUCTURIZE_PROMPT_EN : STRUCTURIZE_PROMPT_JA)
     : isSnapshotAnalyze
       ? (language === "en" ? SNAPSHOT_ANALYZE_PROMPT_EN : SNAPSHOT_ANALYZE_PROMPT_JA)
       : isChat
         ? (language === "en" ? CHAT_SYSTEM_PROMPT_EN : CHAT_SYSTEM_PROMPT_JA)
         : (language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA);
+
+  if (isSnapshotEscalation) {
+    const snapshotSummary = formatSnapshotSummary(initialContext.snapshotData, language);
+    const escalationBlock =
+      language === "ja"
+        ? `\n\n## スナップショット分析の続き\nユーザーのチャート「${initialContext.chartName}」のスナップショットについて、以下の事前分析が行われています。\n\n【事前分析結果】\n${initialContext.analysisResult}\n\n【スナップショットデータ要約】\n${snapshotSummary}\n\nこの分析を踏まえて、ユーザーの質問に答えてください。より深い構造的テンションの洞察を提供し、具体的なアクション提案を行ってください。`
+        : `\n\n## Continued from Snapshot Analysis\nA prior analysis has been performed on the user's chart "${initialContext.chartName}" snapshot.\n\n【Prior Analysis】\n${initialContext.analysisResult}\n\n【Snapshot Data Summary】\n${snapshotSummary}\n\nAnswer the user's questions based on this analysis. Provide deeper structural tension insights and concrete action recommendations.`;
+    systemPrompt = systemPrompt + escalationBlock;
+  }
 
   if (isStructurize) {
     const MAX_RETRIES = 3;
@@ -162,6 +177,30 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ error: "AI coaching failed after retries" }, { status: 500 });
+}
+
+function formatSnapshotSummary(snapshotData: any, language: string): string {
+  if (!snapshotData) return language === "ja" ? "(データなし)" : "(no data)";
+  const isEn = language === "en";
+  let s = "";
+  const v = snapshotData.visions?.length ?? 0;
+  const r = snapshotData.realities?.length ?? 0;
+  const t = snapshotData.tensions?.length ?? 0;
+  const a = snapshotData.actions?.length ?? 0;
+  s += isEn ? `Visions: ${v}, Realities: ${r}, Tensions: ${t}, Actions: ${a}\n` : `ビジョン: ${v}, リアリティ: ${r}, テンション: ${t}, アクション: ${a}\n`;
+  if (snapshotData.visions?.length) {
+    s += isEn ? "Visions: " : "ビジョン: ";
+    s += snapshotData.visions.map((x: any) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
+  }
+  if (snapshotData.realities?.length) {
+    s += isEn ? "Realities: " : "リアリティ: ";
+    s += snapshotData.realities.map((x: any) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
+  }
+  if (snapshotData.tensions?.length) {
+    s += isEn ? "Tensions: " : "テンション: ";
+    s += snapshotData.tensions.map((x: any) => (x.title || x.content || "").slice(0, 80)).join("; ") + "\n";
+  }
+  return s || (isEn ? "(empty)" : "(空)");
 }
 
 function formatChartContext(
