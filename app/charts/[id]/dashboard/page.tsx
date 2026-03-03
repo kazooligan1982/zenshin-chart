@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SnapshotViewer } from "./snapshot-viewer";
+import { ChartSwitcher } from "@/components/chart-switcher";
 import { fetchChart } from "../actions";
 import {
   Camera,
@@ -203,7 +205,7 @@ export default function SnapshotsPage() {
 
     if (!compareSnapshot1 || !compareSnapshot2) {
       console.error("[saveComparison] Missing snapshots");
-      alert(t("saveComparisonSelectSnapshots"));
+      toast.warning(t("saveComparisonSelectSnapshots"));
       return;
     }
 
@@ -243,7 +245,7 @@ export default function SnapshotsPage() {
 
       if (error) {
         console.error("[saveComparison] Error:", error);
-        alert(t("saveComparisonFailed") + ": " + error.message);
+        toast.error(t("saveComparisonFailed") + ": " + error.message);
         return;
       }
 
@@ -252,11 +254,11 @@ export default function SnapshotsPage() {
         setSaveComparisonDialog(false);
         setComparisonTitle("");
         setComparisonDescription("");
-        alert(t("saveComparisonSuccess"));
+        toast.success(t("saveComparisonSuccess"));
       }
     } catch (err) {
       console.error("[saveComparison] Exception:", err);
-      alert(t("errorOccurred"));
+      toast.error(t("errorOccurred"));
     }
   };
 
@@ -335,11 +337,7 @@ export default function SnapshotsPage() {
             {t("title")}
           </h1>
           {chartTitle && (
-            <div className="flex items-center gap-2 mt-2 ml-9">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zenshin-navy/5 text-sm text-zenshin-navy/70 border border-zenshin-navy/10">
-                📊 {chartTitle}
-              </span>
-            </div>
+            <ChartSwitcher currentChartTitle={chartTitle} subPage="snapshots" />
           )}
         </div>
 
@@ -522,36 +520,40 @@ export default function SnapshotsPage() {
                             <div className="flex-1 min-w-0">
                               {/* 日時 + 相対時間 + バッジ */}
                               <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-1.5 py-0 ${
+                                    snapshot.snapshot_type === "manual"
+                                      ? "border-gray-300 text-gray-500"
+                                      : "border-blue-300 text-blue-500"
+                                  }`}
+                                >
+                                  {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
+                                </Badge>
                                 <p className="font-medium text-sm">
                                   {formatDate(snapshot.created_at)}
                                 </p>
                                 <span className="text-xs text-gray-400">
                                   {formatRelativeTime(snapshot.created_at)}
                                 </span>
-                                <Badge
-                                  variant={snapshot.snapshot_type === "manual" ? "default" : "secondary"}
-                                  className="text-xs"
-                                >
-                                  {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
-                                </Badge>
                               </div>
 
                               {/* V/R/T/A バッジ */}
                               {(() => {
                                 const stats = getSnapshotStats(snapshot.data);
                                 return (
-                                  <div className="flex items-center gap-1.5 mb-2">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                      V {stats.visions}
+                                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-100 text-sky-700">
+                                      Visions {stats.visions}
                                     </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      R {stats.realities}
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">
+                                      Realities {stats.realities}
                                     </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                      T {stats.tensions}
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zenshin-orange/15 text-zenshin-orange">
+                                      Tensions {stats.tensions}
                                     </span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                                      A {stats.actions}
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zenshin-navy/10 text-zenshin-navy">
+                                      Actions {stats.actions}
                                     </span>
                                   </div>
                                 );
