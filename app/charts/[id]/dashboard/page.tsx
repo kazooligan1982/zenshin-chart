@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SnapshotViewer } from "./snapshot-viewer";
+import { fetchChart } from "../actions";
 import {
   Camera,
   Pin,
@@ -25,11 +26,12 @@ import {
   Check,
   Save,
   ChevronDown,
-  Pencil,
+  Link2,
   Trash2,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
+import { format, formatDistanceToNow } from "date-fns";
+import { ja, enUS } from "date-fns/locale";
+import { useLocale } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,10 +66,31 @@ interface Comparison {
 const INITIAL_DISPLAY_COUNT = 20;
 const LOAD_MORE_COUNT = 20;
 
+function getSnapshotStats(data: any) {
+  if (!data) return { visions: 0, realities: 0, tensions: 0, actions: 0 };
+  const visions = Array.isArray(data.visions) ? data.visions.length : 0;
+  const realities = Array.isArray(data.realities) ? data.realities.length : 0;
+  const tensions = Array.isArray(data.tensions) ? data.tensions.length : 0;
+  const actions = Array.isArray(data.actions) ? data.actions.length : 0;
+  return { visions, realities, tensions, actions };
+}
+
 export default function SnapshotsPage() {
   const t = useTranslations("snapshot");
   const tCommon = useTranslations("common");
   const tDashboard = useTranslations("dashboard");
+  const currentLocale = useLocale();
+  const dateLocale = currentLocale === "ja" ? ja : enUS;
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (currentLocale === "ja") {
+      return format(d, "yyyy/MM/dd HH:mm", { locale: dateLocale });
+    }
+    return format(d, "MMM dd, yyyy HH:mm", { locale: dateLocale });
+  };
+  const formatRelativeTime = (dateStr: string) => {
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: dateLocale });
+  };
   const params = useParams();
   const projectId = params?.id as string;
 
@@ -75,6 +98,7 @@ export default function SnapshotsPage() {
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
   const [loading, setLoading] = useState(true);
+  const [chartTitle, setChartTitle] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [compareMode, setCompareMode] = useState(false);
@@ -92,6 +116,14 @@ export default function SnapshotsPage() {
     if (!projectId) return;
     const fetchData = async () => {
       setLoading(true);
+
+      // チャート名を取得（Server Action経由でRLSを回避）
+      try {
+        const chartData = await fetchChart(projectId);
+        if (chartData) setChartTitle(chartData.title || "");
+      } catch (e) {
+        console.error("[Snapshots] Failed to fetch chart title:", e);
+      }
 
       const { data: snapshotData, error: snapshotError, count } = await supabase
         .from("snapshots")
@@ -297,42 +329,29 @@ export default function SnapshotsPage() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Camera className="w-6 h-6" />
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {compareMode ? (
-            <>
-              <Button variant="outline" onClick={exitCompareMode}>
-                <X className="w-4 h-4 mr-2" />
-                {tCommon("cancel")}
-              </Button>
-              <Button onClick={calculateDiffs} disabled={!compareSnapshot1 || !compareSnapshot2}>
-                <GitCompare className="w-4 h-4 mr-2" />
-                {t("compare")}
-              </Button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={() => setCompareMode(true)}>
-              <GitCompare className="w-4 h-4 mr-2" />
-              {t("comparisonMode")}
-            </Button>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <Camera className="w-6 h-6" />
+            {t("title")}
+          </h1>
+          {chartTitle && (
+            <div className="flex items-center gap-2 mt-2 ml-9">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zenshin-navy/5 text-sm text-zenshin-navy/70 border border-zenshin-navy/10">
+                📊 {chartTitle}
+              </span>
+            </div>
           )}
         </div>
-      </div>
 
-      {compareMode && !showDiffs && (
-        <Card className="mb-6 bg-blue-50 border-blue-200">
-          <CardContent className="py-4">
-            <p className="text-sm text-blue-800">
-              {t("compareSelectHint")}
-              {compareSnapshot1 && !compareSnapshot2 && t("oneMoreSelect")}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        <Button
+          variant={compareMode ? "default" : "outline"}
+          className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
+          onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
+        >
+          <GitCompare className="w-4 h-4 mr-2" />
+          {compareMode ? t("exitCompare") : t("comparisonMode")}
+        </Button>
+      </div>
 
       {showDiffs && (
         <div className="mb-8 space-y-4">
@@ -343,18 +362,14 @@ export default function SnapshotsPage() {
                   <div>
                     <p className="text-xs text-gray-500">{t("before")}</p>
                     <p className="font-medium">
-                      {format(new Date(compareSnapshot1!.created_at), "yyyy/MM/dd HH:mm", {
-                        locale: ja,
-                      })}
+                      {formatDate(compareSnapshot1!.created_at)}
                     </p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="text-xs text-gray-500">{t("after")}</p>
                     <p className="font-medium">
-                      {format(new Date(compareSnapshot2!.created_at), "yyyy/MM/dd HH:mm", {
-                        locale: ja,
-                      })}
+                      {formatDate(compareSnapshot2!.created_at)}
                     </p>
                   </div>
                 </div>
@@ -430,6 +445,44 @@ export default function SnapshotsPage() {
 
       {!showDiffs && (
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "snapshots" | "comparisons")}>
+          {compareMode && (
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+              <div className="flex items-center gap-3">
+                <GitCompare className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">
+                    {compareSnapshot1 && compareSnapshot2
+                      ? t("readyToCompare")
+                      : compareSnapshot1
+                        ? t("selectSecondSnapshot")
+                        : t("selectFirstSnapshot")}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    {[compareSnapshot1, compareSnapshot2].filter(Boolean).length} / 2 {t("selected")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {compareSnapshot1 && compareSnapshot2 && (
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={calculateDiffs}
+                  >
+                    {t("compare")}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-blue-600 hover:bg-blue-100"
+                  onClick={exitCompareMode}
+                >
+                  {t("cancel")}
+                </Button>
+              </div>
+            </div>
+          )}
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="snapshots" className="flex items-center gap-2">
               <Camera className="w-4 h-4" />
@@ -457,7 +510,7 @@ export default function SnapshotsPage() {
                       }`}
                       onClick={() => compareMode && handleSnapshotClick(snapshot)}
                     >
-                      <CardContent className="py-4">
+                      <CardContent className="py-4 px-5">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 flex-1">
                             {compareMode && getSelectionNumber(snapshot) && (
@@ -467,10 +520,14 @@ export default function SnapshotsPage() {
                             )}
                             {snapshot.is_pinned && <Pin className="w-4 h-4 text-yellow-500 shrink-0 mt-1" />}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium">
-                                  {format(new Date(snapshot.created_at), "yyyy/MM/dd HH:mm", { locale: ja })}
+                              {/* 日時 + 相対時間 + バッジ */}
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <p className="font-medium text-sm">
+                                  {formatDate(snapshot.created_at)}
                                 </p>
+                                <span className="text-xs text-gray-400">
+                                  {formatRelativeTime(snapshot.created_at)}
+                                </span>
                                 <Badge
                                   variant={snapshot.snapshot_type === "manual" ? "default" : "secondary"}
                                   className="text-xs"
@@ -478,6 +535,29 @@ export default function SnapshotsPage() {
                                   {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
                                 </Badge>
                               </div>
+
+                              {/* V/R/T/A バッジ */}
+                              {(() => {
+                                const stats = getSnapshotStats(snapshot.data);
+                                return (
+                                  <div className="flex items-center gap-1.5 mb-2">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                      V {stats.visions}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      R {stats.realities}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                      T {stats.tensions}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                      A {stats.actions}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Description */}
                               {editingId === snapshot.id ? (
                                 <div className="flex items-center gap-2 mt-2">
                                   <Input
@@ -512,26 +592,20 @@ export default function SnapshotsPage() {
                                   </Button>
                                 </div>
                               ) : (
-                                <p className="text-sm text-gray-500 truncate">
+                                <p
+                                  className="text-sm text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startEdit(snapshot);
+                                  }}
+                                >
                                   {snapshot.description || t("addDescription")}
                                 </p>
                               )}
                             </div>
                           </div>
-
                           {!compareMode && (
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEdit(snapshot);
-                                }}
-                              >
-                                <Pencil className="w-4 h-4 text-gray-400" />
-                              </Button>
+                            <div className="flex items-center gap-1 self-start -mt-1">
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -558,7 +632,19 @@ export default function SnapshotsPage() {
                               >
                                 <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
                               </Button>
-                              <div onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(window.location.href);
+                                }}
+                                title="Copy URL"
+                              >
+                                <Link2 className="w-4 h-4 text-gray-400" />
+                              </Button>
+                              <div onClick={(e) => e.stopPropagation()} className="ml-2">
                                 <SnapshotViewer snapshot={snapshot} />
                               </div>
                             </div>
@@ -603,7 +689,7 @@ export default function SnapshotsPage() {
                         <p className="font-medium">{comp.title}</p>
                         {comp.description && <p className="text-sm text-gray-500 mt-1">{comp.description}</p>}
                         <p className="text-xs text-gray-400 mt-2">
-                          {format(new Date(comp.created_at), "yyyy/MM/dd HH:mm", { locale: ja })}
+                          {formatDate(comp.created_at)}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 text-sm ml-4">
