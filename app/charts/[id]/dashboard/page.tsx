@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SnapshotViewer } from "./snapshot-viewer";
 import { ChartSwitcher } from "@/components/chart-switcher";
+import { snapshotDataToChartDataForAI } from "@/lib/ai/snapshot-to-chart-data";
+import ReactMarkdown from "react-markdown";
 import { fetchChart } from "../actions";
 import {
   Camera,
@@ -30,6 +32,8 @@ import {
   ChevronDown,
   Link2,
   Trash2,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja, enUS } from "date-fns/locale";
@@ -103,6 +107,8 @@ export default function SnapshotsPage() {
   const [chartTitle, setChartTitle] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<Record<string, string>>({});
   const [compareMode, setCompareMode] = useState(false);
   const [compareSnapshot1, setCompareSnapshot1] = useState<Snapshot | null>(null);
   const [compareSnapshot2, setCompareSnapshot2] = useState<Snapshot | null>(null);
@@ -185,6 +191,34 @@ export default function SnapshotsPage() {
         prev.map((s) => (s.id === snapshotId ? { ...s, description: editDescription } : s))
       );
       setEditingId(null);
+    }
+  };
+
+  const analyzeSnapshot = async (snapshot: Snapshot & { data?: any }) => {
+    if (analyzingId) return;
+    setAnalyzingId(snapshot.id);
+    try {
+      const chartDataForAI = snapshotDataToChartDataForAI(snapshot.data, chartTitle);
+      const res = await fetch("/api/ai/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "snapshot_analyze",
+          chartData: chartDataForAI,
+          language: currentLocale === "ja" ? "ja" : "en",
+          messages: [{ role: "user", content: currentLocale === "ja" ? "このスナップショットを分析してください。" : "Please analyze this snapshot." }],
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      setAnalysisResults((prev) => ({ ...prev, [snapshot.id]: data.response }));
+    } catch (e) {
+      toast.error(t("errorOccurred"));
+    } finally {
+      setAnalyzingId(null);
     }
   };
 
@@ -604,6 +638,59 @@ export default function SnapshotsPage() {
                                   {snapshot.description || t("addDescription")}
                                 </p>
                               )}
+
+                              {/* AI Inline Analysis */}
+                              {!compareMode && (
+                                <>
+                                  {analysisResults[snapshot.id] ? (
+                                    <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-1.5">
+                                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                                          <span className="text-xs font-medium text-blue-700">AI Coach Insight</span>
+                                        </div>
+                                        <button
+                                          className="text-[10px] text-gray-400 hover:text-gray-600"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setAnalysisResults((prev) => {
+                                              const next = { ...prev };
+                                              delete next[snapshot.id];
+                                              return next;
+                                            });
+                                          }}
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                      <div className="text-sm text-gray-700 prose prose-sm max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+                                        <ReactMarkdown>{analysisResults[snapshot.id]}</ReactMarkdown>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 transition-colors disabled:opacity-50"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        analyzeSnapshot(snapshot as Snapshot & { data?: any });
+                                      }}
+                                      disabled={!!analyzingId}
+                                    >
+                                      {analyzingId === snapshot.id ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          {currentLocale === "ja" ? "分析中..." : "Analyzing..."}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="w-3.5 h-3.5" />
+                                          {currentLocale === "ja" ? "AIで分析する" : "Analyze with AI"}
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </>
+                              )}
                             </div>
                           </div>
                           {!compareMode && (
@@ -646,7 +733,7 @@ export default function SnapshotsPage() {
                               >
                                 <Link2 className="w-4 h-4 text-gray-400" />
                               </Button>
-                              <div onClick={(e) => e.stopPropagation()} className="ml-2">
+                              <div onClick={(e) => e.stopPropagation()} className="ml-1">
                                 <SnapshotViewer snapshot={snapshot} />
                               </div>
                             </div>
