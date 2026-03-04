@@ -365,7 +365,7 @@ export function Sidebar(props?: SidebarProps) {
           expanded={isExpanded}
         />
 
-        {isInChart && (
+        {(isInChart || defaultChartId) && (
           <>
             <div className="my-2 mx-3">
               <div className="h-px bg-white/5" />
@@ -373,8 +373,16 @@ export function Sidebar(props?: SidebarProps) {
             <SidebarItem
               icon={Edit3}
               label={t("editorLabel")}
-              href={wsId ? `/workspaces/${wsId}/charts/${chartId}` : `/charts/${chartId}`}
-              active={pathname === `/workspaces/${wsId}/charts/${chartId}` || pathname === `/charts/${chartId}`}
+              href={
+                wsId
+                  ? `/workspaces/${wsId}/charts/${chartId ?? defaultChartId}`
+                  : `/charts/${chartId ?? defaultChartId}`
+              }
+              active={
+                wsId
+                  ? pathname === `/workspaces/${wsId}/charts/${chartId ?? defaultChartId}`
+                  : pathname === `/charts/${chartId ?? defaultChartId}`
+              }
               expanded={isExpanded}
             />
           </>
