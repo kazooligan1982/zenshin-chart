@@ -58,6 +58,8 @@ export function DetailsEditor({
       extensions: [
         StarterKit.configure({
           heading: { levels: [1, 2, 3] },
+          hardBreak: false,
+          trailingNode: false,
           bulletList: { keepMarks: true, keepAttributes: false },
           orderedList: { keepMarks: true, keepAttributes: false },
         }),
