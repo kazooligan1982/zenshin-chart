@@ -77,6 +77,7 @@ import type {
 import {
   getActionProgress,
   createSnapshot,
+  createTreeSnapshot,
   updateChartData,
   addArea,
   updateAreaItem,
@@ -285,6 +286,8 @@ export function ProjectEditor({
   const [isSubmittingAction, setIsSubmittingAction] = useState<Record<string, boolean>>({});
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
+  const snapshotDropdownRef = useRef<HTMLDivElement>(null);
   const [isChartMenuLoading, setIsChartMenuLoading] = useState(false);
   const [currentUser] = useState<{
     id: string;
@@ -1244,9 +1247,13 @@ export function ProjectEditor({
   const getVisionById = (id: string) => visions.find((v) => v.id === id);
   const getRealityById = (id: string) => realities.find((r) => r.id === id);
 
+  const hasChildCharts =
+    looseActions.some((a) => a.childChartId) ||
+    tensions.some((t) => t.actionPlans?.some((a) => a.childChartId));
+
   const handleCreateSnapshot = async () => {
     if (isSavingSnapshot) return;
-
+    setSnapshotDropdownOpen(false);
     setIsSavingSnapshot(true);
     try {
       const result = await createSnapshot(chartId, undefined, "manual");
@@ -1262,6 +1269,38 @@ export function ProjectEditor({
       setIsSavingSnapshot(false);
     }
   };
+
+  const handleTreeSnapshot = async () => {
+    if (isSavingSnapshot) return;
+    setSnapshotDropdownOpen(false);
+    setIsSavingSnapshot(true);
+    try {
+      const wsId = chart?.workspace_id ?? workspaceId ?? null;
+      const result = await createTreeSnapshot(chartId, wsId);
+      if (result.success) {
+        toast.success(tt("treeSnapshotSuccess"), { duration: 3000 });
+      } else {
+        toast.error(tt("snapshotSaveFailed", { error: tt(result.error ?? "unknownError") }), { duration: 5000 });
+      }
+    } catch (error) {
+      console.error("[handleTreeSnapshot] エラー:", error);
+      toast.error(tt("treeSnapshotError"), { duration: 5000 });
+    } finally {
+      setIsSavingSnapshot(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (snapshotDropdownRef.current && !snapshotDropdownRef.current.contains(e.target as Node)) {
+        setSnapshotDropdownOpen(false);
+      }
+    };
+    if (snapshotDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [snapshotDropdownOpen]);
 
   const handleArchiveChart = async () => {
     if (!chart?.id) return;
@@ -1453,14 +1492,48 @@ export function ProjectEditor({
           </nav>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8" onClick={handleCreateSnapshot}>
-              {isSavingSnapshot ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Camera className="w-4 h-4 mr-1.5" />
+            <div className="relative" ref={snapshotDropdownRef}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={isSavingSnapshot}
+                onClick={() => {
+                  if (hasChildCharts) {
+                    setSnapshotDropdownOpen((prev) => !prev);
+                  } else {
+                    handleCreateSnapshot();
+                  }
+                }}
+              >
+                {isSavingSnapshot ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4 mr-1.5" />
+                )}
+                Snapshot
+              </Button>
+              {hasChildCharts && snapshotDropdownOpen && (
+                <div className="absolute top-full left-0 mt-1 z-50 min-w-[200px] bg-white rounded-lg shadow-lg border border-slate-200">
+                  <button
+                    type="button"
+                    className="w-full px-4 py-3 hover:bg-slate-50 cursor-pointer text-left text-sm flex items-center gap-2 border-b border-slate-100"
+                    onClick={handleCreateSnapshot}
+                  >
+                    <span>📷</span>
+                    {tt("snapshotSingle")}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full px-4 py-3 hover:bg-slate-50 cursor-pointer text-left text-sm flex items-center gap-2"
+                    onClick={handleTreeSnapshot}
+                  >
+                    <span>🌳</span>
+                    {tt("snapshotTree")}
+                  </button>
+                </div>
               )}
-              Snapshot
-            </Button>
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isChartMenuLoading}>

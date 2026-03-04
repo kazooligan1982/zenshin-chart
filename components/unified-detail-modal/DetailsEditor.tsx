@@ -56,7 +56,11 @@ export function DetailsEditor({
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ heading: false }),
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          bulletList: { keepMarks: true, keepAttributes: false },
+          orderedList: { keepMarks: true, keepAttributes: false },
+        }),
         Placeholder.configure({ placeholder: placeholderText }),
       ],
       content: value || "<p></p>",

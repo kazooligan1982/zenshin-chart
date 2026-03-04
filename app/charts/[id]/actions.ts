@@ -38,6 +38,7 @@ async function recordChartHistory(
 }
 
 import { getAuthenticatedUser } from "@/lib/auth";
+import { collectTreeSnapshotData, saveTreeSnapshot } from "@/lib/tree-snapshot";
 import { detectService, SERVICE_LABELS } from "@/lib/link-utils";
 import { parseMentionsFromHtml } from "@/lib/mention-utils";
 import {
@@ -1636,6 +1637,42 @@ export async function createSnapshot(
   }
 }
 
+/** ツリースナップショット作成（マスター＋配下全チャート） */
+export async function createTreeSnapshot(
+  chartId: string,
+  workspaceId: string | null
+): Promise<{ success: boolean; snapshotId?: string; error?: string }> {
+  try {
+    const supabase = await createClient();
+    let user;
+    try {
+      user = await getAuthenticatedUser();
+    } catch (error) {
+      console.error("[createTreeSnapshot] Auth Error:", error);
+      return { success: false, error: "authRequired" };
+    }
+
+    const treeData = await collectTreeSnapshotData(chartId, workspaceId, supabase);
+    const snapshotId = await saveTreeSnapshot(
+      chartId,
+      treeData,
+      "manual",
+      supabase,
+      user.id
+    );
+
+    if (!snapshotId) {
+      return { success: false, error: "saveFailed" };
+    }
+
+    revalidatePath(`/charts/${chartId}`);
+    return { success: true, snapshotId };
+  } catch (error) {
+    console.error("[createTreeSnapshot] Error:", error);
+    return { success: false, error: "unknown" };
+  }
+}
+
 // スナップショット詳細取得
 export async function getSnapshotDetail(snapshotId: string) {
   try {
@@ -1656,6 +1693,31 @@ export async function getSnapshotDetail(snapshotId: string) {
   } catch (error) {
     console.error("[getSnapshotDetail] Exception:", error);
     throw error;
+  }
+}
+
+export async function updateComparisonDescription(
+  comparisonId: string,
+  description: string
+) {
+  try {
+    const supabase = await createClient();
+    await getAuthenticatedUser();
+
+    const { error } = await supabase
+      .from("snapshot_comparisons")
+      .update({ description })
+      .eq("id", comparisonId);
+
+    if (error) {
+      console.error("[updateComparisonDescription] Error:", error);
+      return { success: false };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[updateComparisonDescription] Error:", error);
+    return { success: false };
   }
 }
 

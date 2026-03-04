@@ -69,6 +69,8 @@ export function UnifiedDetailModal({
 
   // モーダルを閉じる前に、エディタのblur保存を待つ
   const handleClose = useCallback(() => {
+    // メンション候補ドロップダウンを確実に削除（Portalでbody直下にあるため）
+    document.querySelectorAll(".mention-dropdown").forEach((el) => el.remove());
     // アクティブな要素（DetailsEditorなど）からフォーカスを外して即保存を発火
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();

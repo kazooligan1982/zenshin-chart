@@ -94,6 +94,7 @@ function createMentionSuggestion(
     },
     render: () => {
       let component: HTMLDivElement | null = null;
+      let clickOutsideHandler: ((e: MouseEvent) => void) | null = null;
       let selectedIndex = 0;
       let noResultTimer: ReturnType<typeof setTimeout> | null = null;
       let confirmedEmpty = false;
@@ -213,12 +214,39 @@ function createMentionSuggestion(
           updateDropdown();
 
           const { view } = props.editor;
+          const editorDom = view.dom;
           const coords = view.coordsAtPos(props.range.from);
           component.style.position = "fixed";
           component.style.left = `${coords.left}px`;
           component.style.top = "auto";
           component.style.bottom = `${window.innerHeight - coords.top + 4}px`;
           document.body.appendChild(component);
+
+          const closeDropdown = () => {
+            if (noResultTimer) {
+              clearTimeout(noResultTimer);
+              noResultTimer = null;
+            }
+            component?.remove();
+            component = null;
+          };
+
+          clickOutsideHandler = (e: MouseEvent) => {
+            const target = e.target as Node;
+            if (!component || !target) return;
+            const clickedInsideDropdown = component.contains(target);
+            const clickedInsideEditor = editorDom.contains(target);
+            if (!clickedInsideDropdown && !clickedInsideEditor) {
+              if (clickOutsideHandler) {
+                document.removeEventListener("mousedown", clickOutsideHandler, true);
+                clickOutsideHandler = null;
+              }
+              closeDropdown();
+              props.editor.commands.blur();
+            }
+          };
+
+          document.addEventListener("mousedown", clickOutsideHandler, true);
         },
         onUpdate: async (props: any) => {
           command = props.command;
@@ -258,6 +286,10 @@ function createMentionSuggestion(
           return false;
         },
         onExit: () => {
+          if (clickOutsideHandler) {
+            document.removeEventListener("mousedown", clickOutsideHandler, true);
+            clickOutsideHandler = null;
+          }
           if (noResultTimer) { clearTimeout(noResultTimer); noResultTimer = null; }
           component?.remove();
           component = null;
@@ -300,7 +332,9 @@ export function CommentInput({
     },
     extensions: [
       StarterKit.configure({
-        heading: false,
+        heading: { levels: [1, 2, 3] },
+        bulletList: { keepMarks: true, keepAttributes: false },
+        orderedList: { keepMarks: true, keepAttributes: false },
       }),
       LinkExtension.configure({ openOnClick: false }),
       Placeholder.configure({
@@ -424,6 +458,12 @@ export function CommentInput({
   useEffect(() => {
     handleSubmitRef.current = handleSubmit;
   }, [handleSubmit]);
+
+  useEffect(() => {
+    return () => {
+      document.querySelectorAll(".mention-dropdown").forEach((el) => el.remove());
+    };
+  }, []);
 
   return (
     <div className="flex gap-2">

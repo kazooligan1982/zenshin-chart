@@ -172,51 +172,149 @@ select:-webkit-autofill {
   }
 }
 
-/* Tiptap Editor Styles */
-.tiptap {
+/* Prose compact for AI analysis / Markdown */
+.prose-compact h1 {
+  @apply text-base font-bold mt-3 mb-1;
+}
+.prose-compact h2 {
+  @apply text-sm font-bold mt-2 mb-1;
+}
+.prose-compact h3 {
+  @apply text-sm font-semibold mt-2 mb-0.5;
+}
+.prose-compact p {
+  @apply my-1;
+}
+.prose-compact ul,
+.prose-compact ol {
+  @apply my-1 pl-4;
+}
+.prose-compact li {
+  @apply my-0.5;
+}
+
+/* Tiptap Editor Styles - .tiptap と .ProseMirror の両方に適用 */
+.tiptap,
+.ProseMirror {
   outline: none;
 }
 
-.tiptap p {
-  margin: 0.25em 0;
+.tiptap h1,
+.ProseMirror h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
 }
 
-.tiptap p:first-child {
+.tiptap h2,
+.ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap h3,
+.ProseMirror h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.tiptap p,
+.ProseMirror p {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+
+.tiptap p:first-child,
+.ProseMirror p:first-child {
   margin-top: 0;
 }
 
-.tiptap p:last-child {
+.tiptap p:last-child,
+.ProseMirror p:last-child {
   margin-bottom: 0;
 }
 
-.tiptap ul {
+.tiptap ul,
+.ProseMirror ul {
   list-style-type: disc;
-  padding-left: 1.5em;
-  margin: 0.25em 0;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-.tiptap ol {
+.tiptap ol,
+.ProseMirror ol {
   list-style-type: decimal;
-  padding-left: 1.5em;
-  margin: 0.25em 0;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-.tiptap li {
-  margin: 0.1em 0;
+.tiptap ul ul,
+.ProseMirror ul ul {
+  list-style-type: circle;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
-.tiptap li p {
-  margin: 0;
+.tiptap ul ul ul,
+.ProseMirror ul ul ul {
+  list-style-type: square;
 }
 
-.tiptap code {
+.tiptap ol ol,
+.ProseMirror ol ol {
+  list-style-type: lower-alpha;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tiptap ol ol ol,
+.ProseMirror ol ol ol {
+  list-style-type: lower-roman;
+}
+
+.tiptap li,
+.ProseMirror li {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.tiptap li p,
+.ProseMirror li p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* リスト項目内の余分な余白を削除 */
+.tiptap li > p:first-child,
+.ProseMirror li > p:first-child {
+  margin-top: 0;
+}
+
+.tiptap li > p:last-child,
+.ProseMirror li > p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap code,
+.ProseMirror code {
   background-color: #f3f4f6;
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
   font-size: 0.875em;
 }
 
-.tiptap pre {
+.tiptap pre,
+.ProseMirror pre {
   background-color: #1f2937;
   color: #e5e7eb;
   border-radius: 0.5rem;
@@ -225,13 +323,15 @@ select:-webkit-autofill {
   overflow-x: auto;
 }
 
-.tiptap pre code {
+.tiptap pre code,
+.ProseMirror pre code {
   background: none;
   color: inherit;
   padding: 0;
 }
 
-.tiptap blockquote {
+.tiptap blockquote,
+.ProseMirror blockquote {
   border-left: 3px solid #d1d5db;
   padding-left: 1rem;
   margin: 0.5em 0;
