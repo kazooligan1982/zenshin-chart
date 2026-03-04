@@ -126,7 +126,7 @@ async function fetchChartVrtaData(
  */
 export async function collectTreeSnapshotData(
   masterChartId: string,
-  workspaceId: string,
+  workspaceId: string | null,
   supabaseClient: SupabaseClient
 ): Promise<TreeSnapshotData> {
   const capturedAt = new Date().toISOString();
@@ -145,12 +145,15 @@ export async function collectTreeSnapshotData(
   // 2. childToParentChartMap を構築
   const childToParentChartMap = await buildChildToParentMap(supabaseClient);
 
-  // 3. 同じ workspace_id の全チャートを取得
-  const { data: workspaceCharts, error: workspaceError } = await supabaseClient
+  // 3. 同じ workspace_id の全チャートを取得（workspaceId が null の場合は workspace_id IS NULL）
+  const workspaceQuery = supabaseClient
     .from("charts")
     .select("id")
-    .eq("workspace_id", workspaceId)
     .is("archived_at", null);
+  const { data: workspaceCharts, error: workspaceError } =
+    workspaceId == null
+      ? await workspaceQuery.is("workspace_id", null)
+      : await workspaceQuery.eq("workspace_id", workspaceId);
 
   if (workspaceError) {
     throw new Error(`Failed to fetch workspace charts: ${workspaceError.message}`);

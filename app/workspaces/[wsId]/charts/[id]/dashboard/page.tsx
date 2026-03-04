@@ -17,7 +17,7 @@ import { ChartSwitcher } from "@/components/chart-switcher";
 import { AICoachButton } from "@/components/ai-coach-button";
 import { snapshotDataToChartDataForAI } from "@/lib/ai/snapshot-to-chart-data";
 import ReactMarkdown from "react-markdown";
-import { fetchChart } from "../actions";
+import { fetchChart, updateComparisonDescription } from "../actions";
 import {
   Camera,
   Pin,
@@ -36,7 +36,9 @@ import {
   Loader2,
   MoreHorizontal,
   Bot,
+  FileText,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { format, formatDistanceToNow } from "date-fns";
 import { ja, enUS } from "date-fns/locale";
 import { useLocale } from "next-intl";
@@ -70,6 +72,7 @@ interface Comparison {
   title: string;
   description: string | null;
   diff_summary: any;
+  diff_details?: any[];
   ai_analysis?: string | null;
   created_at: string;
 }
@@ -92,6 +95,92 @@ function getSnapshotStats(data: any, scope?: string) {
   const tensions = Array.isArray(data.tensions) ? data.tensions.length : 0;
   const actions = Array.isArray(data.actions) ? data.actions.length : 0;
   return { visions, realities, tensions, actions };
+}
+
+type CategoryCount = { added: number; modified: number; removed: number };
+const EMPTY_COUNT: CategoryCount = { added: 0, modified: 0, removed: 0 };
+
+function normalizeCategory(cat: string | undefined): string | null {
+  if (!cat) return null;
+  const c = String(cat).toLowerCase();
+  if (c === "visions" || c === "vision") return "visions";
+  if (c === "realities" || c === "reality") return "realities";
+  if (c === "tensions" || c === "tension") return "tensions";
+  if (c === "actions" || c === "action") return "actions";
+  return null;
+}
+
+function getChangeType(item: any): "added" | "modified" | "removed" | null {
+  const t = String(
+    item.type ?? item.changeType ?? item.status ?? item.diffType ?? item.change ?? ""
+  ).toLowerCase();
+  if (t === "added" || t === "add") return "added";
+  if (t === "modified" || t === "modify" || t === "changed") return "modified";
+  if (t === "removed" || t === "remove" || t === "deleted") return "removed";
+  return null;
+}
+
+function calcCategoryCounts(diffDetails: any): Record<string, CategoryCount> {
+  const counts: Record<string, CategoryCount> = {
+    visions: { ...EMPTY_COUNT },
+    realities: { ...EMPTY_COUNT },
+    tensions: { ...EMPTY_COUNT },
+    actions: { ...EMPTY_COUNT },
+  };
+
+  if (!diffDetails) return counts;
+
+  // パターンE: { added: [...], modified: [...], removed: [...] } 各要素に type/category でカテゴリ
+  if (
+    typeof diffDetails === "object" &&
+    !Array.isArray(diffDetails) &&
+    ("added" in diffDetails || "modified" in diffDetails || "removed" in diffDetails)
+  ) {
+    const addItems = (arr: any[], changeType: "added" | "modified" | "removed") => {
+      for (const item of arr || []) {
+        const cat = normalizeCategory(
+          item.category ?? item.type ?? item.targetType
+        );
+        if (cat && counts[cat]) counts[cat][changeType]++;
+      }
+    };
+    addItems(diffDetails.added, "added");
+    addItems(diffDetails.modified, "modified");
+    addItems(diffDetails.removed, "removed");
+    return counts;
+  }
+
+  // フラット配列形式
+  const arr = Array.isArray(diffDetails) ? diffDetails : [];
+  for (const item of arr) {
+    const category = normalizeCategory(
+      item.category ?? item.type ?? item.targetType
+    );
+    if (!category || !counts[category]) continue;
+
+    const changeType = getChangeType(item);
+    if (changeType === "added") counts[category].added++;
+    else if (changeType === "modified") counts[category].modified++;
+    else if (changeType === "removed") counts[category].removed++;
+  }
+
+  return counts;
+}
+
+function getChangeColor(change: CategoryCount): string {
+  if (change.added > 0 && change.removed === 0 && change.modified === 0) return "text-emerald-600";
+  if (change.removed > 0 && change.added === 0 && change.modified === 0) return "text-red-500";
+  if (change.added === 0 && change.modified === 0 && change.removed === 0) return "text-slate-400";
+  return "text-amber-500";
+}
+
+function formatChange(change: CategoryCount): string {
+  const parts: string[] = [];
+  if (change.added > 0) parts.push(`+${change.added}`);
+  if (change.modified > 0) parts.push(`△${change.modified}`);
+  if (change.removed > 0) parts.push(`-${change.removed}`);
+  if (parts.length === 0) return "±0";
+  return parts.join(" ");
 }
 
 function SnapshotMoreMenu({
@@ -190,7 +279,45 @@ export default function SnapshotsPage() {
   const [comparisonDescription, setComparisonDescription] = useState("");
   const [activeTab, setActiveTab] = useState<"snapshots" | "comparisons">("snapshots");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [expandedAiIds, setExpandedAiIds] = useState<Set<string>>(new Set());
+  const [editingDescriptionId, setEditingDescriptionId] = useState<string | null>(null);
+  const [editingDescriptionText, setEditingDescriptionText] = useState("");
   const cancelDescriptionEditRef = useRef(false);
+
+  const startEditingDescription = (comparisonId: string, currentDescription?: string | null) => {
+    setEditingDescriptionId(comparisonId);
+    setEditingDescriptionText(currentDescription || "");
+  };
+
+  const cancelEditingDescription = () => {
+    setEditingDescriptionId(null);
+    setEditingDescriptionText("");
+  };
+
+  const saveComparisonDescription = async (comparisonId: string) => {
+    const result = await updateComparisonDescription(comparisonId, editingDescriptionText);
+    if (result.success) {
+      toast.success(t("descriptionSaved"));
+      setComparisons((prev) =>
+        prev.map((c) =>
+          c.id === comparisonId ? { ...c, description: editingDescriptionText } : c
+        )
+      );
+      cancelEditingDescription();
+    } else {
+      toast.error(t("descriptionSaveError"));
+    }
+  };
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      cancelEditingDescription();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (editingDescriptionId) saveComparisonDescription(editingDescriptionId);
+    }
+  };
 
   useEffect(() => {
     const snapshotId = searchParams.get("snapshot");
@@ -391,6 +518,17 @@ export default function SnapshotsPage() {
     }
   };
 
+  const extractItemsByCategory = (data: any, category: string): any[] => {
+    if (!data) return [];
+    const direct = data[category];
+    if (Array.isArray(direct)) return direct;
+    const charts = data.charts;
+    if (Array.isArray(charts)) {
+      return charts.flatMap((c: any) => (c[category] || []).map((item: any) => ({ ...item, _chartId: c.chart_id })));
+    }
+    return [];
+  };
+
   const calculateDiffs = () => {
     if (!compareSnapshot1 || !compareSnapshot2) return;
 
@@ -401,8 +539,8 @@ export default function SnapshotsPage() {
         : [compareSnapshot2, compareSnapshot1];
 
     ["visions", "realities", "tensions", "actions"].forEach((category) => {
-      const items1 = before.data?.[category] || [];
-      const items2 = after.data?.[category] || [];
+      const items1 = extractItemsByCategory(before.data, category);
+      const items2 = extractItemsByCategory(after.data, category);
 
       items2.forEach((item2: any) => {
         const found = items1.find((item1: any) => item1.id === item2.id);
@@ -462,6 +600,35 @@ export default function SnapshotsPage() {
     if (compareSnapshot1?.id === snapshot.id) return 1;
     if (compareSnapshot2?.id === snapshot.id) return 2;
     return null;
+  };
+
+  const viewComparisonDetail = async (comp: Comparison) => {
+    try {
+      const { data: beforeSnapshot } = await supabase
+        .from("snapshots")
+        .select("*")
+        .eq("id", comp.snapshot_before_id)
+        .single();
+      const { data: afterSnapshot } = await supabase
+        .from("snapshots")
+        .select("*")
+        .eq("id", comp.snapshot_after_id)
+        .single();
+
+      if (beforeSnapshot && afterSnapshot) {
+        setCompareSnapshot1(beforeSnapshot as Snapshot);
+        setCompareSnapshot2(afterSnapshot as Snapshot);
+        setDiffs(comp.diff_details || []);
+        setComparisonAnalysisResult(comp.ai_analysis || null);
+        setShowDiffs(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        toast.error(t("fetchDataFailed"));
+      }
+    } catch (err) {
+      console.error("[viewComparisonDetail] Error:", err);
+      toast.error(t("fetchDataFailed"));
+    }
   };
 
   const analyzeComparison = async () => {
@@ -618,7 +785,7 @@ export default function SnapshotsPage() {
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
+              <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm prose-compact max-w-none">
                 <ReactMarkdown>{comparisonAnalysisResult}</ReactMarkdown>
               </div>
               <div className="px-4 py-2.5 border-t border-blue-100/60 bg-white/60">
@@ -1086,46 +1253,154 @@ export default function SnapshotsPage() {
                 </CardContent>
               </Card>
             ) : (
-              comparisons.map((comp) => (
-                <Card key={comp.id} className="hover:bg-gray-50 transition-colors overflow-hidden">
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
+              comparisons.map((comp) => {
+                const counts = calcCategoryCounts(comp.diff_details || []);
+                return (
+                  <Card key={comp.id} className="hover:bg-gray-50 transition-colors overflow-hidden">
+                    <CardContent className="py-4">
+                      <div>
                         <p className="font-medium">{comp.title}</p>
-                        {comp.description && <p className="text-sm text-gray-500 mt-1">{comp.description}</p>}
-                        <p className="text-xs text-gray-400 mt-2">
-                          {formatDate(comp.created_at)}
-                        </p>
+                        <p className="text-xs text-gray-400 mt-1">{formatDate(comp.created_at)}</p>
                       </div>
-                      <div className="flex items-center gap-3 text-sm ml-4">
-                        <span className="flex items-center gap-1 text-green-600">
-                          <Plus className="w-4 h-4" />
-                          {comp.diff_summary?.added || 0}
-                        </span>
-                        <span className="flex items-center gap-1 text-yellow-600">
-                          <Edit className="w-4 h-4" />
-                          {comp.diff_summary?.modified || 0}
-                        </span>
-                        <span className="flex items-center gap-1 text-red-600">
-                          <Minus className="w-4 h-4" />
-                          {comp.diff_summary?.removed || 0}
-                        </span>
-                      </div>
-                    </div>
-                    {comp.ai_analysis && (
-                      <div className="mt-3 rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white overflow-hidden">
-                        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-blue-100/60">
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                          <span className="text-xs font-semibold text-indigo-700">AI Coach Insight</span>
+
+                      <div className="mt-3 p-3 bg-slate-50/80 rounded-lg border border-slate-100">
+                        <p className="text-xs font-semibold text-slate-500 mb-2">{t("changeSummary")}</p>
+                        <div className="flex items-center gap-6 py-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">V</span>
+                            <span className={cn("text-sm font-medium", getChangeColor(counts.visions))}>
+                              {formatChange(counts.visions)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">R</span>
+                            <span className={cn("text-sm font-medium", getChangeColor(counts.realities))}>
+                              {formatChange(counts.realities)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded">T</span>
+                            <span className={cn("text-sm font-medium", getChangeColor(counts.tensions))}>
+                              {formatChange(counts.tensions)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded">A</span>
+                            <span className={cn("text-sm font-medium", getChangeColor(counts.actions))}>
+                              {formatChange(counts.actions)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="px-4 py-3 text-sm text-gray-700 prose prose-sm max-w-none leading-relaxed [&>p]:mb-2 [&>ul]:mb-2 [&>li]:mb-0.5 [&>h2]:text-sm [&>h2]:font-semibold [&>h2]:mb-1 [&>h3]:text-xs [&>h3]:font-semibold [&>h3]:mb-1 [&>strong]:text-gray-800">
-                          <ReactMarkdown>{comp.ai_analysis}</ReactMarkdown>
-                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
+
+                      {comp.ai_analysis && (
+                        <div className="mt-3 p-3 bg-gradient-to-br from-blue-50/80 via-indigo-50/40 to-white rounded-lg border border-blue-100">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="text-xs font-semibold text-blue-600">{t("aiAnalysis")}</span>
+                          </div>
+                          <div
+                            className={cn(
+                              "prose prose-sm prose-compact max-w-none text-slate-700",
+                              !expandedAiIds.has(comp.id) && "line-clamp-3"
+                            )}
+                          >
+                            <ReactMarkdown>{comp.ai_analysis}</ReactMarkdown>
+                          </div>
+                          {comp.ai_analysis.length > 150 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedAiIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(comp.id)) next.delete(comp.id);
+                                  else next.add(comp.id);
+                                  return next;
+                                });
+                              }}
+                              className="text-xs text-blue-500 hover:text-blue-700 mt-1 cursor-pointer"
+                            >
+                              {expandedAiIds.has(comp.id)
+                                ? t("showLess") + " ▲"
+                                : t("showMore") + " ▼"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-xs font-semibold text-slate-500">{t("note")}</span>
+                          </div>
+                          {editingDescriptionId !== comp.id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditingDescription(comp.id, comp.description);
+                              }}
+                              className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              {comp.description ? t("editNote") : t("addNote")}
+                            </button>
+                          )}
+                        </div>
+                        {editingDescriptionId === comp.id ? (
+                          <div className="mt-2">
+                            <textarea
+                              value={editingDescriptionText}
+                              onChange={(e) => setEditingDescriptionText(e.target.value)}
+                              onKeyDown={handleDescriptionKeyDown}
+                              className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 resize-y min-h-[60px]"
+                              placeholder={t("descriptionPlaceholder")}
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => cancelEditingDescription()}
+                                className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1"
+                              >
+                                {t("cancelDescription")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveComparisonDescription(comp.id)}
+                                className="text-xs bg-zenshin-navy text-white px-3 py-1.5 rounded-lg hover:bg-zenshin-navy/90"
+                              >
+                                {t("saveDescription")}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            {comp.description ? (
+                              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                {comp.description}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-slate-400 italic">{t("noNote")}</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => viewComparisonDetail(comp)}
+                          className="text-sm text-blue-500 hover:text-blue-700 hover:underline transition-colors duration-150 cursor-pointer"
+                        >
+                          {t("viewDetail")} →
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </TabsContent>
         </Tabs>

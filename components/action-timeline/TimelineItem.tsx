@@ -207,7 +207,7 @@ export function TimelineItem({
           </div>
         ) : (
           <div
-            className="text-sm text-gray-700 prose prose-sm max-w-none [&_.mention]:bg-blue-100 [&_.mention]:text-blue-700 [&_.mention]:px-1 [&_.mention]:py-0.5 [&_.mention]:rounded [&_.mention]:text-xs [&_.mention]:font-medium [&_.mention]:cursor-pointer [&_.mention]:no-underline [&_a]:text-blue-500 [&_a]:underline [&_a]:hover:text-blue-700 [&_a]:cursor-pointer"
+            className="text-sm text-gray-700 prose prose-sm max-w-none tiptap [&_.mention]:bg-blue-100 [&_.mention]:text-blue-700 [&_.mention]:px-1 [&_.mention]:py-0.5 [&_.mention]:rounded [&_.mention]:text-xs [&_.mention]:font-medium [&_.mention]:cursor-pointer [&_.mention]:no-underline [&_a]:text-blue-500 [&_a]:underline [&_a]:hover:text-blue-700 [&_a]:cursor-pointer"
             dangerouslySetInnerHTML={{
               __html: comment.content.trimStart().startsWith("<")
                 ? comment.content

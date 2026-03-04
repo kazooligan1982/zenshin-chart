@@ -357,7 +357,11 @@ export function ActionEditModal({
     {
       content: description,
       extensions: [
-        StarterKit.configure({ heading: false }),
+        StarterKit.configure({
+          heading: { levels: [1, 2, 3] },
+          bulletList: { keepMarks: true, keepAttributes: false },
+          orderedList: { keepMarks: true, keepAttributes: false },
+        }),
         Placeholder.configure({ placeholder: t("descriptionPlaceholder") }),
       ],
       editorProps: {
@@ -409,6 +413,7 @@ export function ActionEditModal({
         open={isOpen}
         onOpenChange={(open) => {
           if (!open) {
+            document.querySelectorAll(".mention-dropdown").forEach((el) => el.remove());
             if (onDataRefresh) {
               onDataRefresh();
             } else {
