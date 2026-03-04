@@ -56,6 +56,8 @@ interface Snapshot {
   chart_id: string;
   created_at: string;
   snapshot_type: string;
+  trigger_type?: string;
+  scope?: string;
   description: string | null;
   is_pinned: boolean;
   data: any;
@@ -75,8 +77,16 @@ interface Comparison {
 const INITIAL_DISPLAY_COUNT = 20;
 const LOAD_MORE_COUNT = 20;
 
-function getSnapshotStats(data: any) {
+function getSnapshotStats(data: any, scope?: string) {
   if (!data) return { visions: 0, realities: 0, tensions: 0, actions: 0 };
+  if (scope === "tree" && data.summary) {
+    return {
+      visions: data.summary.total_visions ?? 0,
+      realities: data.summary.total_realities ?? 0,
+      tensions: data.summary.total_tensions ?? 0,
+      actions: data.summary.total_actions ?? 0,
+    };
+  }
   const visions = Array.isArray(data.visions) ? data.visions.length : 0;
   const realities = Array.isArray(data.realities) ? data.realities.length : 0;
   const tensions = Array.isArray(data.tensions) ? data.tensions.length : 0;
@@ -295,9 +305,16 @@ export default function SnapshotsPage() {
     }
   };
 
+  const isSystemDescription = (d: string | null) =>
+    !d || d.startsWith("Tree snapshot");
+  const displayDescription = (snapshot: Snapshot) =>
+    isSystemDescription(snapshot.description) ? null : snapshot.description;
+
   const startEdit = (snapshot: Snapshot) => {
     setEditingId(snapshot.id);
-    setEditDescription(snapshot.description || "");
+    setEditDescription(
+      isSystemDescription(snapshot.description) ? "" : (snapshot.description || "")
+    );
   };
 
   const deleteSnapshot = async (snapshotId: string) => {
@@ -362,6 +379,11 @@ export default function SnapshotsPage() {
         setComparisonTitle("");
         setComparisonDescription("");
         toast.success(t("saveComparisonSuccess"));
+        setTimeout(() => {
+          exitCompareMode();
+          setActiveTab("comparisons");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, 800);
       }
     } catch (err) {
       console.error("[saveComparison] Exception:", err);
@@ -691,7 +713,16 @@ export default function SnapshotsPage() {
       )}
 
       {!showDiffs && (
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "snapshots" | "comparisons")}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            const newTab = value as "snapshots" | "comparisons";
+            if (newTab === "comparisons" && compareMode) {
+              exitCompareMode();
+            }
+            setActiveTab(newTab);
+          }}
+        >
           {compareMode && (
             <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
               <div className="flex items-center gap-3">
@@ -741,14 +772,16 @@ export default function SnapshotsPage() {
                 {t("comparisonHistory")} ({comparisons.length})
               </TabsTrigger>
             </TabsList>
-            <Button
-              variant={compareMode ? "default" : "outline"}
-              className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
-              onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
-            >
-              <GitCompare className="w-4 h-4 mr-2" />
-              {compareMode ? t("exitCompare") : t("comparisonMode")}
-            </Button>
+            {activeTab === "snapshots" && (
+              <Button
+                variant={compareMode ? "default" : "outline"}
+                className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
+                onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
+              >
+                <GitCompare className="w-4 h-4 mr-2" />
+                {compareMode ? t("exitCompare") : t("comparisonMode")}
+              </Button>
+            )}
           </div>
 
           <TabsContent value="snapshots" className="space-y-3">
@@ -779,13 +812,20 @@ export default function SnapshotsPage() {
                             <Badge
                               variant="outline"
                               className={`text-[10px] px-1.5 py-0 uppercase tracking-wider ${
-                                snapshot.snapshot_type === "manual"
-                                  ? "border-gray-200 text-gray-500"
-                                  : "border-blue-200 text-blue-500"
+                                snapshot.trigger_type === "auto_daily"
+                                  ? "bg-blue-50 text-blue-600 border-blue-200"
+                                  : "border-gray-200 text-gray-500"
                               }`}
                             >
-                              {snapshot.snapshot_type === "manual" ? t("manual") : t("auto")}
+                              {snapshot.trigger_type === "auto_daily"
+                                ? t("auto_daily")
+                                : t("manual")}
                             </Badge>
+                            {snapshot.scope === "tree" && (
+                              <Badge className="bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">
+                                🌳 {t("tree")}
+                              </Badge>
+                            )}
                             <p className="text-sm font-semibold text-gray-800">
                               {formatDate(snapshot.created_at)}
                             </p>
@@ -834,27 +874,34 @@ export default function SnapshotsPage() {
 
                         {/* VRTA Stats Grid */}
                         {(() => {
-                          const stats = getSnapshotStats(snapshot.data);
+                          const stats = getSnapshotStats(snapshot.data, snapshot.scope);
+                          const isTree = snapshot.scope === "tree";
+                          const totalCharts = isTree && snapshot.data?.tree_meta?.total_charts;
                           return (
                             <div className="px-5 py-3">
                               <div className="grid grid-cols-4 gap-2">
-                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-sky-50">
-                                  <span className="text-lg font-bold text-sky-700 leading-none">{stats.visions}</span>
-                                  <span className="text-[10px] font-medium mt-1 text-sky-600/70">Visions</span>
-                                </div>
                                 <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-emerald-50">
-                                  <span className="text-lg font-bold text-emerald-700 leading-none">{stats.realities}</span>
-                                  <span className="text-[10px] font-medium mt-1 text-emerald-600/70">Realities</span>
+                                  <span className="text-lg font-bold text-emerald-600 leading-none">{stats.visions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-emerald-600/70">Visions</span>
                                 </div>
                                 <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-orange-50">
-                                  <span className="text-lg font-bold text-orange-600 leading-none">{stats.tensions}</span>
-                                  <span className="text-[10px] font-medium mt-1 text-orange-500/70">Tensions</span>
+                                  <span className="text-lg font-bold text-orange-500 leading-none">{stats.realities}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-orange-500/70">Realities</span>
+                                </div>
+                                <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-sky-50">
+                                  <span className="text-lg font-bold text-sky-600 leading-none">{stats.tensions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-sky-600/70">Tensions</span>
                                 </div>
                                 <div className="flex flex-col items-center px-3 py-2 rounded-lg bg-slate-50">
-                                  <span className="text-lg font-bold text-slate-700 leading-none">{stats.actions}</span>
-                                  <span className="text-[10px] font-medium mt-1 text-slate-500/70">Actions</span>
+                                  <span className="text-lg font-bold text-slate-600 leading-none">{stats.actions}</span>
+                                  <span className="text-[10px] font-medium mt-1 text-slate-600/70">Actions</span>
                                 </div>
                               </div>
+                              {isTree && totalCharts != null && (
+                                <p className="text-xs text-slate-400 text-center mt-1">
+                                  {t("chartsTotal", { count: totalCharts })}
+                                </p>
+                              )}
                             </div>
                           );
                         })()}
@@ -877,7 +924,11 @@ export default function SnapshotsPage() {
                                 if (e.key === "Escape") {
                                   e.preventDefault();
                                   cancelDescriptionEditRef.current = true;
-                                  setEditDescription(snapshot.description || "");
+                                  setEditDescription(
+                                    isSystemDescription(snapshot.description)
+                                      ? ""
+                                      : (snapshot.description || "")
+                                  );
                                   setEditingId(null);
                                 }
                               }}
@@ -892,7 +943,7 @@ export default function SnapshotsPage() {
                           ) : (
                             <p
                               className={`text-sm cursor-pointer transition-colors ${
-                                snapshot.description
+                                displayDescription(snapshot)
                                   ? "text-gray-600"
                                   : "text-gray-300 hover:text-gray-400"
                               }`}
@@ -901,7 +952,7 @@ export default function SnapshotsPage() {
                                 startEdit(snapshot);
                               }}
                             >
-                              {snapshot.description || t("addDescription")}
+                              {displayDescription(snapshot) || t("addDescription")}
                             </p>
                           )}
                         </div>
