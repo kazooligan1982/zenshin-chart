@@ -502,6 +502,8 @@
   "snapshot": {
     "title": "スナップショット",
     "comparisonMode": "比較モード",
+    "compareTwoSnapshots": "2つのスナップショットを比較する",
+    "cancelComparison": "比較をキャンセル",
     "exitCompare": "比較を終了",
     "readyToCompare": "比較の準備ができました",
     "selectSecondSnapshot": "2つ目のスナップショットを選択",
@@ -569,6 +571,7 @@
     "addNote": "追加",
     "editNote": "編集",
     "viewDetail": "詳細を見る",
+    "differentScopeWarning": "異なるスコープの比較（参考値）",
     "descriptionPlaceholder": "この比較について気づいたことをメモ...",
     "saveDescription": "保存",
     "cancelDescription": "キャンセル",

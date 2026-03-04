@@ -502,6 +502,8 @@
   "snapshot": {
     "title": "Snapshots",
     "comparisonMode": "Comparison mode",
+    "compareTwoSnapshots": "Compare two snapshots",
+    "cancelComparison": "Cancel comparison",
     "exitCompare": "Exit compare",
     "readyToCompare": "Ready to compare",
     "selectSecondSnapshot": "Select second snapshot",
@@ -569,6 +571,7 @@
     "addNote": "Add",
     "editNote": "Edit",
     "viewDetail": "View details",
+    "differentScopeWarning": "Different scope comparison (reference only)",
     "descriptionPlaceholder": "Note your thoughts about this comparison...",
     "saveDescription": "Save",
     "cancelDescription": "Cancel",
