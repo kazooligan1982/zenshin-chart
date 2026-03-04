@@ -940,14 +940,18 @@ export default function SnapshotsPage() {
               </TabsTrigger>
             </TabsList>
             {activeTab === "snapshots" && (
-              <Button
-                variant={compareMode ? "default" : "outline"}
-                className={compareMode ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"}
+              <button
+                type="button"
                 onClick={compareMode ? exitCompareMode : () => setCompareMode(true)}
+                className={`flex items-center gap-1.5 text-sm transition-colors hover:underline ${
+                  compareMode
+                    ? "text-destructive hover:text-destructive/90"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <GitCompare className="w-4 h-4 mr-2" />
-                {compareMode ? t("exitCompare") : t("comparisonMode")}
-              </Button>
+                <GitCompare className="w-4 h-4 shrink-0" />
+                {compareMode ? t("cancelComparison") : t("compareTwoSnapshots")}
+              </button>
             )}
           </div>
 
@@ -1255,6 +1259,12 @@ export default function SnapshotsPage() {
             ) : (
               comparisons.map((comp) => {
                 const counts = calcCategoryCounts(comp.diff_details || []);
+                const beforeSnap = snapshots.find((s) => s.id === comp.snapshot_before_id);
+                const afterSnap = snapshots.find((s) => s.id === comp.snapshot_after_id);
+                const isDifferentScope =
+                  beforeSnap &&
+                  afterSnap &&
+                  (beforeSnap.scope ?? "single") !== (afterSnap.scope ?? "single");
                 return (
                   <Card key={comp.id} className="hover:bg-gray-50 transition-colors overflow-hidden">
                     <CardContent className="py-4">
@@ -1291,6 +1301,11 @@ export default function SnapshotsPage() {
                             </span>
                           </div>
                         </div>
+                        {isDifferentScope && (
+                          <span className="mt-2 inline-block text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                            ⚠️ {t("differentScopeWarning")}
+                          </span>
+                        )}
                       </div>
 
                       {comp.ai_analysis && (
