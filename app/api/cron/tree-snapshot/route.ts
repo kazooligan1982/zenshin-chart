@@ -9,9 +9,10 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  // 1. Cron シークレットの検証
+  // 1. Cron シークレットの検証（CRON_SECRET未設定時も401を返す）
+  const secret = process.env.CRON_SECRET?.trim();
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!secret || authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

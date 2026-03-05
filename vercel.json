@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/tree-snapshot",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/slack-summary",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/slack-weekly",
+      "schedule": "0 0 * * 1"
     }
   ]
 }
