@@ -491,7 +491,9 @@
     "scoreSummary": "スコアの根拠",
     "aiInsight": "AIインサイト",
     "mondayUpdate": "月曜更新",
-    "aiInsightPlaceholder": "月曜日に最初のインサイトが届きます"
+    "aiInsightPlaceholder": "月曜日に最初のインサイトが届きます",
+    "momentumTrend": "前進スコア推移",
+    "momentumTrendPlaceholder": "来週以降、推移が表示されます"
   },
   "ai": {
     "welcomeTitle": "AIアシスタントで始めませんか？",

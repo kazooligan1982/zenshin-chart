@@ -93,6 +93,56 @@ export async function getMomentumData(
   };
 }
 
+export type MomentumTrendPoint = {
+  week: string;
+  score: number;
+};
+
+export async function getMomentumTrend(
+  workspaceId: string,
+  chartId: string | null
+): Promise<MomentumTrendPoint[]> {
+  const supabase = await createClient();
+  let targetChartId: string;
+  if (!chartId || chartId === "all") {
+    const { data: masters } = await supabase
+      .from("charts")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .is("archived_at", null)
+      .is("parent_action_id", null)
+      .order("title")
+      .limit(1);
+    if (!masters || masters.length === 0) return [];
+    targetChartId = masters[0].id;
+  } else {
+    targetChartId = chartId;
+  }
+
+  const { data: rows } = await supabase
+    .from("momentum_scores")
+    .select("week_start, score")
+    .eq("chart_id", targetChartId)
+    .order("week_start", { ascending: false })
+    .limit(8);
+
+  if (!rows || rows.length === 0) return [];
+
+  const sorted = [...rows].sort(
+    (a, b) => new Date(a.week_start).getTime() - new Date(b.week_start).getTime()
+  );
+
+  return sorted.map((r) => {
+    const d = new Date(r.week_start);
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    return {
+      week: `${month}/${day}`,
+      score: Math.min(100, Math.max(0, r.score)),
+    };
+  });
+}
+
 export type DashboardStats = {
   totalCharts: number;
   totalActions: number;
