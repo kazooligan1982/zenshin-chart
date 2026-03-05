@@ -481,7 +481,17 @@
     "delayCascade": "遅延カスケード",
     "daysOverdueShort": "日超過",
     "blocked": "ブロック中",
-    "noCascade": "遅延カスケードはありません"
+    "noCascade": "遅延カスケードはありません",
+    "momentumScore": "前進スコア",
+    "weekOverWeek": "先週比",
+    "trendUp": "上昇中",
+    "trendDown": "下降中",
+    "trendFlat": "維持",
+    "noPrevWeek": "前週データなし",
+    "scoreSummary": "スコアの根拠",
+    "aiInsight": "AIインサイト",
+    "mondayUpdate": "月曜更新",
+    "aiInsightPlaceholder": "月曜日に最初のインサイトが届きます"
   },
   "ai": {
     "welcomeTitle": "AIアシスタントで始めませんか？",

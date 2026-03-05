@@ -1,7 +1,97 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { calculateMomentumScore, type MomentumScoreResult } from "@/lib/momentum-score";
 import { getPeriodRange } from "./utils";
+
+function getMondayOfWeek(d: Date): string {
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d);
+  monday.setDate(diff);
+  return monday.toISOString().split("T")[0];
+}
+
+export type MomentumData = {
+  chartId: string;
+  chartTitle: string;
+  score: number;
+  scoreDisplay: number;
+  prevScore: number | null;
+  diff: number | null;
+  aiInsight: string | null;
+  details: MomentumScoreResult["details"];
+};
+
+export async function getMomentumData(
+  workspaceId: string,
+  chartId: string | null
+): Promise<MomentumData | null> {
+  const supabase = await createClient();
+  let targetChartId: string;
+  if (!chartId || chartId === "all") {
+    const { data: masters } = await supabase
+      .from("charts")
+      .select("id, title")
+      .eq("workspace_id", workspaceId)
+      .is("archived_at", null)
+      .is("parent_action_id", null)
+      .order("title")
+      .limit(1);
+    if (!masters || masters.length === 0) return null;
+    targetChartId = masters[0].id;
+  } else {
+    targetChartId = chartId;
+  }
+
+  const chartIds = [targetChartId, ...(await getAllDescendantChartIds(supabase, targetChartId))];
+
+  let momentum: MomentumScoreResult;
+  try {
+    momentum = await calculateMomentumScore(targetChartId, supabase, chartIds);
+  } catch (err) {
+    console.error("[getMomentumData] calculateMomentumScore error:", err);
+    return null;
+  }
+
+  const lastWeekStart = getMondayOfWeek(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+
+  const { data: latestMomentumRow } = await supabase
+    .from("momentum_scores")
+    .select("ai_insight")
+    .eq("chart_id", targetChartId)
+    .order("week_start", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data: prevWeekRow } = await supabase
+    .from("momentum_scores")
+    .select("score")
+    .eq("chart_id", targetChartId)
+    .eq("week_start", lastWeekStart)
+    .maybeSingle();
+
+  const prevScore = prevWeekRow?.score ?? null;
+  const diff = prevScore !== null ? momentum.score - prevScore : null;
+  const aiInsight = latestMomentumRow?.ai_insight ?? null;
+
+  const { data: chartRow } = await supabase
+    .from("charts")
+    .select("title")
+    .eq("id", targetChartId)
+    .single();
+
+  return {
+    chartId: targetChartId,
+    chartTitle: chartRow?.title ?? "",
+    score: momentum.score,
+    scoreDisplay: Math.min(100, Math.max(0, momentum.score)),
+    prevScore,
+    diff,
+    aiInsight,
+    details: momentum.details,
+  };
+}
 
 export type DashboardStats = {
   totalCharts: number;
