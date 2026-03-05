@@ -481,7 +481,17 @@
     "delayCascade": "Delay Cascade",
     "daysOverdueShort": "d overdue",
     "blocked": "Blocked",
-    "noCascade": "No delay cascades"
+    "noCascade": "No delay cascades",
+    "momentumScore": "Momentum Score",
+    "weekOverWeek": "vs last week",
+    "trendUp": "rising",
+    "trendDown": "declining",
+    "trendFlat": "unchanged",
+    "noPrevWeek": "No previous week data",
+    "scoreSummary": "Score breakdown",
+    "aiInsight": "AI Insight",
+    "mondayUpdate": "Monday update",
+    "aiInsightPlaceholder": "Your first insight will arrive on Monday"
   },
   "ai": {
     "welcomeTitle": "Start with AI Assistant?",

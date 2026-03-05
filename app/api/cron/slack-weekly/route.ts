@@ -145,18 +145,6 @@ export async function GET(request: NextRequest) {
           const prevScore = lastWeekScore?.score ?? null;
           const diffStr = prevScore !== null ? (momentum.score - prevScore >= 0 ? `+${momentum.score - prevScore}` : `${momentum.score - prevScore}`) : "—";
 
-          await supabase
-            .from("momentum_scores")
-            .upsert(
-              {
-                chart_id: master.id,
-                workspace_id: ws.id,
-                score: momentum.score,
-                week_start: thisWeekStart,
-              },
-              { onConflict: "chart_id,week_start" }
-            );
-
           const { data: snapshots } = await supabase
             .from("snapshots")
             .select("id, created_at, data")
@@ -207,6 +195,19 @@ export async function GET(request: NextRequest) {
             const textBlock = msg.content[0];
             if (textBlock.type === "text") aiInsight = textBlock.text.replace(/\*\*(.*?)\*\*/g, "$1");
           }
+
+          await supabase
+            .from("momentum_scores")
+            .upsert(
+              {
+                chart_id: master.id,
+                workspace_id: ws.id,
+                score: momentum.score,
+                week_start: thisWeekStart,
+                ai_insight: aiInsight,
+              },
+              { onConflict: "chart_id,week_start" }
+            );
 
           const realityCount = momentum.details.plusFactors.find((f) => f.label === "Reality更新")?.value
             ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "Reality更新")!.value) / 5
