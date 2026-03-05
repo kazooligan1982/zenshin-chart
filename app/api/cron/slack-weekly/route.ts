@@ -6,12 +6,19 @@ import { collectTreeSnapshotData } from "@/lib/tree-snapshot";
 
 export const dynamic = "force-dynamic";
 
-const WEEKLY_AI_SYSTEM_PROMPT = `あなたはFritzの構造的緊張理論に基づくコーチです。
-以下のチャートデータを分析し、3文以内で：
-1. Visionに向かって前進しているか
-2. 最も重要なボトルネック
-3. 今週注力すべきこと
-を端的に伝えてください。`;
+const WEEKLY_AI_SYSTEM_PROMPT = `あなたはRobert Fritzの構造ダイナミクスに基づくコーチです。
+
+以下のルールに従ってください：
+- 必ず Vision → Reality → Tension → Action の順で思考する
+- 直接的な答えではなく「問いかけ」を中心にする
+- 構造的テンションに焦点を当てる（「VisionとRealityのギャップは何か？」）
+- 3文以内で簡潔に
+- 日本語で出力
+
+以下のワークスペースの今週の活動データを見て、チームへの問いかけを3文以内で生成してください。
+問いかけはVisionに向かう構造的テンションに焦点を当ててください。`;
+
+const AI_INSIGHT_FALLBACK = "今週のVisionとRealityのギャップに、どんな問いを投げかけますか？";
 
 function getMondayOfWeek(d: Date): string {
   const day = d.getDay();
@@ -19,53 +26,6 @@ function getMondayOfWeek(d: Date): string {
   const monday = new Date(d);
   monday.setDate(diff);
   return monday.toISOString().split("T")[0];
-}
-
-function extractItemsByCategory(data: Record<string, unknown>, category: string): unknown[] {
-  if (!data) return [];
-  const direct = (data as Record<string, unknown>)[category];
-  if (Array.isArray(direct)) return direct;
-  const charts = (data as Record<string, unknown>).charts;
-  if (Array.isArray(charts)) {
-    return charts.flatMap((c: unknown) =>
-      ((c as Record<string, unknown>)[category] as unknown[] || []).map((item: unknown) => ({
-        ...(item as object),
-        _chartId: (c as Record<string, unknown>).chart_id,
-      }))
-    );
-  }
-  return [];
-}
-
-function computeDiff(
-  beforeData: Record<string, unknown>,
-  afterData: Record<string, unknown>
-): { added: unknown[]; modified: unknown[]; removed: unknown[] } {
-  const added: unknown[] = [];
-  const modified: unknown[] = [];
-  const removed: unknown[] = [];
-
-  for (const category of ["visions", "realities", "tensions", "actions"]) {
-    const items1 = extractItemsByCategory(beforeData, category);
-    const items2 = extractItemsByCategory(afterData, category);
-
-    for (const item2 of items2) {
-      const id2 = (item2 as Record<string, unknown>).id;
-      const found = items1.find((i) => (i as Record<string, unknown>).id === id2);
-      if (!found) {
-        added.push({ type: category, ...(item2 as object) });
-      } else if (JSON.stringify(found) !== JSON.stringify(item2)) {
-        modified.push({ type: category, before: found, after: item2 });
-      }
-    }
-    for (const item1 of items1) {
-      const id1 = (item1 as Record<string, unknown>).id;
-      if (!items2.find((i) => (i as Record<string, unknown>).id === id1)) {
-        removed.push({ type: category, ...(item1 as object) });
-      }
-    }
-  }
-  return { added, modified, removed };
 }
 
 export async function GET(request: NextRequest) {
@@ -92,18 +52,25 @@ export async function GET(request: NextRequest) {
   const lastWeekStart = getMondayOfWeek(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
 
   try {
-    const { data: workspaces } = await supabase
+    const { data: workspaces, error: workspacesError } = await supabase
       .from("workspaces")
       .select("id, name")
       .eq("slack_notify", true);
 
+    if (workspacesError) {
+      console.error("[Slack Weekly] Supabase workspaces error:", workspacesError);
+      return NextResponse.json({ error: "Failed to fetch workspaces" }, { status: 500 });
+    }
     if (!workspaces || workspaces.length === 0) {
       return NextResponse.json({ success: true, message: "No workspaces with Slack notify" });
     }
 
-    const { data: actions } = await supabase
+    const { data: actions, error: actionsError } = await supabase
       .from("actions")
       .select("id, chart_id, child_chart_id");
+    if (actionsError) {
+      console.error("[Slack Weekly] Supabase actions error:", actionsError);
+    }
     const childToParent = new Map<string, string>();
     for (const a of actions || []) {
       if (a.child_chart_id && a.chart_id) childToParent.set(a.child_chart_id, a.chart_id);
@@ -117,13 +84,19 @@ export async function GET(request: NextRequest) {
       { type: "divider" },
     ];
 
+    const sevenDaysAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
     for (const ws of workspaces) {
-      const { data: charts } = await supabase
+      const { data: charts, error: chartsError } = await supabase
         .from("charts")
         .select("id, title")
         .eq("workspace_id", ws.id)
         .is("archived_at", null);
 
+      if (chartsError) {
+        console.error("[Slack Weekly] Supabase charts error for workspace", ws.id, chartsError);
+        continue;
+      }
       if (!charts || charts.length === 0) continue;
 
       const masterCharts = charts.filter((c: { id: string }) => !childToParent.has(c.id));
@@ -135,65 +108,97 @@ export async function GET(request: NextRequest) {
 
           const momentum = await calculateMomentumScore(master.id, supabase, chartIds);
 
-          const { data: lastWeekScore } = await supabase
+          let staleChartsCount = 0;
+          if (chartIds.length > 0) {
+            const { data: staleCharts } = await supabase
+              .from("charts")
+              .select("id")
+              .in("id", chartIds)
+              .lt("updated_at", sevenDaysAgoStr);
+            staleChartsCount = staleCharts?.length ?? 0;
+          }
+
+          const { data: lastWeekScore, error: lastWeekError } = await supabase
             .from("momentum_scores")
             .select("score")
             .eq("chart_id", master.id)
             .eq("week_start", lastWeekStart)
             .maybeSingle();
 
+          if (lastWeekError) {
+            console.error("[Slack Weekly] Supabase momentum_scores error:", lastWeekError);
+          }
           const prevScore = lastWeekScore?.score ?? null;
           const diffStr = prevScore !== null ? (momentum.score - prevScore >= 0 ? `+${momentum.score - prevScore}` : `${momentum.score - prevScore}`) : "—";
 
-          const { data: snapshots } = await supabase
+          const { data: snapshots, error: snapshotsError } = await supabase
             .from("snapshots")
             .select("id, created_at, data")
             .eq("chart_id", master.id)
             .order("created_at", { ascending: false })
             .limit(2);
 
+          if (snapshotsError) {
+            console.error("[Slack Weekly] Supabase snapshots error:", snapshotsError);
+          }
+
           let aiInsight = "（スナップショットが不足しているためAI分析はスキップしました）";
           const beforeData = snapshots?.[1]?.data as Record<string, unknown> | undefined;
           const afterData = snapshots?.[0]?.data as Record<string, unknown> | undefined;
 
-          if (beforeData && afterData && snapshots && snapshots.length >= 2) {
-            const diff = computeDiff(beforeData, afterData);
-            const summary = {
-              addedCount: diff.added.length,
-              modifiedCount: diff.modified.length,
-              removedCount: diff.removed.length,
-            };
+          const realityCount = momentum.details.plusFactors.find((f) => f.label === "Reality更新")?.value
+            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "Reality更新")!.value) / 5
+            : 0;
+          const actionDoneCount = momentum.details.plusFactors.find((f) => f.label === "アクション完了")?.value
+            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "アクション完了")!.value) / 3
+            : 0;
+          const tensionResolvedCount = momentum.details.plusFactors.find((f) => f.label === "Tension解消")?.value
+            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "Tension解消")!.value) / 8
+            : 0;
 
-            const chartsForAi = treeData.charts.map((c) => {
-              const visions = (c.visions ?? []) as Array<{ content?: string }>;
-              const realities = (c.realities ?? []) as Array<{ content?: string }>;
-              const tensions = (c.tensions ?? []) as Array<{ title?: string; status?: string }>;
-              return {
-                title: c.title,
-                visions: visions.map((v) => v.content),
-                realities: realities.map((r) => r.content),
-                tensions: tensions.map((t) => ({ title: t.title, status: t.status })),
-              };
-            });
+          if (beforeData && afterData && snapshots && snapshots.length >= 2) {
             const userContent = [
-              "## チャートデータ（Vision・Reality・Tension）",
-              JSON.stringify({ charts: chartsForAi }, null, 2),
-              "\n## 直近7日間のアクションステータス変化",
-              `追加: ${summary.addedCount}, 変更: ${summary.modifiedCount}, 削除: ${summary.removedCount}`,
-              "\n## 前進スコア内訳",
-              "プラス:", JSON.stringify(momentum.details.plusFactors),
-              "マイナス:", JSON.stringify(momentum.details.minusFactors),
-              "ボトルネック:", JSON.stringify(momentum.details.bottlenecks),
+              "## 今週の活動データ",
+              `- 完了アクション数: ${actionDoneCount}`,
+              `- Reality更新数: ${realityCount}`,
+              `- Tension解消数: ${tensionResolvedCount}`,
+              `- 期限超過アクション数: ${momentum.details.overdueActions.length}`,
+              `- 停滞チャート数（7日以上更新なし）: ${staleChartsCount}`,
+              "",
+              "## チャート概要（Vision・Reality・Tension）",
+              JSON.stringify(
+                treeData.charts.map((c) => {
+                  const visions = (c.visions ?? []) as Array<{ content?: string }>;
+                  const realities = (c.realities ?? []) as Array<{ content?: string }>;
+                  const tensions = (c.tensions ?? []) as Array<{ title?: string; status?: string }>;
+                  return {
+                    title: c.title,
+                    visions: visions.map((v) => v.content),
+                    realities: realities.map((r) => r.content),
+                    tensions: tensions.map((t) => ({ title: t.title, status: t.status })),
+                  };
+                }),
+                null,
+                2
+              ),
             ].join("\n");
 
-            const msg = await anthropic.messages.create({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 500,
-              system: WEEKLY_AI_SYSTEM_PROMPT,
-              messages: [{ role: "user", content: userContent }],
-            });
-            const textBlock = msg.content[0];
-            if (textBlock.type === "text") aiInsight = textBlock.text.replace(/\*\*(.*?)\*\*/g, "$1");
+            try {
+              const msg = await anthropic.messages.create({
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 500,
+                system: WEEKLY_AI_SYSTEM_PROMPT,
+                messages: [{ role: "user", content: userContent }],
+              });
+              const textBlock = msg.content[0];
+              if (textBlock.type === "text") {
+                aiInsight = textBlock.text.replace(/\*\*(.*?)\*\*/g, "$1").trim();
+                if (!aiInsight) aiInsight = AI_INSIGHT_FALLBACK;
+              }
+            } catch (aiErr) {
+              console.error("[Slack Weekly] AI insight generation failed:", aiErr);
+              aiInsight = AI_INSIGHT_FALLBACK;
+            }
           }
 
           await supabase
@@ -209,16 +214,6 @@ export async function GET(request: NextRequest) {
               { onConflict: "chart_id,week_start" }
             );
 
-          const realityCount = momentum.details.plusFactors.find((f) => f.label === "Reality更新")?.value
-            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "Reality更新")!.value) / 5
-            : 0;
-          const actionDoneCount = momentum.details.plusFactors.find((f) => f.label === "アクション完了")?.value
-            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "アクション完了")!.value) / 3
-            : 0;
-          const tensionResolvedCount = momentum.details.plusFactors.find((f) => f.label === "Tension解消")?.value
-            ? Math.abs(momentum.details.plusFactors.find((f) => f.label === "Tension解消")!.value) / 8
-            : 0;
-
           const overdueList = momentum.details.overdueActions
             .slice(0, 3)
             .map(
@@ -229,13 +224,11 @@ export async function GET(request: NextRequest) {
           const chartTitle = (master.title || "無題").replace(/[&<>]/g, (c: string) =>
             ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] ?? c)
           );
+          const dashboardUrl = `${appUrl.replace(/\/$/, "")}/workspaces/${ws.id}/charts/${master.id}/dashboard`;
 
           blocks.push({
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `*${chartTitle}*`,
-            },
+            type: "header",
+            text: { type: "plain_text", text: chartTitle, emoji: true },
           });
           blocks.push({
             type: "section",
@@ -244,6 +237,7 @@ export async function GET(request: NextRequest) {
               text: `🚀 *前進スコア:* ${momentum.score} （先週比 ${diffStr}）`,
             },
           });
+          blocks.push({ type: "divider" });
           blocks.push({
             type: "section",
             text: {
@@ -264,10 +258,9 @@ export async function GET(request: NextRequest) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `🤖 *AIインサイト*\n${aiInsight}`,
+              text: `🤖 *AIインサイト*\n_${aiInsight.replace(/_/g, "\\_")}_`,
             },
           });
-          const dashboardUrl = `${appUrl.replace(/\/$/, "")}/workspaces/${ws.id}/charts/${master.id}/dashboard`;
           blocks.push({
             type: "section",
             text: {
