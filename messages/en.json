@@ -204,6 +204,8 @@
   },
   "settings": {
     "title": "Settings",
+    "slackNotification": "Slack Notifications",
+    "slackNotificationDescription": "Send a daily summary to Slack every morning at 9:00 AM",
     "language": "Language",
     "japanese": "日本語",
     "english": "English",

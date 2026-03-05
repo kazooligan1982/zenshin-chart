@@ -204,6 +204,8 @@
   },
   "settings": {
     "title": "設定",
+    "slackNotification": "Slack通知",
+    "slackNotificationDescription": "毎朝9時にこのワークスペースのサマリーをSlackに送信する",
     "language": "言語",
     "japanese": "日本語",
     "english": "English",
