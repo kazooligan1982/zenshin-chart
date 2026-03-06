@@ -71,7 +71,7 @@ export function MomentumTrendChart({ data }: MomentumTrendChartProps) {
                 boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
               }}
               labelStyle={{ color: "#334155", fontWeight: 500 }}
-              formatter={(value: number) => [value, t("momentumScore")]}
+              formatter={(value: number | undefined) => [value ?? 0, t("momentumScore")] as [number, string]}
               labelFormatter={(label) => label}
             />
             <Area
