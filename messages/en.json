@@ -756,12 +756,12 @@
     "back": "Back",
     "modeSelect": {
       "title": "What would you like to do?",
+      "brainstorm": "Brainstorm & Discuss",
+      "brainstormDesc": "Explore your thinking through dialogue with AI",
       "analyze": "Analyze Chart",
-      "analyzeDesc": "Analyze your chart with Fritz's structural tension theory",
+      "analyzeDesc": "Analyze and coach your chart structurally",
       "add": "Add Chart Info",
-      "addDesc": "Extract V/R/T/A from text and add to your chart",
-      "chat": "Ask Freely",
-      "chatDesc": "Ask about structural tension theory or your chart"
+      "addDesc": "Extract V/R/T/A from text and add to your chart"
     },
     "modeCreate": "Create Chart",
     "modeCreateDesc": "Auto-generate V/R/T/A from text",
@@ -774,6 +774,18 @@
     "chat": {
       "greeting": "Ask me anything about your chart or Fritz's structural tension theory.",
       "inputPlaceholder": "Type your question..."
+    },
+    "brainstorm": {
+      "emptyState": "Share what's on your mind. I'll help you organize your thinking through dialogue.",
+      "placeholder": "Share what you're thinking...",
+      "reflectToChart": "Reflect to Chart",
+      "extracting": "Analyzing...",
+      "previewTitle": "Content to reflect to chart",
+      "backToBrainstorm": "Back to Brainstorm",
+      "addToChart": "Add to Chart",
+      "addedToChart": "Added to chart",
+      "extractFailed": "Extraction failed. Please try again.",
+      "addFailed": "Failed to reflect. Please try again."
     },
     "add": {
       "description": "Paste your text below. AI will categorize it into Vision / Reality / Tension / Action items.",

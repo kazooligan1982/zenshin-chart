@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
   const isStructurize = mode === "structurize";
   const isSnapshotAnalyze = mode === "snapshot_analyze";
   const isComparisonAnalyze = mode === "comparison_analyze";
+  const isExtractVrta = mode === "extract_vrta";
 
-  if (!isStructurize && !isComparisonAnalyze && !chartData) {
+  if (!isStructurize && !isComparisonAnalyze && !isExtractVrta && !chartData) {
     return NextResponse.json({ error: "Chart data is required" }, { status: 400 });
   }
   if (isStructurize && (!text || typeof text !== "string" || text.trim().length === 0)) {
@@ -178,6 +179,64 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (isExtractVrta) {
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json({ error: "Messages are required" }, { status: 400 });
+    }
+    const extractPrompt = isEn ? EXTRACT_VRTA_PROMPT_EN : EXTRACT_VRTA_PROMPT_JA;
+    const conversationText = messages
+      .map((m: { role: string; content: string }) => `${m.role === "user" ? "User" : "Coach"}: ${m.content}`)
+      .join("\n\n");
+
+    const MAX_RETRIES = 3;
+    const RETRY_DELAYS = [2000, 5000, 10000];
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      try {
+        const message = await anthropic.messages.create({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 2000,
+          system: extractPrompt,
+          messages: [{ role: "user", content: conversationText.slice(0, 12000) }],
+        });
+        const content = message.content[0];
+        if (content.type !== "text") {
+          return NextResponse.json({ error: "Unexpected response type" }, { status: 500 });
+        }
+        let jsonStr = content.text;
+        const jsonMatch = jsonStr.match(/```json\n?([\s\S]*?)\n?```/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[1];
+        } else {
+          const codeMatch = jsonStr.match(/```\n?([\s\S]*?)\n?```/);
+          if (codeMatch) jsonStr = codeMatch[1];
+        }
+        jsonStr = jsonStr.trim();
+        const result = JSON.parse(jsonStr);
+        return NextResponse.json(result);
+      } catch (parseError) {
+        if (parseError instanceof SyntaxError) {
+          console.error("extract_vrta JSON parse error:", parseError);
+          return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+        }
+        const err = parseError as { status?: number; message?: string };
+        const status = err?.status || 500;
+        if (status === 529 && attempt < MAX_RETRIES - 1) {
+          console.log(`AI extract_vrta: retrying (attempt ${attempt + 2}/${MAX_RETRIES})...`);
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
+          continue;
+        }
+        console.error("AI extract_vrta error:", err?.message || err);
+        const errorMessage = err?.message?.includes("credit")
+          ? "API credits insufficient"
+          : status === 529
+            ? "AI service is temporarily busy. Please try again in a moment."
+            : "VRTA extraction failed";
+        return NextResponse.json({ error: errorMessage }, { status });
+      }
+    }
+    return NextResponse.json({ error: "VRTA extraction failed after retries" }, { status: 500 });
+  }
+
   const chartContext = formatChartContext(chartData, lang);
   const lastContent =
     messages?.length > 0
@@ -216,7 +275,7 @@ export async function POST(req: NextRequest) {
     try {
       const message = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
+        max_tokens: isChat ? 500 : 4000,
         system: systemPrompt,
         messages: aiMessages,
       });
@@ -657,23 +716,71 @@ Return ONLY the following JSON format. No explanation or markdown:
 
 tensionIndex is the 0-based index into the tensions array, indicating which Tension this Action addresses.`;
 
-const CHAT_SYSTEM_PROMPT_JA = `あなたはZENSHIN CHARTのAIアシスタントです。ロバート・フリッツの「構造的テンション（Structural Tension）」理論と、ユーザーのチャートについて、自由な質問に答えます。
+const CHAT_SYSTEM_PROMPT_JA = `あなたはZENSHIN CHARTの壁打ちコーチです。
+ロバート・フリッツの「緊張構造（Structural Tension）」理論に基づき、
+ユーザーの思考を対話的に深める壁打ち相手として振る舞います。
 
-## あなたの役割
-- 構造的テンション理論について分かりやすく説明する
-- チャートの内容について質問に答える
-- 問いを投げてユーザーの気づきを促す
-- 簡潔に、要点を絞って伝える
-- ユーザーの言語（日本語）で返答する`;
+【行動原則】
+- 答えを出すのではなく、問いを投げる
+- 1回の応答は短く（3〜5文程度）。長い説明はしない
+- 必ず1つの問いかけで終わる
+- ユーザーの言葉をそのまま使って確認する（パラフレーズ）
+- 温かく、対等な立場で対話する
 
-const CHAT_SYSTEM_PROMPT_EN = `You are the AI Assistant of ZENSHIN CHART. You answer free-form questions about Robert Fritz's "Structural Tension" theory and the user's chart.
+【対話の自然な流れ（厳密に順番通りでなくてよい）】
+1. まずユーザーの話を受け止め、何について考えたいのか確認する
+2. Vision（理想の状態）を引き出す — 「どうなったら最高ですか？」
+3. Reality（現在の状態）を引き出す — 「今はどんな状況ですか？」
+4. VisionとRealityのギャップ（Tension）を一緒に言語化する
+5. 具体的なAction（次の一歩）を考える — 「最初の一手は何ができそうですか？」
 
-## Your Role
-- Explain structural tension theory clearly
-- Answer questions about the chart content
-- Ask questions to prompt user insights
-- Be concise and focused
-- Respond in the user's language (English)`;
+ただし、この順番に固執しないこと。ユーザーの話の流れに合わせて柔軟に進める。
+ユーザーがActionから話し始めたらそこから広げてもよい。
+
+【禁止事項】
+- 一度に複数の質問をしない（1回につき問いは1つだけ）
+- 長文で説明しない（箇条書きの羅列もしない）
+- ユーザーが聞いていないのにフレームワークの説明をしない
+- 「まず〇〇を考えましょう。次に△△を…」と全体計画を最初に提示しない
+- 「V/R/T/A」「Vision/Reality/Tension/Action」などの専門用語を会話中に使わない
+  （ユーザーが自分から使った場合のみ使ってよい）
+
+【初回の応答】
+ユーザーの最初のメッセージに対しては、内容を短く受け止めてから、
+最も自然な1つの問いを投げる。自己紹介や前置きは不要。`;
+
+const CHAT_SYSTEM_PROMPT_EN = `You are a sparring coach for ZENSHIN CHART.
+Based on Robert Fritz's "Structural Tension" theory,
+you act as an interactive thinking partner who deepens the user's thinking through dialogue.
+
+【Behavioral Principles】
+- Ask questions instead of giving answers
+- Keep each response short (about 3-5 sentences). No long explanations
+- Always end with exactly one question
+- Confirm using the user's own words (paraphrase)
+- Be warm and engage as an equal partner
+
+【Natural Flow of Dialogue (not strictly sequential)】
+1. First, acknowledge the user's words and confirm what they want to think about
+2. Draw out their Vision (ideal state) — "What would it look like at its best?"
+3. Draw out their Reality (current state) — "What's the situation right now?"
+4. Together, articulate the gap (Tension) between Vision and Reality
+5. Explore a concrete Action (next step) — "What could be your first move?"
+
+Do not rigidly follow this order. Adapt flexibly to the user's flow.
+If the user starts with an Action, expand from there.
+
+【Prohibited】
+- Do not ask multiple questions at once (only one question per response)
+- Do not write long explanations (no bullet-point lists either)
+- Do not explain frameworks unless the user asks
+- Do not present an overall plan upfront like "First let's think about X. Then Y..."
+- Do not use jargon like "V/R/T/A" or "Vision/Reality/Tension/Action" in conversation
+  (only use them if the user brings them up first)
+
+【First Response】
+For the user's first message, briefly acknowledge the content,
+then ask the most natural single question. No self-introduction or preamble needed.`;
 
 const SNAPSHOT_ANALYZE_PROMPT_EN = `You are the AI Coach of ZENSHIN CHART. You analyze a snapshot of a user's structural tension chart and provide clear, actionable insights based on Robert Fritz's methodology.
 
@@ -846,3 +953,39 @@ Based on these change patterns, suggest 1-3 next actions.
 - Focus on qualitative content changes, not just numerical changes
 
 Respond in Markdown format.`;
+
+const EXTRACT_VRTA_PROMPT_JA = `以下の対話内容から、ZENSHIN CHARTの構造に沿って情報を抽出してください。
+
+必ず以下のJSON形式のみで応答してください。JSON以外のテキストは含めないでください。
+
+{
+  "visions": [{"title": "...", "description": "..."}],
+  "realities": [{"title": "...", "description": "..."}],
+  "tensions": [{"title": "...", "description": "..."}],
+  "actions": [{"title": "...", "description": "...", "due_date": null}]
+}
+
+ルール:
+- 対話に含まれない要素は空配列にする
+- ユーザーの言葉をできるだけそのまま使う
+- 推測で項目を追加しない
+- titleは簡潔に（20文字以内）、descriptionに詳細を入れる
+- 日本語で応答する`;
+
+const EXTRACT_VRTA_PROMPT_EN = `Extract information from the following dialogue and structure it according to ZENSHIN CHART format.
+
+Respond ONLY in the following JSON format. Do not include any text outside of JSON.
+
+{
+  "visions": [{"title": "...", "description": "..."}],
+  "realities": [{"title": "...", "description": "..."}],
+  "tensions": [{"title": "...", "description": "..."}],
+  "actions": [{"title": "...", "description": "...", "due_date": null}]
+}
+
+Rules:
+- Use empty arrays for elements not present in the dialogue
+- Use the user's own words as much as possible
+- Do not add items based on speculation
+- Keep titles concise (under 20 characters), put details in description
+- Respond in English`;

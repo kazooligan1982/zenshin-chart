@@ -756,12 +756,12 @@
     "back": "戻る",
     "modeSelect": {
       "title": "何をしますか？",
+      "brainstorm": "壁打ち・相談",
+      "brainstormDesc": "AIと対話しながら思考を整理",
       "analyze": "チャートを分析",
-      "analyzeDesc": "現在のチャートをフリッツ理論で分析・コーチング",
+      "analyzeDesc": "現在のチャートを構造的に分析・コーチング",
       "add": "チャート情報を追加",
-      "addDesc": "テキストからV/R/T/Aに振り分けて追加",
-      "chat": "自由に質問",
-      "chatDesc": "構造的テンション理論やチャートについて質問"
+      "addDesc": "テキストからV/R/T/Aに振り分けて追加"
     },
     "modeCreate": "チャートを作成",
     "modeCreateDesc": "テキストからV/R/T/Aを自動生成",
@@ -774,6 +774,18 @@
     "chat": {
       "greeting": "なんでも聞いてください。チャートの内容やフリッツ理論について、お答えします。",
       "inputPlaceholder": "質問を入力..."
+    },
+    "brainstorm": {
+      "emptyState": "考えていることを自由に話してみてください。対話を通じて思考を整理するお手伝いをします。",
+      "placeholder": "考えていることを話してみてください...",
+      "reflectToChart": "チャートに反映する",
+      "extracting": "分析中...",
+      "previewTitle": "チャートに反映する内容",
+      "backToBrainstorm": "壁打ちに戻る",
+      "addToChart": "チャートに追加",
+      "addedToChart": "チャートに追加しました",
+      "extractFailed": "抽出に失敗しました。もう一度お試しください。",
+      "addFailed": "反映に失敗しました。もう一度お試しください。"
     },
     "add": {
       "description": "追加したい内容をテキストで入力してください。AIがVision / Reality / Tension / Actionに振り分けます。",
