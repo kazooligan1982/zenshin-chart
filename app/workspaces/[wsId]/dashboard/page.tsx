@@ -13,10 +13,11 @@ import {
   ChevronRight,
   GitBranch,
 } from "lucide-react";
-import { getDashboardData, getMomentumData, type CascadeNode } from "./actions";
+import { getDashboardData, getMomentumData, getMomentumTrend, type CascadeNode } from "./actions";
 import { DashboardChartFilter } from "./dashboard-chart-filter";
 import { DashboardPeriodFilter } from "./dashboard-period-filter";
 import { MomentumScoreCard } from "./momentum-score-card";
+import { MomentumTrendChart } from "./momentum-trend-chart";
 
 export default async function DashboardPage({
   params,
@@ -41,6 +42,7 @@ export default async function DashboardPage({
     availableCharts,
   } = await getDashboardData(wsId, selectedChartId, period, from, to);
   const momentumData = await getMomentumData(wsId, selectedChartId);
+  const momentumTrend = await getMomentumTrend(wsId, selectedChartId);
   const t = await getTranslations("dashboard");
   const tKanban = await getTranslations("kanban");
 
@@ -67,6 +69,11 @@ export default async function DashboardPage({
           <MomentumScoreCard data={momentumData} />
         </div>
       )}
+
+      {/* 前進スコア推移グラフ */}
+      <div className="mb-8">
+        <MomentumTrendChart data={momentumTrend} />
+      </div>
 
       {/* サマリーカード */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -491,7 +491,9 @@
     "scoreSummary": "Score breakdown",
     "aiInsight": "AI Insight",
     "mondayUpdate": "Monday update",
-    "aiInsightPlaceholder": "Your first insight will arrive on Monday"
+    "aiInsightPlaceholder": "Your first insight will arrive on Monday",
+    "momentumTrend": "Momentum Score Trend",
+    "momentumTrendPlaceholder": "Trend will appear from next week"
   },
   "ai": {
     "welcomeTitle": "Start with AI Assistant?",
