@@ -17,46 +17,27 @@ function showAllActionsCompletedToast(
   tensionId: string,
   handleUpdateTension: (tensionId: string, field: "title" | "description" | "status", value: string) => Promise<void>
 ) {
-  const toastId = toast(
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">🎉</span>
-        <span className="font-medium">すべてのアクションが完了しました！</span>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        このTensionは解消されましたか？
-      </p>
-      <div className="flex gap-2">
-        <button
-          onClick={() => {
-            handleUpdateTension(tensionId, "status", "resolved");
-            toast.dismiss(toastId);
-          }}
-          className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
-        >
-          完了にする
-        </button>
-        <button
-          onClick={() => {
-            const input = document.querySelector(
-              `[data-tension-new-action="${tensionId}"]`
-            );
-            if (input instanceof HTMLInputElement) {
-              input.focus();
-            }
-            toast.dismiss(toastId);
-          }}
-          className="px-3 py-1.5 text-sm bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
-        >
-          新しいアクションを追加
-        </button>
-      </div>
-    </div>,
-    {
-      duration: 30000,
-      dismissible: true,
-    }
-  );
+  toast("🎉 すべてのアクションが完了しました！", {
+    description: "このTensionは解消されましたか？",
+    duration: 30000,
+    action: {
+      label: "完了にする",
+      onClick: async () => {
+        await handleUpdateTension(tensionId, "status", "resolved");
+      },
+    },
+    cancel: {
+      label: "新しいアクションを追加",
+      onClick: () => {
+        const input = document.querySelector(
+          `[data-tension-new-action="${tensionId}"]`
+        );
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+      },
+    },
+  });
 }
 
 export function useActionHandlers({

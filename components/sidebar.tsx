@@ -16,6 +16,7 @@ import {
   FolderOpen,
   Clock,
   ChevronDown,
+  ChevronRight,
   Plus,
   Check,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import { getCurrentWorkspace, getUserWorkspaces } from "@/lib/workspace";
 import { createClient } from "@/lib/supabase/client";
 
 const RECENT_CHARTS_KEY = "zenshin_recent_charts";
+const QUICK_ACCESS_COLLAPSED_KEY = "zenshin_quickaccess_collapsed";
 
 function RoleBadge({ role, t }: { role?: string; t: ReturnType<typeof useTranslations<"sidebar">> }) {
   if (!role) return null;
@@ -89,6 +91,7 @@ export function Sidebar(props?: SidebarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [recentCharts, setRecentCharts] = useState<RecentChart[]>([]);
+  const [isQuickAccessCollapsed, setIsQuickAccessCollapsed] = useState(false);
   const [fetchedWorkspace, setFetchedWorkspace] = useState<{
     id: string;
     name: string;
@@ -133,12 +136,18 @@ export function Sidebar(props?: SidebarProps) {
 
   useEffect(() => {
     const storageKey = wsId ? `${RECENT_CHARTS_KEY}_${wsId}` : RECENT_CHARTS_KEY;
-    // Load initial data for this workspace
     try {
       const stored = localStorage.getItem(storageKey);
       setRecentCharts(stored ? JSON.parse(stored) : []);
     } catch {
       setRecentCharts([]);
+    }
+
+    const collapseKey = wsId ? `${QUICK_ACCESS_COLLAPSED_KEY}_${wsId}` : QUICK_ACCESS_COLLAPSED_KEY;
+    try {
+      setIsQuickAccessCollapsed(localStorage.getItem(collapseKey) === "true");
+    } catch {
+      setIsQuickAccessCollapsed(false);
     }
 
     const handleUpdate = () => {
@@ -187,6 +196,15 @@ export function Sidebar(props?: SidebarProps) {
     closeTimeoutRef.current = setTimeout(() => {
       setIsHovered(false);
     }, 300);
+  };
+
+  const toggleQuickAccess = () => {
+    const next = !isQuickAccessCollapsed;
+    setIsQuickAccessCollapsed(next);
+    const collapseKey = wsId ? `${QUICK_ACCESS_COLLAPSED_KEY}_${wsId}` : QUICK_ACCESS_COLLAPSED_KEY;
+    try {
+      localStorage.setItem(collapseKey, String(next));
+    } catch {}
   };
 
   const handleDropdownOpenChange = (open: boolean) => {
@@ -448,26 +466,35 @@ export function Sidebar(props?: SidebarProps) {
               </div>
             ) : (
               <>
-                <div className="px-3 py-1.5 text-[10px] font-bold text-white/30 uppercase tracking-wider flex items-center gap-2">
+                <button
+                  onClick={toggleQuickAccess}
+                  className="w-full px-3 py-1.5 text-[10px] font-bold text-white/30 uppercase tracking-wider flex items-center gap-1.5 hover:text-white/50 transition-colors"
+                >
+                  {isQuickAccessCollapsed ? (
+                    <ChevronRight className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
                   <Clock className="w-3 h-3" />
                   {t("quickAccess")}
-                </div>
+                </button>
 
-                {recentCharts.map((chart) => (
-                  <Link
-                    key={chart.id}
-                    href={wsId ? `/workspaces/${wsId}/charts/${chart.id}` : `/charts/${chart.id}`}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm",
-                      chartId === chart.id
-                        ? "bg-zenshin-orange/15 text-zenshin-orange"
-                        : "text-white/50 hover:bg-white/5 hover:text-white/80"
-                    )}
-                  >
-                    <FolderOpen className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{chart.title}</span>
-                  </Link>
-                ))}
+                {!isQuickAccessCollapsed &&
+                  recentCharts.map((chart) => (
+                    <Link
+                      key={chart.id}
+                      href={wsId ? `/workspaces/${wsId}/charts/${chart.id}` : `/charts/${chart.id}`}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-1.5 rounded-lg transition-colors text-sm",
+                        chartId === chart.id
+                          ? "bg-zenshin-orange/15 text-zenshin-orange"
+                          : "text-white/50 hover:bg-white/5 hover:text-white/80"
+                      )}
+                    >
+                      <FolderOpen className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{chart.title}</span>
+                    </Link>
+                  ))}
               </>
             )}
           </>

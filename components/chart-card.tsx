@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Lock, LockOpen, Trash2, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { deleteChart } from "@/app/actions";
+import { removeChartFromRecent } from "@/lib/recent-charts";
 import { useTransition, useState } from "react";
 import { useLongPress } from "@/hooks/use-long-press";
 import { cn } from "@/lib/utils";
@@ -57,6 +58,7 @@ export function ChartCard({ chart }: ChartCardProps) {
     e.stopPropagation();
     startTransition(async () => {
       await deleteChart(chart.id);
+      removeChartFromRecent(chart.id);
     });
   };
 

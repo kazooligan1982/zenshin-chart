@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteChart } from "./actions";
+import { removeChartFromRecent } from "@/lib/recent-charts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ export function DeleteChartButton({ chartId }: { chartId: string }) {
     setIsDeleting(true);
     try {
       await deleteChart(chartId);
+      removeChartFromRecent(chartId);
       toast.success(tt("chartDeleted"), { duration: 3000 });
       router.refresh();
     } catch (error) {
