@@ -104,6 +104,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { archiveChart, restoreChart, deleteChart } from "@/app/charts/actions";
+import { removeChartFromRecent } from "@/lib/recent-charts";
 import { updateChartStatusAction } from "./actions";
 import { useItemInput } from "@/hooks/use-item-input";
 import {
@@ -1278,6 +1279,7 @@ export function ProjectEditor({
     setIsChartMenuLoading(true);
     try {
       const result = await archiveChart(chart.id);
+      removeChartFromRecent(chart.id, chart.workspace_id);
       toast.success(tt("chartsArchived", { count: result.archivedCount }), {
         duration: 3000,
         action: {
@@ -1308,6 +1310,7 @@ export function ProjectEditor({
     setIsChartMenuLoading(true);
     try {
       await deleteChart(chart.id);
+      removeChartFromRecent(chart.id, chart.workspace_id);
       toast.success(tt("chartDeleted"), { duration: 3000 });
       if (chart.parentChartId) {
         router.push(`/charts/${chart.parentChartId}`);

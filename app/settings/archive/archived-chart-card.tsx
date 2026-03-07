@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { restoreChart, deleteChart } from "@/app/charts/actions";
+import { removeChartFromRecent } from "@/lib/recent-charts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +51,7 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
     setIsLoading(true);
     try {
       await deleteChart(chart.id);
+      removeChartFromRecent(chart.id);
       toast.success(tt("chartDeleted"), { duration: 3000 });
       router.refresh();
     } catch (error) {
