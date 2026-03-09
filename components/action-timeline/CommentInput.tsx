@@ -320,15 +320,9 @@ export function CommentInput({
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const handleSubmitRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  const mentionSuggestionRef = useRef(
-    createMentionSuggestion(workspaceId, chartId, (k: string) => tMention(k))
+  const [mentionSuggestion] = useState(
+    () => createMentionSuggestion(workspaceId, chartId, (k: string) => tMention(k))
   );
-
-  useEffect(() => {
-    mentionSuggestionRef.current = createMentionSuggestion(
-      workspaceId, chartId, (k: string) => tMention(k)
-    );
-  }, [workspaceId, chartId]); // tMention は参照が不安定なため意図的に除外
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -365,7 +359,7 @@ export function CommentInput({
             `@${node.attrs.label ?? node.attrs.id}`,
           ];
         },
-        suggestion: mentionSuggestionRef.current as any,
+        suggestion: mentionSuggestion as any,
       }),
     ],
     editorProps: {
