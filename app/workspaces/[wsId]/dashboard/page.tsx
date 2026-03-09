@@ -6,18 +6,16 @@ import {
   Target,
   CheckCircle2,
   AlertTriangle,
-  Clock,
   TrendingUp,
-  AlertCircle,
-  Lightbulb,
   ChevronRight,
   GitBranch,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getDashboardData, getMomentumData, getMomentumTrend, type CascadeNode } from "./actions";
-import { DashboardChartFilter } from "./dashboard-chart-filter";
-import { DashboardPeriodFilter } from "./dashboard-period-filter";
+import { DashboardContextBar } from "./dashboard-context-bar";
 import { MomentumScoreCard } from "./momentum-score-card";
 import { MomentumTrendChart } from "./momentum-trend-chart";
+import { MomentumInsightCard } from "./momentum-insight-card";
 
 export default async function DashboardPage({
   params,
@@ -34,12 +32,10 @@ export default async function DashboardPage({
   const to = resolvedParams?.to ?? null;
   const {
     stats,
-    staleCharts,
-    upcomingDeadlines,
-    delayImpacts,
-    recommendations,
+    actionAlerts,
+    chartHealthList,
     delayCascade,
-    availableCharts,
+    availableCharts: chartTree,
   } = await getDashboardData(wsId, selectedChartId, period, from, to);
   const momentumData = await getMomentumData(wsId, selectedChartId);
   const momentumTrend = await getMomentumTrend(wsId, selectedChartId);
@@ -49,30 +45,35 @@ export default async function DashboardPage({
   return (
     <div className="py-8 px-6 lg:px-10 min-h-screen">
       {/* ヘッダー */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-zenshin-navy">{t("title")}</h1>
-          <p className="text-sm text-zenshin-navy/40 mt-1">{t("subtitle")}</p>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-zenshin-navy">{t("title")}</h1>
+        <p className="text-sm text-zenshin-navy/40 mt-1">{t("subtitle")}</p>
+      </div>
+
+      {/* コンテキストバー（sticky） */}
+      <DashboardContextBar
+        chartTree={chartTree}
+        selectedChartId={selectedChartId}
+        period={period}
+        from={from}
+        to={to}
+      />
+
+      {/* ファーストビュー: スコア + 推移グラフ 横並び */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+        {/* 左: スコアカード (2/5幅) */}
+        <div className="lg:col-span-2 h-full">
+          {momentumData && <MomentumScoreCard data={momentumData} />}
         </div>
-        <div className="flex items-center gap-4 flex-wrap">
-          <DashboardPeriodFilter period={period} from={from} to={to} />
-          <DashboardChartFilter
-            charts={availableCharts}
-            selectedChartId={selectedChartId}
-          />
+        {/* 右: 推移グラフ (3/5幅) */}
+        <div className="lg:col-span-3 h-full">
+          <MomentumTrendChart data={momentumTrend} />
         </div>
       </div>
 
-      {/* 前進スコアカード */}
-      {momentumData && (
-        <div className="mb-8">
-          <MomentumScoreCard data={momentumData} />
-        </div>
-      )}
-
-      {/* 前進スコア推移グラフ */}
+      {/* AIインサイトカード（横幅フル） */}
       <div className="mb-8">
-        <MomentumTrendChart data={momentumTrend} />
+        <MomentumInsightCard aiInsight={momentumData?.aiInsight ?? null} />
       </div>
 
       {/* サマリーカード */}
@@ -128,12 +129,109 @@ export default async function DashboardPage({
         </div>
       </div>
 
+      {/* 要注意アクション */}
+      {actionAlerts.length > 0 && (
+        <section className="bg-white rounded-xl border border-zenshin-navy/8 p-5 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+            <h2 className="text-sm font-medium text-zenshin-navy/50">{t("actionAlerts")}</h2>
+            <span className="text-xs text-zenshin-navy/40 bg-zenshin-navy/5 px-2 py-0.5 rounded-full">
+              {actionAlerts.length}
+            </span>
+          </div>
+          <div className="space-y-1">
+            {actionAlerts.map((alert) => (
+              <Link
+                key={alert.id}
+                href={`/workspaces/${wsId}/charts/${alert.chartId}`}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zenshin-cream/60 transition-colors group"
+              >
+                <span className={cn(
+                  "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                  alert.alertType === "blocker" && "text-red-700 bg-red-50",
+                  alert.alertType === "overdue" && "text-red-600 bg-red-50",
+                  alert.alertType === "approaching" && "text-orange-600 bg-orange-50",
+                )}>
+                  {alert.alertType === "blocker"
+                    ? t("blockerBadge")
+                    : alert.alertType === "overdue"
+                      ? t("overdueBadge")
+                      : t("approachingBadge")}
+                </span>
+
+                <span className="text-sm text-zenshin-navy truncate flex-1 min-w-0 group-hover:text-zenshin-navy/80">
+                  {alert.title}
+                </span>
+
+                <span className="text-xs text-zenshin-navy/30 truncate max-w-[150px] hidden lg:block">
+                  {alert.chartTitle}
+                </span>
+
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                  alert.alertType === "blocker" && "text-red-600 bg-red-50",
+                  alert.alertType === "overdue" && "text-red-600 bg-red-50",
+                  alert.alertType === "approaching" && "text-amber-600 bg-amber-50",
+                )}>
+                  {alert.badgeText}
+                </span>
+
+                <ChevronRight className="w-3.5 h-3.5 text-zenshin-navy/20 shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* チャートの健康状態 */}
+      {chartHealthList.length > 0 && (
+        <section className="bg-white rounded-xl border border-zenshin-navy/8 p-5 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderOpen className="w-4 h-4 text-zenshin-navy/40" />
+            <h2 className="text-sm font-medium text-zenshin-navy/50">{t("chartHealth")}</h2>
+          </div>
+          <div className="space-y-1">
+            {chartHealthList.map((chart) => (
+              <Link
+                key={chart.id}
+                href={`/workspaces/${wsId}/charts/${chart.id}`}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zenshin-cream/60 transition-colors group"
+              >
+                <span className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  chart.status === "critical" && "bg-red-500",
+                  chart.status === "warning" && "bg-amber-400",
+                  chart.status === "healthy" && "bg-emerald-400",
+                )} />
+
+                <span className="text-sm text-zenshin-navy truncate flex-1 min-w-0 group-hover:text-zenshin-navy/80">
+                  {chart.title}
+                </span>
+
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap",
+                  chart.status === "critical" && "text-red-600 bg-red-50",
+                  chart.status === "warning" && "text-amber-600 bg-amber-50",
+                  chart.status === "healthy" && "text-emerald-600 bg-emerald-50",
+                )}>
+                  {chart.status === "healthy"
+                    ? chart.daysSinceUpdate === 0
+                      ? t("today")
+                      : t("daysAgo", { count: chart.daysSinceUpdate })
+                    : t("daysNoUpdate", { count: chart.daysSinceUpdate })}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 遅延カスケード */}
       {delayCascade.length > 0 && (
-        <section className="bg-white rounded-xl border border-zenshin-navy/8 p-6 mb-8">
+        <section className="bg-white rounded-xl border border-zenshin-navy/8 p-5 mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <GitBranch className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg font-semibold text-zenshin-navy">{t("delayCascade")}</h2>
+            <GitBranch className="w-4 h-4 text-red-500" />
+            <h2 className="text-sm font-medium text-zenshin-navy/50">{t("delayCascade")}</h2>
           </div>
           <div className="space-y-4">
             {delayCascade.map((root) => (
@@ -142,127 +240,6 @@ export default async function DashboardPage({
           </div>
         </section>
       )}
-
-      {/* 推奨アクション */}
-      {recommendations.length > 0 && (
-        <section className="bg-white rounded-xl border border-zenshin-navy/8 p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Lightbulb className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-semibold text-zenshin-navy">{t("recommendations")}</h2>
-          </div>
-          <div className="space-y-3">
-            {recommendations.map((rec, index) => (
-              <Link
-                key={`${rec.chartId}-${rec.actionId ?? index}`}
-                href={`/workspaces/${wsId}/charts/${rec.chartId}`}
-                className="flex items-start gap-3 p-3 rounded-lg hover:bg-zenshin-cream/60 transition-colors cursor-pointer"
-              >
-                <span className="text-lg shrink-0">{rec.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {rec.type === "critical_blocker" && (
-                      <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                        {t("highPriority")}
-                      </span>
-                    )}
-                    {rec.type === "deadline_approaching" && (
-                      <span className="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                        {t("deadlineSoon")}
-                      </span>
-                    )}
-                    {rec.type === "stale_chart" && (
-                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                        {t("staleWarning")}
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-medium text-zenshin-navy mt-1">{rec.title}</p>
-                  <p className="text-sm text-zenshin-navy/50 mt-0.5">{rec.description}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zenshin-navy/30 shrink-0 mt-1" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 停滞 & 期限切れ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 停滞しているチャート */}
-        <div className="bg-white rounded-xl border border-zenshin-navy/8 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <h2 className="text-sm font-medium text-zenshin-navy/50">{t("stalledCharts")}</h2>
-          </div>
-          {staleCharts.length === 0 ? (
-            <p className="text-sm text-zenshin-navy/40 text-center py-6">
-              {t("noStalledCharts")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {staleCharts.map((chart) => (
-                <Link
-                  key={chart.id}
-                  href={`/workspaces/${wsId}/charts/${chart.id}`}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-zenshin-cream/60 transition-colors group"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <FolderOpen className="w-4 h-4 text-zenshin-navy/30 shrink-0" />
-                    <span className="text-sm text-zenshin-navy truncate group-hover:text-zenshin-navy/80">{chart.title}</span>
-                  </div>
-                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full shrink-0 ml-3">
-                    {t("daysAgo", { count: chart.daysSinceUpdate })}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 期限切れ / 期限間近のアクション */}
-        <div className="bg-white rounded-xl border border-zenshin-navy/8 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-red-500" />
-            <h2 className="text-sm font-medium text-zenshin-navy/50">{t("overdueActions")}</h2>
-          </div>
-          {upcomingDeadlines.length === 0 ? (
-            <p className="text-sm text-zenshin-navy/40 text-center py-6">
-              {t("noOverdueActions")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {upcomingDeadlines.map((action) => (
-                <Link
-                  key={action.id}
-                  href={`/workspaces/${wsId}/charts/${action.chart_id}`}
-                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-zenshin-cream/60 transition-colors group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="text-sm text-zenshin-navy truncate block group-hover:text-zenshin-navy/80">{action.title}</span>
-                    <span className="text-xs text-zenshin-navy/40 truncate block">{action.chart_title}</span>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ml-3 flex items-center gap-1 ${
-                    action.isOverdue
-                      ? "text-red-600 bg-red-50"
-                      : "text-amber-600 bg-amber-50"
-                  }`}>
-                    {action.isOverdue ? (
-                      <>
-                        <AlertCircle className="w-3 h-3" />
-                        {t("daysOverdue", { count: Math.abs(action.daysUntilDue) })}
-                      </>
-                    ) : action.daysUntilDue === 0 ? (
-                      t("today")
-                    ) : (
-                      t("daysLeft", { count: action.daysUntilDue })
-                    )}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

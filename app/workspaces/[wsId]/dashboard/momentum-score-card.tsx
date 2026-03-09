@@ -21,9 +21,9 @@ export function MomentumScoreCard({ data }: MomentumScoreCardProps) {
   ].slice(0, 3);
 
   return (
-    <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm overflow-hidden h-full flex flex-col">
       {/* 前進スコアカード */}
-      <div className="p-5">
+      <div className="p-5 flex-1">
         <div className="flex items-center gap-2 mb-3">
           <Rocket className="w-5 h-5 text-emerald-500" />
           <h2 className="text-sm font-medium text-zenshin-navy/70">{t("momentumScore")}</h2>
@@ -79,19 +79,6 @@ export function MomentumScoreCard({ data }: MomentumScoreCardProps) {
         )}
       </div>
 
-      {/* AIインサイト */}
-      <div className="px-5 pb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-base">🤖</span>
-          <h3 className="text-sm font-medium text-zenshin-navy/70">{t("aiInsight")}</h3>
-          <span className="text-xs text-zenshin-navy/40">({t("mondayUpdate")})</span>
-        </div>
-        {data.aiInsight ? (
-          <p className="text-sm text-zenshin-navy/80 italic leading-relaxed">{data.aiInsight}</p>
-        ) : (
-          <p className="text-sm text-zenshin-navy/40 italic">{t("aiInsightPlaceholder")}</p>
-        )}
-      </div>
     </div>
   );
 }

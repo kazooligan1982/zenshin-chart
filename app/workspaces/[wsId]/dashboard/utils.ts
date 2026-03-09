@@ -20,6 +20,12 @@ export function getPeriodRange(
   const month = now.getMonth();
 
   switch (period) {
+    case "this_week": {
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(year, month, now.getDate() + diff, 0, 0, 0, 0);
+      return { start: monday, end: now };
+    }
     case "this_month": {
       const start = new Date(year, month, 1, 0, 0, 0, 0);
       return { start, end: now };

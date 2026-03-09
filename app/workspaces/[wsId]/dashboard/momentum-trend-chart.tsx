@@ -21,12 +21,12 @@ export function MomentumTrendChart({ data }: MomentumTrendChartProps) {
 
   if (data.length < 2) {
     return (
-      <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm p-6">
+      <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm p-6 h-full flex flex-col">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg">📈</span>
           <h2 className="text-sm font-medium text-zenshin-navy/70">{t("momentumTrend")}</h2>
         </div>
-        <p className="text-sm text-zenshin-navy/40 italic py-12 text-center">
+        <p className="text-sm text-zenshin-navy/40 italic py-12 text-center flex-1 flex items-center justify-center">
           {t("momentumTrendPlaceholder")}
         </p>
       </div>
@@ -34,12 +34,12 @@ export function MomentumTrendChart({ data }: MomentumTrendChartProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm p-6">
+    <div className="bg-white rounded-xl border border-zenshin-navy/8 shadow-sm p-6 h-full flex flex-col">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">📈</span>
         <h2 className="text-sm font-medium text-zenshin-navy/70">{t("momentumTrend")}</h2>
       </div>
-      <div className="h-[180px] lg:h-[250px] w-full">
+      <div className="min-h-[180px] flex-1 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
