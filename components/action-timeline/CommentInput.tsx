@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -320,9 +320,8 @@ export function CommentInput({
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const handleSubmitRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
-  const mentionSuggestion = useMemo(
-    () => createMentionSuggestion(workspaceId, chartId, (k) => tMention(k)),
-    [workspaceId, chartId, tMention]
+  const [mentionSuggestion] = useState(
+    () => createMentionSuggestion(workspaceId, chartId, (k: string) => tMention(k))
   );
 
   const editor = useEditor({
@@ -377,7 +376,7 @@ export function CommentInput({
         return false;
       },
     },
-  }, [workspaceId, mentionSuggestion, commentPlaceholder]);
+  }, [workspaceId]);
 
   const handleMentionClick = () => {
     editor?.chain().focus().run();

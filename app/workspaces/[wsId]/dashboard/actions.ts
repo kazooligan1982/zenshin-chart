@@ -143,6 +143,69 @@ export async function getMomentumTrend(
   });
 }
 
+export type ChartTreeNode = {
+  id: string;
+  title: string;
+  depth: number;
+  childCount: number;
+};
+
+export async function getChartTree(workspaceId: string): Promise<ChartTreeNode[]> {
+  const supabase = await createClient();
+
+  const { data: charts } = await supabase
+    .from("charts")
+    .select("id, title, parent_action_id")
+    .eq("workspace_id", workspaceId)
+    .is("archived_at", null)
+    .order("title");
+
+  if (!charts || charts.length === 0) return [];
+
+  const chartIds = charts.map((c) => c.id);
+
+  const { data: actions } = await supabase
+    .from("actions")
+    .select("chart_id, child_chart_id")
+    .in("chart_id", chartIds)
+    .not("child_chart_id", "is", null);
+
+  const childrenMap = new Map<string, Set<string>>();
+  for (const action of actions || []) {
+    if (!action.child_chart_id) continue;
+    if (!childrenMap.has(action.chart_id)) childrenMap.set(action.chart_id, new Set());
+    childrenMap.get(action.chart_id)!.add(action.child_chart_id);
+  }
+
+  const chartMap = new Map(charts.map((c) => [c.id, c]));
+  const masters = charts.filter((c) => c.parent_action_id === null);
+  const result: ChartTreeNode[] = [];
+  const visited = new Set<string>();
+
+  function traverse(chartId: string, depth: number) {
+    if (visited.has(chartId)) return;
+    visited.add(chartId);
+    const chart = chartMap.get(chartId);
+    if (!chart) return;
+
+    const childIds = [...(childrenMap.get(chartId) ?? [])]
+      .filter((id) => chartMap.has(id))
+      .sort((a, b) => (chartMap.get(a)!.title).localeCompare(chartMap.get(b)!.title));
+
+    result.push({ id: chart.id, title: chart.title, depth, childCount: childIds.length });
+
+    for (const childId of childIds) {
+      traverse(childId, depth + 1);
+    }
+  }
+
+  for (const master of masters) {
+    traverse(master.id, 0);
+  }
+
+  return result;
+}
+
 export type DashboardStats = {
   totalCharts: number;
   totalActions: number;
@@ -196,16 +259,6 @@ export type DelayImpact = {
   affectedPeople: { id: string; name: string }[];
 };
 
-export type Recommendation = {
-  type: "critical_blocker" | "deadline_approaching" | "stale_chart";
-  priority: number;
-  icon: string;
-  title: string;
-  description: string;
-  chartId: string;
-  actionId?: string;
-};
-
 export type CascadeNode = {
   action: {
     id: string;
@@ -220,6 +273,28 @@ export type CascadeNode = {
   children: CascadeNode[];
 };
 
+export type ChartHealth = {
+  id: string;
+  title: string;
+  updated_at: string;
+  daysSinceUpdate: number;
+  status: "critical" | "warning" | "healthy";
+};
+
+export type ActionAlert = {
+  id: string;
+  title: string;
+  chartId: string;
+  chartTitle: string;
+  alertType: "blocker" | "overdue" | "approaching";
+  priority: number;
+  badgeText: string;
+  blockedCount?: number;
+  daysOverdue?: number;
+  daysUntilDue?: number;
+  assignee?: { id: string; name: string } | null;
+};
+
 export async function getDashboardData(
   workspaceId: string,
   chartId?: string,
@@ -228,26 +303,17 @@ export async function getDashboardData(
   to?: string | null
 ): Promise<{
   stats: DashboardStats;
-  staleCharts: StaleChart[];
-  upcomingDeadlines: UpcomingDeadline[];
-  delayImpacts: DelayImpact[];
-  recommendations: Recommendation[];
+  actionAlerts: ActionAlert[];
+  chartHealthList: ChartHealth[];
   delayCascade: CascadeNode[];
-  availableCharts: { id: string; title: string }[];
+  availableCharts: ChartTreeNode[];
 }> {
   const supabase = await createClient();
   const now = new Date();
   const periodRange = getPeriodRange(period, from, to);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const { data: allChartsForFilter } = await supabase
-    .from("charts")
-    .select("id, title")
-    .eq("workspace_id", workspaceId)
-    .is("archived_at", null)
-    .is("parent_action_id", null)
-    .order("title");
+  const chartTree = await getChartTree(workspaceId);
 
   let targetChartIds: string[] | null = null;
   if (chartId && chartId !== "all") {
@@ -350,22 +416,27 @@ export async function getDashboardData(
   const completionRate =
     totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
 
-  const staleCharts: StaleChart[] = allCharts
-    .filter((chart) => new Date(chart.updated_at) < sevenDaysAgo)
+  const chartHealthList: ChartHealth[] = allCharts
     .map((chart) => {
       const daysSinceUpdate = Math.floor(
         (now.getTime() - new Date(chart.updated_at).getTime()) /
           (1000 * 60 * 60 * 24)
       );
+      const status: ChartHealth["status"] =
+        daysSinceUpdate >= 30
+          ? "critical"
+          : daysSinceUpdate >= 7
+            ? "warning"
+            : "healthy";
       return {
         id: chart.id,
         title: chart.title,
         updated_at: chart.updated_at,
         daysSinceUpdate,
+        status,
       };
     })
-    .sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate)
-    .slice(0, 10);
+    .sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate);
 
   const overdueActionIds = allActions
     .filter((a: any) => {
@@ -433,11 +504,69 @@ export async function getDashboardData(
     now
   );
 
-  const recommendations = buildRecommendations(
-    delayImpacts,
-    upcomingDeadlines,
-    staleCharts
+  const actionAlerts: ActionAlert[] = [];
+
+  for (const impact of delayImpacts) {
+    if (impact.blockedActions.length > 0) {
+      actionAlerts.push({
+        id: impact.action.id,
+        title: impact.action.title,
+        chartId: impact.chart.id,
+        chartTitle: impact.chart.title,
+        alertType: "blocker",
+        priority: 1,
+        badgeText: `${impact.blockedActions.length}件ブロック中`,
+        blockedCount: impact.blockedActions.length,
+        daysOverdue: impact.action.daysOverdue,
+        assignee: impact.assignee,
+      });
+    }
+  }
+
+  const addedIds = new Set(actionAlerts.map((a) => a.id));
+
+  for (const deadline of upcomingDeadlines) {
+    if (addedIds.has(deadline.id)) continue;
+    if (deadline.isOverdue) {
+      actionAlerts.push({
+        id: deadline.id,
+        title: deadline.title,
+        chartId: deadline.chart_id,
+        chartTitle: deadline.chart_title,
+        alertType: "overdue",
+        priority: 2,
+        badgeText: `${Math.abs(deadline.daysUntilDue)}日超過`,
+        daysOverdue: Math.abs(deadline.daysUntilDue),
+      });
+      addedIds.add(deadline.id);
+    }
+  }
+
+  for (const deadline of upcomingDeadlines) {
+    if (addedIds.has(deadline.id)) continue;
+    if (!deadline.isOverdue && deadline.daysUntilDue <= 3) {
+      actionAlerts.push({
+        id: deadline.id,
+        title: deadline.title,
+        chartId: deadline.chart_id,
+        chartTitle: deadline.chart_title,
+        alertType: "approaching",
+        priority: 3,
+        badgeText:
+          deadline.daysUntilDue === 0
+            ? "今日が期限"
+            : `あと${deadline.daysUntilDue}日`,
+        daysUntilDue: deadline.daysUntilDue,
+      });
+      addedIds.add(deadline.id);
+    }
+  }
+
+  actionAlerts.sort(
+    (a, b) =>
+      a.priority - b.priority || (b.daysOverdue ?? 0) - (a.daysOverdue ?? 0)
   );
+  actionAlerts.splice(10);
 
   const stats: DashboardStats = {
     totalCharts: allCharts.length,
@@ -449,73 +578,11 @@ export async function getDashboardData(
 
   return {
     stats,
-    staleCharts,
-    upcomingDeadlines,
-    delayImpacts,
-    recommendations,
+    actionAlerts,
+    chartHealthList,
     delayCascade,
-    availableCharts: allChartsForFilter || [],
+    availableCharts: chartTree,
   };
-}
-
-function buildRecommendations(
-  delayImpacts: DelayImpact[],
-  upcomingDeadlines: UpcomingDeadline[],
-  staleCharts: StaleChart[]
-): Recommendation[] {
-  const recommendations: Recommendation[] = [];
-
-  for (const impact of delayImpacts) {
-    if (impact.blockedActions.length > 0) {
-      recommendations.push({
-        type: "critical_blocker",
-        priority: 1,
-        icon: "🔥",
-        title: impact.action.title,
-        description: `${impact.blockedActions.length}件のActionをブロック中、${impact.affectedPeople.length}人に影響`,
-        chartId: impact.chart.id,
-        actionId: impact.action.id,
-      });
-    }
-  }
-
-  for (const deadline of upcomingDeadlines) {
-    if (
-      deadline.daysUntilDue >= 0 &&
-      deadline.daysUntilDue <= 3 &&
-      !deadline.isOverdue
-    ) {
-      recommendations.push({
-        type: "deadline_approaching",
-        priority: 2,
-        icon: "⏰",
-        title: deadline.title,
-        description:
-          deadline.daysUntilDue === 0
-            ? "今日が期限です"
-            : `あと${deadline.daysUntilDue}日で期限`,
-        chartId: deadline.chart_id,
-        actionId: deadline.id,
-      });
-    }
-  }
-
-  for (const chart of staleCharts) {
-    if (chart.daysSinceUpdate >= 14) {
-      recommendations.push({
-        type: "stale_chart",
-        priority: 3,
-        icon: "🔄",
-        title: chart.title,
-        description: `${chart.daysSinceUpdate}日間 更新なし`,
-        chartId: chart.id,
-      });
-    }
-  }
-
-  return recommendations
-    .sort((a, b) => a.priority - b.priority)
-    .slice(0, 5);
 }
 
 async function buildDelayImpacts(
