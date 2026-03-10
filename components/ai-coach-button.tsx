@@ -366,6 +366,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
 
   const handleReflectToChart = async () => {
     setIsExtracting(true);
+    setShowBrainstormPreview(true);
     try {
       const res = await fetch("/api/ai/coach", {
         method: "POST",
@@ -386,10 +387,10 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
         tensions: (data.tensions || []).map((t: { title?: string; description?: string }) => ({ ...t, title: t.title || "", description: t.description || "", enabled: true })),
         actions: (data.actions || []).map((a: { title?: string; description?: string; due_date?: string | null }) => ({ ...a, title: a.title || "", description: a.description || "", enabled: true })),
       });
-      setShowBrainstormPreview(true);
     } catch (error) {
       console.error("VRTA extraction error:", error);
       toast.error(t("brainstorm.extractFailed"));
+      setShowBrainstormPreview(false);
     } finally {
       setIsExtracting(false);
     }
@@ -739,7 +740,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     const userMessageCount = messages.filter((m) => m.role === "user").length;
     const showReflectButton = isBrainstorm && userMessageCount >= 3 && !isLoading;
 
-    if (isBrainstorm && showBrainstormPreview && extractedVrta) {
+    if (isBrainstorm && showBrainstormPreview) {
       const vrtaSections: { key: keyof ExtractedVRTA; label: string; color: string; borderColor: string; dotColor: string }[] = [
         { key: "visions", label: "Vision", color: "text-emerald-700", borderColor: "border-emerald-200", dotColor: "bg-emerald-500" },
         { key: "realities", label: "Reality", color: "text-orange-700", borderColor: "border-orange-200", dotColor: "bg-orange-500" },
@@ -747,15 +748,67 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
         { key: "actions", label: "Action", color: "text-slate-700", borderColor: "border-slate-200", dotColor: "bg-slate-500" },
       ];
 
+      if (isExtracting || !extractedVrta) {
+        return (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-5">
+              <div className="flex items-center gap-2 text-sm font-medium text-zenshin-navy">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                <span>{t("brainstorm.extractingPreview")}</span>
+              </div>
+
+              {vrtaSections.map(({ key, label, color, dotColor }, idx) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2.5 h-2.5 rounded-full", dotColor, "opacity-40")} />
+                    <span className={cn("text-xs font-semibold opacity-40", color)}>{label}</span>
+                  </div>
+                  {[0, 1].map((j) => (
+                    <div
+                      key={j}
+                      className="rounded-lg border p-3 space-y-2 animate-pulse border-gray-100 bg-gray-50/50"
+                      style={{ animationDelay: `${idx * 150 + j * 100}ms` }}
+                    >
+                      <div className="h-4 bg-gray-200/60 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200/40 rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t p-3 shrink-0 space-y-2">
+              <button
+                disabled
+                className="w-full py-2.5 px-4 bg-emerald-600/50 text-white rounded-xl flex items-center justify-center gap-2 text-sm font-medium opacity-50 cursor-not-allowed"
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t("brainstorm.extracting")}
+              </button>
+              <button
+                onClick={handleBackToBrainstorm}
+                className="w-full py-2 px-4 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-xl transition-colors text-sm"
+              >
+                {t("brainstorm.backToBrainstorm")}
+              </button>
+            </div>
+          </>
+        );
+      }
+
       return (
         <>
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <p className="text-sm font-medium text-zenshin-navy">{t("brainstorm.previewTitle")}</p>
-            {vrtaSections.map(({ key, label, color, borderColor, dotColor }) => {
+            {vrtaSections.map(({ key, label, color, borderColor, dotColor }, sectionIdx) => {
               const items = extractedVrta[key];
               if (items.length === 0) return null;
               return (
-                <div key={key} className="space-y-2">
+                <div
+                  key={key}
+                  className="space-y-2 animate-fadeIn"
+                  style={{ animationDelay: `${sectionIdx * 300}ms` }}
+                >
                   <div className="flex items-center gap-2">
                     <div className={cn("w-2.5 h-2.5 rounded-full", dotColor)} />
                     <span className={cn("text-xs font-semibold", color)}>{label}</span>
