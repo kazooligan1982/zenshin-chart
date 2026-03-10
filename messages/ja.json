@@ -802,7 +802,8 @@
       "addToChart": "チャートに追加",
       "addedToChart": "チャートに追加しました",
       "extractFailed": "抽出に失敗しました。もう一度お試しください。",
-      "addFailed": "反映に失敗しました。もう一度お試しください。"
+      "addFailed": "反映に失敗しました。もう一度お試しください。",
+      "extractingPreview": "会話からVRTAを抽出しています..."
     },
     "add": {
       "description": "追加したい内容をテキストで入力してください。AIがVision / Reality / Tension / Actionに振り分けます。",

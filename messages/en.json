@@ -802,7 +802,8 @@
       "addToChart": "Add to Chart",
       "addedToChart": "Added to chart",
       "extractFailed": "Extraction failed. Please try again.",
-      "addFailed": "Failed to reflect. Please try again."
+      "addFailed": "Failed to reflect. Please try again.",
+      "extractingPreview": "Extracting VRTA from conversation..."
     },
     "add": {
       "description": "Paste your text below. AI will categorize it into Vision / Reality / Tension / Action items.",
