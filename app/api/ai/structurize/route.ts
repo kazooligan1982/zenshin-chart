@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -29,8 +30,8 @@ export async function POST(req: NextRequest) {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const message = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
+        model: AI_MODEL.LIGHT,
+        max_tokens: AI_MAX_TOKENS.structurize,
         system: systemPrompt,
         messages: [{ role: "user", content: text.slice(0, 8000) }],
       });

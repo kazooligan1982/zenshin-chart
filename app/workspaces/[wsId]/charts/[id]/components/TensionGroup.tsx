@@ -528,7 +528,7 @@ export function TensionGroup({
                 }
               }}
               placeholder={t("addActionToTension")}
-              className="text-sm h-7 flex-1 keyboard-focusable"
+              className="text-sm h-7 flex-1"
               disabled={isSubmittingAction[tension.id]}
             />
             <Button

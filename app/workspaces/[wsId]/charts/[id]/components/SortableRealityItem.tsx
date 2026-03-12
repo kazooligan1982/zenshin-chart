@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, FileText, Tag, Plus, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -11,7 +13,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { useItemInput } from "@/hooks/use-item-input";
@@ -20,13 +21,13 @@ import {
   ICON_BTN_CLASS,
   ICON_CONTAINER_CLASS,
   handleTextKeyboardNavigation,
+  consumeLastNavDirection,
 } from "../editor-utils";
 
 // SortableItemコンポーネント（Reality用）
 export function SortableRealityItem({
   reality,
   index,
-  highlightedItemId,
   handleUpdateReality,
   handleDeleteReality,
   areas,
@@ -39,7 +40,6 @@ export function SortableRealityItem({
 }: {
   reality: RealityItem;
   index: number;
-  highlightedItemId: string | null;
   handleUpdateReality: (id: string, field: "content" | "isLocked" | "areaId" | "dueDate", value: string | boolean | null) => Promise<void>;
   handleDeleteReality: (id: string) => Promise<void>;
   areas: Area[];
@@ -68,7 +68,18 @@ export function SortableRealityItem({
     },
     index,
     sectionId: "reality",
+    alwaysEditing: true,
   });
+
+  const realityTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = realityTextareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [realityInput.value]);
 
   const {
     attributes,
@@ -96,9 +107,10 @@ export function SortableRealityItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex w-full max-w-full items-center gap-2 py-1.5 px-2 bg-white border-b border-zenshin-navy/5 hover:bg-zenshin-cream/50 transition-colors ${
-        highlightedItemId === reality.id ? "bg-white" : ""
-      }`}
+      className={cn(
+        "group flex w-full max-w-full items-center gap-2 py-1.5 px-2 border-b border-zenshin-navy/5",
+        realityInput.isFocused ? "bg-zenshin-cream/50" : "bg-white"
+      )}
     >
       <div className="flex shrink-0 items-center gap-2">
         {disabled ? (
@@ -117,46 +129,44 @@ export function SortableRealityItem({
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        {!realityInput.isEditing ? (
-          <span
-            id={realityInput.bind.id}
-            tabIndex={reality.isLocked ? -1 : 0}
-            role="textbox"
-            className={cn(
-              "block w-full text-sm leading-5 line-clamp-2 cursor-text min-w-0",
-              !realityInput.value && "text-muted-foreground",
-              reality.isLocked && "cursor-not-allowed opacity-60"
-            )}
-            onClick={() => !reality.isLocked && realityInput.setIsEditing(true)}
-            onFocus={() => !reality.isLocked && realityInput.setIsEditing(true)}
-            onKeyDown={(e) => {
-              if (reality.isLocked) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                realityInput.setIsEditing(true);
-              }
-            }}
-          >
-            {realityInput.value || t("realityCurrentPlaceholder")}
-          </span>
-        ) : (
-          <Textarea
-            {...realityInput.bind}
-            placeholder={t("realityCurrentPlaceholder")}
-            rows={2}
-            className="text-sm flex-1 w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0"
-            disabled={reality.isLocked}
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return;
-              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                handleTextKeyboardNavigation(e);
-                return;
-              }
-              realityInput.handleKeyDown(e);
-            }}
-          />
-        )}
+        <Textarea
+          {...realityInput.bind}
+          placeholder={t("realityCurrentPlaceholder")}
+          rows={1}
+          className={cn(
+            "text-sm w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0 px-0 overflow-hidden",
+            reality.isLocked && "opacity-60 cursor-not-allowed"
+          )}
+          readOnly={reality.isLocked}
+          ref={(el) => {
+            realityTextareaRef.current = el;
+            if (el) {
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }
+          }}
+          onFocus={(e) => {
+            realityInput.handleFocus();
+            const dir = consumeLastNavDirection();
+            if (dir) {
+              const el = e.currentTarget;
+              setTimeout(() => {
+                const len = el.value?.length ?? 0;
+                el.setSelectionRange(
+                  dir === "up" ? len : 0,
+                  dir === "up" ? len : 0
+                );
+              }, 0);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              handleTextKeyboardNavigation(e);
+              return;
+            }
+            realityInput.handleKeyDown(e);
+          }}
+        />
       </div>
       <div className={cn(ICON_CONTAINER_CLASS, "flex-none ml-auto")}>
         

@@ -151,7 +151,7 @@ export function ActionSection({
               }
             }}
             placeholder={t("addTensionForArea", { areaName })}
-            className="h-8 text-sm py-1.5 px-2 keyboard-focusable"
+            className="h-8 text-sm py-1.5 px-2"
           />
         </div>
 

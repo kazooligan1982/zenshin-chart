@@ -62,41 +62,20 @@ export const ICON_BTN_CLASS =
   "h-8 w-8 flex items-center justify-center rounded-full text-zenshin-navy/40 hover:text-zenshin-navy hover:bg-zenshin-navy/8 transition-colors p-0";
 export const ICON_CONTAINER_CLASS = "flex items-center gap-1 shrink-0 h-8 ml-2";
 
-// --- ユーティリティ関数 ---
-export const navigateFocus = (
-  currentElement: HTMLInputElement | HTMLTextAreaElement,
-  direction: "prev" | "next"
-) => {
-  const scope = currentElement.closest("[data-nav-scope]");
-  if (!scope) return false;
+// --- ナビゲーション方向管理 ---
+let _lastNavDirection: "up" | "down" | null = null;
 
-  const inputs = Array.from(
-    scope.querySelectorAll(".keyboard-focusable")
-  ) as Array<HTMLInputElement | HTMLTextAreaElement>;
-  const currentIndex = inputs.indexOf(currentElement);
-  if (currentIndex === -1) return false;
-
-  if (direction === "prev" && currentIndex > 0) {
-    const target = inputs[currentIndex - 1];
-    target.focus();
-    setTimeout(() => {
-      target.setSelectionRange(target.value.length, target.value.length);
-    }, 0);
-    return true;
-  }
-
-  if (direction === "next" && currentIndex < inputs.length - 1) {
-    const target = inputs[currentIndex + 1];
-    target.focus();
-    setTimeout(() => {
-      target.setSelectionRange(0, 0);
-    }, 0);
-    return true;
-  }
-
-  return false;
+export const consumeLastNavDirection = (): "up" | "down" | null => {
+  const dir = _lastNavDirection;
+  _lastNavDirection = null;
+  return dir;
 };
 
+export const setLastNavDirection = (dir: "up" | "down") => {
+  _lastNavDirection = dir;
+};
+
+// --- ユーティリティ関数 ---
 export const handleKeyboardNavigation = (e: React.KeyboardEvent) => {
   if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
   if (e.nativeEvent.isComposing) return;
@@ -116,16 +95,29 @@ export const handleKeyboardNavigation = (e: React.KeyboardEvent) => {
   if (e.key === "ArrowUp") {
     if (selectionStart === 0 && currentIndex > 0) {
       e.preventDefault();
-      (inputs[currentIndex - 1] as HTMLElement).focus();
-    } else {
+      const target = inputs[currentIndex - 1] as HTMLElement;
+      setLastNavDirection("up");
+      target.focus();
+      if ("setSelectionRange" in target) {
+        setTimeout(() => {
+          const len = (target as HTMLInputElement).value?.length ?? 0;
+          (target as HTMLInputElement).setSelectionRange(len, len);
+        }, 0);
+      }
     }
   }
 
   if (e.key === "ArrowDown") {
     if (selectionStart === valueLength && currentIndex < inputs.length - 1) {
       e.preventDefault();
-      (inputs[currentIndex + 1] as HTMLElement).focus();
-    } else {
+      const target = inputs[currentIndex + 1] as HTMLElement;
+      setLastNavDirection("down");
+      target.focus();
+      if ("setSelectionRange" in target) {
+        setTimeout(() => {
+          (target as HTMLInputElement).setSelectionRange(0, 0);
+        }, 0);
+      }
     }
   }
 };
@@ -152,10 +144,13 @@ export const handleTextKeyboardNavigation = (e: React.KeyboardEvent) => {
     } else if (currentIndex < inputs.length - 1) {
       e.preventDefault();
       const nextInput = inputs[currentIndex + 1];
+      setLastNavDirection("down");
       nextInput.focus();
-      setTimeout(() => {
-        nextInput.setSelectionRange(0, 0);
-      }, 0);
+      if ("setSelectionRange" in nextInput) {
+        setTimeout(() => {
+          nextInput.setSelectionRange(0, 0);
+        }, 0);
+      }
     }
   }
 
@@ -166,11 +161,14 @@ export const handleTextKeyboardNavigation = (e: React.KeyboardEvent) => {
     } else if (currentIndex > 0) {
       e.preventDefault();
       const prevInput = inputs[currentIndex - 1];
+      setLastNavDirection("up");
       prevInput.focus();
-      setTimeout(() => {
-        const len = prevInput.value?.length ?? 0;
-        prevInput.setSelectionRange(len, len);
-      }, 0);
+      if ("setSelectionRange" in prevInput) {
+        setTimeout(() => {
+          const len = prevInput.value?.length ?? 0;
+          prevInput.setSelectionRange(len, len);
+        }, 0);
+      }
     }
   }
 };

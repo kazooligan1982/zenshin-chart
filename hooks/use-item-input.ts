@@ -6,14 +6,17 @@ export const useItemInput = ({
   onSave,
   index,
   sectionId,
+  alwaysEditing = false,
 }: {
   initialValue: string;
   onSave: (val: string) => void;
   index?: number;
   sectionId?: string;
+  alwaysEditing?: boolean;
 }) => {
   const [value, setValue] = useState(initialValue);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(alwaysEditing);
+  const [isFocused, setIsFocused] = useState(false);
   const isEditingRef = useRef(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout>(undefined as unknown as NodeJS.Timeout);
   const prevInitialValueRef = useRef(initialValue);
@@ -35,14 +38,18 @@ export const useItemInput = ({
 
   const setEditing = (next: boolean) => {
     isEditingRef.current = next;
-    setIsEditing(next);
+    if (!alwaysEditing) {
+      setIsEditing(next);
+    }
   };
 
   const handleFocus = () => {
+    setIsFocused(true);
     setEditing(true);
   };
 
   const handleBlur = () => {
+    setIsFocused(false);
     setEditing(false);
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -137,6 +144,7 @@ export const useItemInput = ({
   return {
     value,
     isEditing,
+    isFocused,
     setValue,
     setIsEditing: setEditing,
     handleFocus,

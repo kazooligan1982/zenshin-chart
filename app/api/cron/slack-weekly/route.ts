@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 import { calculateMomentumScore } from "@/lib/momentum-score";
 import { collectTreeSnapshotData } from "@/lib/tree-snapshot";
 
@@ -185,8 +186,8 @@ export async function GET(request: NextRequest) {
 
             try {
               const msg = await anthropic.messages.create({
-                model: "claude-sonnet-4-20250514",
-                max_tokens: 500,
+                model: AI_MODEL.LIGHT,
+                max_tokens: AI_MAX_TOKENS.slack_weekly,
                 system: WEEKLY_AI_SYSTEM_PROMPT,
                 messages: [{ role: "user", content: userContent }],
               });
