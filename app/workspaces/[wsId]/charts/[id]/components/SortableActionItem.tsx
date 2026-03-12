@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -10,7 +10,6 @@ import {
   GripVertical,
   FileText,
   Tag,
-  Plus,
   Trash2,
   UserPlus,
   Telescope,
@@ -33,14 +32,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -59,6 +50,7 @@ import {
   ICON_BTN_CLASS,
   ICON_CONTAINER_CLASS,
   handleKeyboardNavigation,
+  consumeLastNavDirection,
   getActionStatusIcon,
 } from "../editor-utils";
 import { moveActionToTension, checkIncompleteTelescopeActions } from "../actions";
@@ -141,7 +133,19 @@ export function SortableActionItem({
     },
     index: actionIndex,
     sectionId: `action-${tensionId || "loose"}`,
+    alwaysEditing: true,
   });
+
+  const actionTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = actionTextareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [actionInput.value]);
+
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const assigneeMember = workspaceMembers.find((m) => m.email === actionPlan.assignee);
   const {
@@ -172,7 +176,6 @@ export function SortableActionItem({
     !hideAreaBadge &&
     parentTensionAreaId !== undefined &&
     (actionPlan.area_id ?? null) !== (parentTensionAreaId ?? null);
-  const isOrphaned = !tensionId && !!availableTensions?.length;
   const [isMovingToTension, setIsMovingToTension] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [incompleteDialog, setIncompleteDialog] = useState<{
@@ -261,9 +264,12 @@ export function SortableActionItem({
       <div
         ref={setNodeRef}
         style={style}
-        className={`group flex items-center gap-2 py-1.5 px-2 bg-white border-b border-zenshin-navy/5 hover:bg-zenshin-cream/50 transition-colors ${
-          actionIndex === 0 ? "border-t border-zenshin-navy/5" : ""
-        } ${isCompleted ? "opacity-60" : ""}`}
+        className={cn(
+          "group flex items-center gap-2 py-1.5 px-2 border-b border-zenshin-navy/5",
+          actionInput.isFocused ? "bg-zenshin-cream/50" : "bg-white",
+          actionIndex === 0 && "border-t border-zenshin-navy/5",
+          isCompleted && "opacity-60"
+        )}
       >
       {disabled ? (
         <div className="mr-1 w-4 h-4" />
@@ -337,82 +343,45 @@ export function SortableActionItem({
         </Badge>
       )}
       <div className="flex-1 min-w-0">
-        {!actionInput.isEditing ? (
-          <span
-            id={actionInput.bind.id}
-            tabIndex={0}
-            role="textbox"
-            className={cn(
-              "block w-full text-sm leading-5 line-clamp-2 cursor-text min-w-0",
-              !actionInput.value && "text-muted-foreground",
-              isCompleted && "line-through text-zenshin-navy/40"
-            )}
-            onClick={() => actionInput.setIsEditing(true)}
-            onFocus={() => actionInput.setIsEditing(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                actionInput.setIsEditing(true);
-              }
-            }}
-          >
-            {actionInput.value || t("actionPlaceholder")}
-          </span>
-        ) : (
-          <Textarea
-            {...actionInput.bind}
-            placeholder={t("actionPlaceholder")}
-            rows={2}
-            className={cn(
-              "text-sm flex-1 w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0",
-              isCompleted && "line-through text-zenshin-navy/40"
-            )}
-            autoFocus
-            onKeyDown={(e) => {
-              actionInput.handleKeyDown(e);
-              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                handleKeyboardNavigation(e);
-              }
-            }}
-          />
-        )}
+        <Textarea
+          {...actionInput.bind}
+          placeholder={t("actionPlaceholder")}
+          rows={1}
+          className={cn(
+            "text-sm w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0 px-0 overflow-hidden",
+            isCompleted && "line-through text-zenshin-navy/40"
+          )}
+          ref={(el) => {
+            actionTextareaRef.current = el;
+            if (el) {
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }
+          }}
+          onFocus={(e) => {
+            actionInput.handleFocus();
+            const dir = consumeLastNavDirection();
+            if (dir) {
+              const el = e.currentTarget;
+              setTimeout(() => {
+                const len = el.value?.length ?? 0;
+                el.setSelectionRange(
+                  dir === "up" ? len : 0,
+                  dir === "up" ? len : 0
+                );
+              }, 0);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              handleKeyboardNavigation(e);
+              return;
+            }
+            actionInput.handleKeyDown(e);
+          }}
+        />
       </div>
       <div className={cn(ICON_CONTAINER_CLASS, isCompleted ? "opacity-60" : "")}>
-        {isOrphaned && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 flex items-center justify-center rounded-full text-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-colors p-0 opacity-0 group-hover:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-                disabled={isMovingToTension}
-                title={t("addToTension")}
-              >
-                <Plus size={16} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-xs text-zenshin-navy/50">
-                {t("addToTensionLabel")}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {availableTensions?.map((tension) => (
-                <DropdownMenuItem
-                  key={tension.id}
-                  onClick={() => handleMoveToTension(tension.id)}
-                  disabled={isMovingToTension}
-                >
-                  <span className="line-clamp-2 break-words">
-                    {tension.title || t("noTitle")}
-                  </span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
         <div
           className="w-[110px] relative flex items-center justify-center rounded-md cursor-pointer transition-all duration-200 p-1 hover:bg-zenshin-navy/8 hover:ring-1 hover:ring-gray-200"
           onPointerDown={(e) => e.stopPropagation()}

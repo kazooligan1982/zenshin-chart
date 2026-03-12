@@ -71,6 +71,13 @@ export function DetailsEditor({
           class:
             "prose prose-sm max-w-none focus:outline-none min-h-[80px] p-3 text-sm",
         },
+        handleKeyDown: (_view, event) => {
+          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            event.stopPropagation();
+            return false;
+          }
+          return false;
+        },
       },
       onUpdate: ({ editor: e }) => {
         debouncedSave(e.getHTML());

@@ -1028,7 +1028,6 @@ export function ProjectEditor({
       key={reality.id}
       reality={reality}
       index={index}
-      highlightedItemId={highlightedItemId}
       handleUpdateReality={handleUpdateReality}
       handleDeleteReality={handleDeleteReality}
       areas={chart.areas}
@@ -1059,7 +1058,6 @@ export function ProjectEditor({
         key={reality.id}
         reality={reality}
         index={index}
-        highlightedItemId={highlightedItemId}
         handleUpdateReality={handleUpdateReality}
         handleDeleteReality={handleDeleteReality}
         areas={chart.areas}
@@ -1165,7 +1163,6 @@ export function ProjectEditor({
                         key={reality.id}
                         reality={reality}
                         index={index}
-                        highlightedItemId={highlightedItemId}
                         handleUpdateReality={handleUpdateReality}
                         handleDeleteReality={handleDeleteReality}
                         areas={chart.areas}
@@ -2160,7 +2157,6 @@ export function ProjectEditor({
             currentUser={currentUser}
             onOpenDetailPanel={handleOpenDetailPanelForModal}
             onOpenAreaSettings={() => setTagManagerOpen(true)}
-            highlightedItemId={highlightedItemId}
             onOpenFocusVision={(item, itemIndex) =>
               openFocusMode(
                 "vision",
@@ -2822,7 +2818,6 @@ function ComparisonView({
   currentUser,
   onOpenDetailPanel,
   onOpenAreaSettings,
-  highlightedItemId,
   onOpenFocusVision,
   onOpenFocusReality,
   getSortedAndNumberedActions,
@@ -2878,7 +2873,6 @@ function ComparisonView({
   currentUser: { id?: string; email: string; name?: string; avatar_url?: string | null } | null;
   onOpenDetailPanel: (itemType: "vision" | "reality" | "action", itemId: string, itemContent: string) => void;
   onOpenAreaSettings?: () => void;
-  highlightedItemId: string | null;
   onOpenFocusVision: (item: VisionItem, index: number) => void;
   onOpenFocusReality: (item: RealityItem, index: number) => void;
   getSortedAndNumberedActions: (actions: ActionPlan[]) => Array<{ action: ActionPlan; number: number }>;
@@ -3090,7 +3084,6 @@ function ComparisonView({
                                 key={reality.id}
                                 reality={reality}
                                 index={index}
-                                highlightedItemId={highlightedItemId}
                                 handleUpdateReality={handleUpdateReality}
                                 handleDeleteReality={handleDeleteReality}
                                 areas={areas}

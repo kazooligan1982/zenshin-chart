@@ -69,8 +69,13 @@ export function useDndHandlers({
       const overData = over.data?.current as { areaId?: string | null; type?: string } | undefined;
       const targetAreaId = overData?.areaId;
       const targetType = overData?.type;
+      const currentAreaId = draggedItem.area_id ?? null;
+      const isAreaMove =
+        targetAreaId !== undefined &&
+        targetAreaId !== currentAreaId &&
+        (targetType === "vision-area" || targetType === "vision-item");
 
-      if (targetType === "vision-area" && targetAreaId !== draggedItem.area_id) {
+      if (isAreaMove) {
           const previousState = visions;
           const targetAreaItems = visions.filter(
           (v) => !getVisionDate(v) && v.area_id === targetAreaId

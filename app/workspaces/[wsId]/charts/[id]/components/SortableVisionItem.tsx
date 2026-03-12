@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -21,6 +21,7 @@ import {
   ICON_BTN_CLASS,
   ICON_CONTAINER_CLASS,
   handleTextKeyboardNavigation,
+  consumeLastNavDirection,
 } from "../editor-utils";
 
 const DatePicker = dynamic(
@@ -171,10 +172,25 @@ export function SortableVisionItem({
     },
     index,
     sectionId: "vision",
+    alwaysEditing: true,
   });
+
+  const visionTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = visionTextareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [visionInput.value]);
 
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: vision.id,
+    data: {
+      type: "vision-item",
+      areaId: vision.area_id ?? null,
+    },
   });
 
   const style = {
@@ -186,7 +202,10 @@ export function SortableVisionItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-2 py-1.5 px-2 bg-white border-b border-zenshin-navy/5 hover:bg-zenshin-cream/50 transition-colors"
+      className={cn(
+        "group flex items-center gap-2 py-1.5 px-2 border-b border-zenshin-navy/5",
+        visionInput.isFocused ? "bg-zenshin-cream/50" : "bg-white"
+      )}
     >
       <div
         {...attributes}
@@ -201,41 +220,40 @@ export function SortableVisionItem({
       </span>
 
       <div className="flex-1 min-w-0">
-        {!visionInput.isEditing ? (
-          <span
-            id={visionInput.bind.id}
-            tabIndex={0}
-            role="textbox"
-            className={cn(
-              "block w-full text-sm leading-5 line-clamp-2 cursor-text min-w-0",
-              !visionInput.value && "text-muted-foreground"
-            )}
-            onClick={() => visionInput.setIsEditing(true)}
-            onFocus={() => visionInput.setIsEditing(true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                visionInput.setIsEditing(true);
-              }
-            }}
-          >
-            {visionInput.value || t("visionIdealPlaceholder")}
-          </span>
-        ) : (
-          <Textarea
-            {...visionInput.bind}
-            placeholder={t("visionIdealPlaceholder")}
-            rows={2}
-            className="text-sm flex-1 w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0"
-            autoFocus
-            onKeyDown={(e) => {
-              visionInput.handleKeyDown(e);
-              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-                handleTextKeyboardNavigation(e);
-              }
-            }}
-          />
-        )}
+        <Textarea
+          {...visionInput.bind}
+          placeholder={t("visionIdealPlaceholder")}
+          rows={1}
+          className="text-sm w-full border-none shadow-none focus-visible:ring-0 bg-transparent keyboard-focusable resize-none leading-5 min-h-0 py-0 px-0 overflow-hidden"
+          ref={(el) => {
+            visionTextareaRef.current = el;
+            if (el) {
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }
+          }}
+          onFocus={(e) => {
+            visionInput.handleFocus();
+            const dir = consumeLastNavDirection();
+            if (dir) {
+              const el = e.currentTarget;
+              setTimeout(() => {
+                const len = el.value?.length ?? 0;
+                el.setSelectionRange(
+                  dir === "up" ? len : 0,
+                  dir === "up" ? len : 0
+                );
+              }, 0);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+              handleTextKeyboardNavigation(e);
+              return;
+            }
+            visionInput.handleKeyDown(e);
+          }}
+        />
       </div>
 
       <div className={cn(ICON_CONTAINER_CLASS, "flex-none ml-auto")}>
