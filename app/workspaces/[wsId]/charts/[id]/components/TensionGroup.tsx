@@ -206,7 +206,7 @@ export function TensionGroup({
         ref={setNodeRef}
         style={isOverlay ? undefined : sortableStyle}
         className={cn(
-          "group border rounded-md bg-white transition-all",
+          "group/tension border rounded-md bg-white transition-colors transition-transform",
           !isOverlay && "w-full min-w-0 flex-shrink-0",
           isOverlay && "shadow-2xl border-blue-500 ring-2 ring-blue-200",
           !isOverlay && (isOver ? "border-2 border-blue-400 ring-2 ring-blue-200" : "border border-gray-200")
@@ -256,7 +256,7 @@ export function TensionGroup({
       ref={setNodeRef}
       style={isOverlay ? undefined : sortableStyle}
       className={cn(
-        "group border rounded-md bg-white transition-all",
+        "group/tension border rounded-md bg-white transition-colors transition-transform",
         !isOverlay && "w-full min-w-0 flex-shrink-0",
         isOverlay && "shadow-2xl border-blue-500 ring-2 ring-blue-200",
         !isOverlay && (isOver ? "border-2 border-blue-400 ring-2 ring-blue-200" : "border border-gray-200"),
@@ -325,7 +325,7 @@ export function TensionGroup({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="p-1 rounded transition-all hover:bg-gray-200 opacity-0 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="p-1 rounded transition-all hover:bg-gray-200 opacity-0 group-hover/tension:opacity-100 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isMovingArea}
                 title={t("changeCategory")}
               >
@@ -358,7 +358,7 @@ export function TensionGroup({
           <Button
             size="icon"
             variant="ghost"
-            className="h-7 w-7 text-zenshin-navy/40 hover:text-gray-600 hover:bg-zenshin-navy/8 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-7 w-7 text-zenshin-navy/40 hover:text-gray-600 hover:bg-zenshin-navy/8 rounded-full p-1 opacity-0 group-hover/tension:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteTension(tension.id);
