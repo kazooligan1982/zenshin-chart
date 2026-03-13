@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Bot, X, Send, Loader2, Sparkles, ArrowLeft, Target, MessageCircle, Plus, Wand2, Lightbulb, Check, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -140,13 +140,63 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     return () => window.removeEventListener("open-ai-coach", handleOpenCoach as EventListener);
   }, [locale]);
 
-  const handleOpen = () => {
-    setIsOpen(true);
+  const resetInternalState = useCallback(() => {
     setViewMode("select");
+    setMessages([]);
+    setInput("");
+    setIsLoading(false);
+    setAddText("");
+    setAddResult(null);
+    setIsAdding(false);
+    setCreateText("");
+    setCreateResult(null);
+    setCreateLoading(false);
+    setCreateApplying(false);
+    setCreateError(null);
+    setEscalationContext(null);
+    setExtractedVrta(null);
+    setIsExtracting(false);
+    setShowBrainstormPreview(false);
+    setIsApplyingVrta(false);
+    setEditingField(null);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setTimeout(resetInternalState, 300);
+  }, [resetInternalState]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [isOpen, handleClose]);
+
+  const handleOpen = () => {
+    resetInternalState();
+    setIsOpen(true);
   };
 
   const handleBack = () => {
     setViewMode("select");
+    setMessages([]);
+    setInput("");
+    setIsLoading(false);
+    setIsExtracting(false);
+    setShowBrainstormPreview(false);
+    setExtractedVrta(null);
+    setAddText("");
+    setAddResult(null);
+    setIsAdding(false);
+    setCreateText("");
+    setCreateResult(null);
+    setCreateLoading(false);
+    setCreateApplying(false);
+    setCreateError(null);
+    setEditingField(null);
   };
 
   const sendAnalyzeMessage = async (userMessage?: string) => {
@@ -1008,7 +1058,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
+          className="fixed bottom-6 right-6 z-[100000] w-14 h-14 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
           title={t("title")}
         >
           <Sparkles className="w-6 h-6 group-hover:animate-pulse" />
@@ -1016,8 +1066,13 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
       )}
 
       {isOpen && (
+        <>
+        <div
+          className="fixed inset-0 z-[99998]"
+          onClick={handleClose}
+        />
         <div className={cn(
-          "fixed z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden",
+          "fixed z-[100000] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden",
           viewMode === "brainstorm"
             ? "inset-x-2 bottom-2 top-auto h-[90vh] sm:inset-auto sm:bottom-6 sm:right-6 sm:w-full sm:max-w-2xl sm:h-[80vh]"
             : "bottom-6 right-6 w-[380px] h-[560px]"
@@ -1036,8 +1091,8 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
               <span className="font-bold text-sm">{t("title")}</span>
             </div>
             <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-white/20 rounded transition-colors"
+              onClick={handleClose}
+              className="-m-1 p-2 hover:bg-white/20 rounded transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1045,6 +1100,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
 
           {renderContent()}
         </div>
+        </>
       )}
     </>
   );
