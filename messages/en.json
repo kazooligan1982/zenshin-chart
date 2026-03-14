@@ -211,7 +211,9 @@
     "english": "English",
     "switchLanguage": "Switch to 日本語",
     "switchToJapanese": "Switch to Japanese",
-    "switchToEnglish": "Switch to English"
+    "switchToEnglish": "Switch to English",
+    "archiveTab": "Archive",
+    "slackTab": "Slack"
   },
   "tags": {
     "tagSettings": "Tag Settings",
@@ -815,5 +817,30 @@
       "discard": "Start Over",
       "success": "Added to your chart!"
     }
+  },
+  "slackSettings": {
+    "title": "Slack Integration",
+    "description": "Send ZENSHIN CHART notifications to Slack. Automatically deliver daily summaries and weekly reports to your team's channel.",
+    "connectButton": "Connect to Slack",
+    "connected": "Connected to Slack",
+    "disconnect": "Disconnect",
+    "disconnecting": "Disconnecting...",
+    "disconnected": "Slack integration disconnected",
+    "disconnectConfirm": "Disconnect Slack integration? Notifications will stop.",
+    "disconnectFailed": "Failed to disconnect",
+    "connectionFailed": "Connection Failed",
+    "connectionFailedDesc": "An error occurred while connecting to Slack. Please try again.",
+    "retryConnect": "Retry",
+    "slackWorkspace": "Slack Workspace",
+    "channel": "Channel",
+    "channelNotSet": "Notification channel not set",
+    "justConnectedMessage": "Successfully connected to Slack! Next, select a notification channel.",
+    "setupGuideTitle": "Setup Guide",
+    "setupStep1": "Click \"Connect to Slack\"",
+    "setupStep2": "Select your Slack workspace",
+    "setupStep3": "Authorize the ZENSHIN CHART app",
+    "setupStep4": "Choose a notification channel",
+    "setupStep5": "Configure notification schedule",
+    "ownerOnly": "Only workspace owners can configure Slack integration"
   }
 }

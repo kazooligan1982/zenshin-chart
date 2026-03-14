@@ -447,8 +447,8 @@ export function Sidebar(props?: SidebarProps) {
           href={wsId ? `/workspaces/${wsId}/settings` : "/settings/archive"}
           active={
             wsId
-              ? pathname === `/workspaces/${wsId}/settings` ||
-                pathname === `/workspaces/${wsId}/settings/archive`
+              ? pathname?.startsWith(`/workspaces/${wsId}/settings`) &&
+                pathname !== `/workspaces/${wsId}/settings/members`
               : pathname === "/settings" || pathname === "/settings/archive"
           }
           expanded={isExpanded}
