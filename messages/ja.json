@@ -211,7 +211,9 @@
     "english": "English",
     "switchLanguage": "English に切替",
     "switchToJapanese": "日本語に切替",
-    "switchToEnglish": "English に切替"
+    "switchToEnglish": "English に切替",
+    "archiveTab": "アーカイブ",
+    "slackTab": "Slack"
   },
   "tags": {
     "tagSettings": "タグ設定",
@@ -815,5 +817,30 @@
       "discard": "やり直す",
       "success": "チャートに追加しました！"
     }
+  },
+  "slackSettings": {
+    "title": "Slack連携",
+    "description": "SlackにZENSHIN CHARTの通知を送信します。デイリーサマリーやウィークリーレポートをチームのチャンネルに自動配信できます。",
+    "connectButton": "Slackに接続",
+    "connected": "Slack連携済み",
+    "disconnect": "切断",
+    "disconnecting": "切断中...",
+    "disconnected": "Slack連携を解除しました",
+    "disconnectConfirm": "Slack連携を解除しますか？通知の送信が停止します。",
+    "disconnectFailed": "切断に失敗しました",
+    "connectionFailed": "接続に失敗しました",
+    "connectionFailedDesc": "Slackとの接続中にエラーが発生しました。もう一度お試しください。",
+    "retryConnect": "再接続",
+    "slackWorkspace": "Slackワークスペース",
+    "channel": "チャンネル",
+    "channelNotSet": "通知先チャンネルが未設定です",
+    "justConnectedMessage": "Slackとの接続が完了しました！次に通知先チャンネルを選択してください。",
+    "setupGuideTitle": "セットアップガイド",
+    "setupStep1": "「Slackに接続」をクリック",
+    "setupStep2": "Slackワークスペースを選択",
+    "setupStep3": "ZENSHIN CHARTアプリを承認",
+    "setupStep4": "通知先チャンネルを選択",
+    "setupStep5": "通知スケジュールを設定",
+    "ownerOnly": "Slack連携はワークスペースのオーナーのみ設定できます"
   }
 }

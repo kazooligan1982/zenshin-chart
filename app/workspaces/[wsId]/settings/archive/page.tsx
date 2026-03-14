@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { Archive, FolderOpen } from "lucide-react";
 import { getArchivedCharts } from "@/app/charts/actions";
 import { ArchivedChartCard } from "./archived-chart-card";
-import { SlackNotificationToggle } from "../slack-notification-toggle";
+import { SettingsNav } from "../settings-nav";
 
 export default async function ArchivePage({
   params,
@@ -20,28 +20,13 @@ export default async function ArchivePage({
 
   if (!user) redirect("/login");
 
-  const [{ data: workspace }, { data: membership }, archivedCharts] = await Promise.all([
-    supabase.from("workspaces").select("slack_notify").eq("id", wsId).single(),
-    supabase
-      .from("workspace_members")
-      .select("role")
-      .eq("workspace_id", wsId)
-      .eq("user_id", user.id)
-      .single(),
-    getArchivedCharts(wsId),
-  ]);
+  const archivedCharts = await getArchivedCharts(wsId);
 
   const t = await getTranslations("archive");
-  const slackNotify = workspace?.slack_notify ?? false;
-  const canEditSlack = membership?.role === "owner";
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">
-      <SlackNotificationToggle
-        wsId={wsId}
-        initialEnabled={slackNotify}
-        canEdit={canEditSlack}
-      />
+      <SettingsNav wsId={wsId} />
 
       <div className="flex items-center gap-3 mb-8">
         <Archive className="w-7 h-7 text-zenshin-navy/40" />
