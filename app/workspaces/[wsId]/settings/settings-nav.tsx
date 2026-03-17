@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Archive, MessageSquare } from "lucide-react";
+import { Settings, Archive, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function SettingsNav({ wsId }: { wsId: string }) {
@@ -12,12 +12,18 @@ export function SettingsNav({ wsId }: { wsId: string }) {
 
   const tabs = [
     {
+      label: t("generalTab"),
+      href: `/workspaces/${wsId}/settings/general`,
+      icon: Settings,
+      active:
+        pathname === `/workspaces/${wsId}/settings` ||
+        pathname === `/workspaces/${wsId}/settings/general`,
+    },
+    {
       label: t("archiveTab"),
       href: `/workspaces/${wsId}/settings/archive`,
       icon: Archive,
-      active:
-        pathname === `/workspaces/${wsId}/settings` ||
-        pathname === `/workspaces/${wsId}/settings/archive`,
+      active: pathname === `/workspaces/${wsId}/settings/archive`,
     },
     {
       label: t("slackTab"),
