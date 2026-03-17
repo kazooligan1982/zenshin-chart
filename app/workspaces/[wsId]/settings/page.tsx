@@ -7,5 +7,5 @@ export default async function SettingsPage({
   params: Promise<{ wsId: string }>;
 }) {
   const { wsId } = await params;
-  redirect(`/workspaces/${wsId}/settings/archive`);
+  redirect(`/workspaces/${wsId}/settings/general`);
 }
