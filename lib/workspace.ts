@@ -270,7 +270,8 @@ export async function getCurrentWorkspaceId(): Promise<string | null> {
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   return member?.workspace_id || null;
 }
@@ -291,7 +292,8 @@ export async function getCurrentWorkspace(): Promise<{
     .from("workspace_members")
     .select("workspace_id, role, workspaces(name)")
     .eq("user_id", user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (!member) return null;
 
