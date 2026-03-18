@@ -88,5 +88,5 @@ export async function deleteWorkspace(wsId: string) {
     throw new Error("Failed to delete");
   }
 
-  redirect("/");
+  redirect("/charts");
 }
