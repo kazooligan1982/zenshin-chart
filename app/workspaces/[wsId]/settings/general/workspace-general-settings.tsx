@@ -59,8 +59,19 @@ export function WorkspaceGeneralSettings({
     try {
       const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      // Hard navigation to avoid stale layout re-render
-      window.location.href = "/charts";
+      // Create a new workspace and navigate directly to it,
+      // bypassing the /charts redirect chain which causes React Router issues
+      const createRes = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "マイワークスペース" }),
+      });
+      if (createRes.ok) {
+        const newWs = await createRes.json();
+        window.location.href = `/workspaces/${newWs.id}/charts`;
+      } else {
+        window.location.href = "/";
+      }
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
