@@ -70,7 +70,7 @@ export function WorkspaceGeneralSettings({
         "",
       ].join("\n")
     );
-    window.location.href = `mailto:support@zenshin-chart.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
   };
 
   return (
