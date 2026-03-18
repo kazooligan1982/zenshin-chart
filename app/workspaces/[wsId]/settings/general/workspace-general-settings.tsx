@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Settings, AlertTriangle } from "lucide-react";
-import { updateWorkspaceName, deleteWorkspace } from "./actions";
+import { updateWorkspaceName } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
   wsId: string;
@@ -59,11 +59,22 @@ export function WorkspaceGeneralSettings({
     if (!canDelete) return;
     setIsDeleting(true);
     try {
-      // Use Server Action with server-side redirect() to avoid crashing
-      // the Next.js Router component (hooks mismatch error).
-      // Client-side navigation (router.push / window.location) both trigger
-      // the Router's useMemo to miscount hooks during route transitions.
-      await deleteWorkspace(wsId);
+      const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      const data = await res.json();
+      const url = data.redirectTo || "/charts";
+
+      // Destroy the React component tree before navigating to prevent
+      // the Next.js internal Router component from re-rendering during
+      // the URL change. The Router has a bug (Next.js 15.x) where its
+      // useMemo hook count changes when the route tree structure differs,
+      // causing "Rendered more hooks than during the previous render".
+      const root = document.getElementById("__next");
+      if (root) {
+        root.innerHTML =
+          '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#888">リダイレクト中…</div>';
+      }
+      window.location.replace(url);
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
