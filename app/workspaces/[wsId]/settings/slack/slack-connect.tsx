@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -48,24 +48,35 @@ export function SlackConnect({
   error,
 }: SlackConnectProps) {
   const t = useTranslations("slackSettings");
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  // Use a ref instead of useState to avoid triggering React re-renders.
+  // Re-rendering the component tree (including the Next.js Router) can trigger
+  // a React 19 core bug (facebook/react#33580).
+  const isDisconnectingRef = useRef(false);
   const isConnected = !!slackSettings;
 
   const handleConnect = () => {
     window.location.href = `/api/slack/authorize?wsId=${wsId}`;
   };
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!confirm(t("disconnectConfirm"))) return;
-    setIsDisconnecting(true);
+    if (isDisconnectingRef.current) return;
+    isDisconnectingRef.current = true;
+
+    // Update button via DOM to avoid React re-render
+    const button = e.currentTarget;
+    button.disabled = true;
+    button.textContent = t("disconnecting");
+
     try {
       await disconnectSlack(wsId);
       toast.success(t("disconnected"));
       window.location.reload();
     } catch {
       toast.error(t("disconnectFailed"));
-    } finally {
-      setIsDisconnecting(false);
+      isDisconnectingRef.current = false;
+      button.disabled = false;
+      button.textContent = t("disconnect");
     }
   };
 
@@ -101,11 +112,10 @@ export function SlackConnect({
               onClick={handleDisconnect}
               variant="ghost"
               size="sm"
-              disabled={isDisconnecting}
               className="text-red-500 hover:text-red-700 hover:bg-red-50"
             >
               <Unplug className="w-4 h-4 mr-1" />
-              {isDisconnecting ? t("disconnecting") : t("disconnect")}
+              {t("disconnect")}
             </Button>
           )}
         </div>

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { restoreChart, deleteChart } from "@/app/charts/actions";
 import { removeChartFromRecent } from "@/lib/recent-charts";
@@ -30,37 +29,48 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
   const t = useTranslations("archive");
   const tc = useTranslations("common");
   const tt = useTranslations("toast");
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // Use refs instead of useState to avoid triggering React re-renders.
+  // Re-rendering the component tree (including the Next.js Router) can trigger
+  // a React 19 core bug (facebook/react#33580).
+  const isLoadingRef = useRef(false);
+  const restoreButtonRef = useRef<HTMLButtonElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  const setButtonsDisabled = (disabled: boolean) => {
+    if (restoreButtonRef.current) restoreButtonRef.current.disabled = disabled;
+    if (deleteButtonRef.current) deleteButtonRef.current.disabled = disabled;
+  };
 
   const handleRestore = async () => {
-    setIsLoading(true);
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    setButtonsDisabled(true);
     try {
       await restoreChart(chart.id);
       toast.success(tt("chartRestored"), { duration: 3000 });
-      router.refresh();
+      window.location.reload();
     } catch (error) {
       console.error("Failed to restore chart:", error);
       toast.error(tt("restoreFailed"), { duration: 5000 });
-    } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
+      setButtonsDisabled(false);
     }
   };
 
   const handleDelete = async () => {
-    setDeleteDialogOpen(false);
-    setIsLoading(true);
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+    setButtonsDisabled(true);
     try {
       await deleteChart(chart.id);
       removeChartFromRecent(chart.id);
       toast.success(tt("chartDeleted"), { duration: 3000 });
-      router.refresh();
+      window.location.reload();
     } catch (error) {
       console.error("Failed to delete chart:", error);
       toast.error(tt("deleteFailed"), { duration: 5000 });
-    } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
+      setButtonsDisabled(false);
     }
   };
 
@@ -74,21 +84,21 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
       </div>
       <div className="flex items-center gap-2">
         <Button
+          ref={restoreButtonRef}
           variant="outline"
           size="sm"
           onClick={handleRestore}
-          disabled={isLoading}
           className="border-zenshin-navy/10 text-zenshin-navy hover:bg-zenshin-cream"
         >
           <RotateCcw className="w-4 h-4 mr-1" />
           {t("restore")}
         </Button>
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button
+              ref={deleteButtonRef}
               variant="ghost"
               size="sm"
-              disabled={isLoading}
               className="text-red-500 hover:text-red-600 hover:bg-red-50"
             >
               <Trash2 className="w-4 h-4" />

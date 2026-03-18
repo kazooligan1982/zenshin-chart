@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useParams, useRouter } from "next/navigation";
+import { usePathname, useParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -106,7 +106,6 @@ export function Sidebar(props?: SidebarProps) {
   const allWorkspaces = props?.workspaces ?? fetchedAllWorkspaces;
   const wsId = props?.currentWsId ?? currentWorkspace?.id;
 
-  const router = useRouter();
   const [isCreatingWs, setIsCreatingWs] = useState(false);
   const [newWsName, setNewWsName] = useState("");
 
@@ -120,10 +119,9 @@ export function Sidebar(props?: SidebarProps) {
       });
       if (!res.ok) throw new Error(tt("createFailed"));
       const workspace = await res.json();
-      setIsCreatingWs(false);
-      setNewWsName("");
-      router.push(`/workspaces/${workspace.id}/charts`);
-      router.refresh();
+      // Use window.location.href to bypass the Next.js Router and avoid
+      // the React 19 hooks bug (facebook/react#33580).
+      window.location.href = `/workspaces/${workspace.id}/charts`;
     } catch (error) {
       console.error("Failed to create workspace:", error);
     }
