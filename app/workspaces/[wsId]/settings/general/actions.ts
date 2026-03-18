@@ -1,78 +1,92 @@
 "use server";
 
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+async function requireOwner(wsId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { data: membership } = await supabase
+    .from("workspace_members")
+    .select("role")
+    .eq("workspace_id", wsId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership || membership.role !== "owner") {
+    throw new Error("Forbidden");
+  }
+
+  return { supabase, user };
+}
 
 export async function updateWorkspaceName(wsId: string, name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Name is required");
-  if (trimmed.length > 100) throw new Error("Name is too long");
+  if (trimmed.length > 100) throw new Error("Name too long");
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("owner_id")
-    .eq("id", wsId)
-    .single();
-  if (!workspace || workspace.owner_id !== user.id) {
-    throw new Error("Forbidden");
-  }
+  const { supabase } = await requireOwner(wsId);
 
   const { error } = await supabase
     .from("workspaces")
-    .update({ name: trimmed, updated_at: new Date().toISOString() })
+    .update({ name: trimmed })
     .eq("id", wsId);
 
-  if (error) throw new Error("Failed to update workspace name");
+  if (error) {
+    console.error("[updateWorkspaceName] error:", error);
+    throw new Error("Failed to update");
+  }
+
+  revalidatePath(`/workspaces/${wsId}/settings/general`);
+  revalidatePath(`/workspaces/${wsId}`);
+  return { success: true };
 }
 
 export async function deleteWorkspace(wsId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireOwner(wsId);
 
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("owner_id")
-    .eq("id", wsId)
-    .single();
-  if (!workspace || workspace.owner_id !== user.id) {
-    throw new Error("Forbidden");
+  // charts は ON DELETE SET NULL なので先に削除
+  const { data: charts } = await supabase
+    .from("charts")
+    .select("id")
+    .eq("workspace_id", wsId);
+
+  if (charts && charts.length > 0) {
+    const chartIds = charts.map((c) => c.id);
+
+    // charts 配下のデータを削除（actions, tensions, visions, realities, snapshots 等）
+    for (const chartId of chartIds) {
+      await supabase.from("actions").delete().eq("chart_id", chartId);
+      await supabase.from("tensions").delete().eq("chart_id", chartId);
+      await supabase.from("visions").delete().eq("chart_id", chartId);
+      await supabase.from("realities").delete().eq("chart_id", chartId);
+      await supabase.from("snapshots").delete().eq("chart_id", chartId);
+    }
+
+    await supabase.from("charts").delete().in("id", chartIds);
   }
 
-  const serviceClient = createServiceRoleClient();
-
-  // Delete related data in order
-  await serviceClient
+  // workspace_slack_settings は workspace_id で紐付き
+  await supabase
     .from("workspace_slack_settings")
     .delete()
     .eq("workspace_id", wsId);
 
-  await serviceClient
-    .from("workspace_invitations")
-    .delete()
-    .eq("workspace_id", wsId);
-
-  // Delete all charts in the workspace
-  await serviceClient.from("charts").delete().eq("workspace_id", wsId);
-
-  // Delete members
-  await serviceClient
-    .from("workspace_members")
-    .delete()
-    .eq("workspace_id", wsId);
-
-  // Delete the workspace itself
-  const { error } = await serviceClient
+  // workspace 本体を削除（workspace_members, invitations, momentum_scores は CASCADE）
+  const { error } = await supabase
     .from("workspaces")
     .delete()
     .eq("id", wsId);
 
-  if (error) throw new Error("Failed to delete workspace");
+  if (error) {
+    console.error("[deleteWorkspace] error:", error);
+    throw new Error("Failed to delete");
+  }
+
+  redirect("/");
 }

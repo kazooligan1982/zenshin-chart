@@ -1,184 +1,158 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Settings, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
+import { Settings, AlertTriangle } from "lucide-react";
 import { updateWorkspaceName, deleteWorkspace } from "./actions";
 
-type Props = {
+interface WorkspaceGeneralSettingsProps {
   wsId: string;
   workspaceName: string;
   isOwner: boolean;
-};
+}
 
 export function WorkspaceGeneralSettings({
   wsId,
   workspaceName,
   isOwner,
-}: Props) {
+}: WorkspaceGeneralSettingsProps) {
   const t = useTranslations("workspaceSettings");
-  const router = useRouter();
+  const tc = useTranslations("common");
+
   const [name, setName] = useState(workspaceName);
-  const [isRenaming, setIsRenaming] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [confirmName, setConfirmName] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
 
-  const nameChanged = name.trim() !== workspaceName;
+  const hasNameChanged = name.trim() !== workspaceName;
+  const canDelete = deleteConfirmName.trim() === workspaceName;
 
-  async function handleRename() {
-    if (!nameChanged || !name.trim()) return;
-    setIsRenaming(true);
+  const handleRename = async () => {
+    if (!hasNameChanged) return;
+    setIsSaving(true);
     try {
       await updateWorkspaceName(wsId, name);
       toast.success(t("renameSuccess"));
-      router.refresh();
     } catch {
       toast.error(t("renameFailed"));
     } finally {
-      setIsRenaming(false);
+      setIsSaving(false);
     }
-  }
+  };
 
-  async function handleDelete() {
+  const handleDelete = async () => {
+    if (!canDelete) return;
     setIsDeleting(true);
     try {
       await deleteWorkspace(wsId);
-      // Use full page navigation to avoid stale layout re-render
-      // after the workspace (and its layout context) has been deleted
-      window.location.href = "/charts";
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
     }
-  }
-
-  if (!isOwner) {
-    return (
-      <div>
-        <div className="flex items-center gap-3 mb-8">
-          <Settings className="w-7 h-7 text-zenshin-navy/40" />
-          <div>
-            <h1 className="text-2xl font-bold text-zenshin-navy">
-              {t("title")}
-            </h1>
-            <p className="text-sm text-zenshin-navy/40">{t("description")}</p>
-          </div>
-        </div>
-        <p className="text-sm text-zenshin-navy/60">{t("ownerOnly")}</p>
-      </div>
-    );
-  }
+  };
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-8">
-        <Settings className="w-7 h-7 text-zenshin-navy/40" />
-        <div>
-          <h1 className="text-2xl font-bold text-zenshin-navy">
-            {t("title")}
-          </h1>
-          <p className="text-sm text-zenshin-navy/40">{t("description")}</p>
+    <div className="space-y-8">
+      {/* WS名変更 */}
+      <div className="rounded-lg border border-zenshin-navy/10 bg-white p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="w-5 h-5 text-zenshin-navy/40" />
+          <h3 className="font-semibold text-zenshin-navy">
+            {t("workspaceName")}
+          </h3>
         </div>
-      </div>
-
-      {/* Workspace Name */}
-      <div className="mb-12">
-        <h2 className="text-sm font-medium text-zenshin-navy mb-1">
-          {t("workspaceName")}
-        </h2>
-        <p className="text-xs text-zenshin-navy/40 mb-3">
-          {t("workspaceNameDescription")}
-        </p>
-        <div className="flex gap-3 max-w-md">
+        <div className="flex gap-3">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder={t("workspaceNamePlaceholder")}
+            disabled={!isOwner}
             className="flex-1"
             maxLength={100}
           />
           <Button
             onClick={handleRename}
-            disabled={!nameChanged || isRenaming || !name.trim()}
-            size="sm"
+            disabled={!isOwner || !hasNameChanged || !name.trim() || isSaving}
           >
-            {isRenaming ? t("renaming") : t("rename")}
+            {isSaving ? tc("saving") : t("rename")}
           </Button>
         </div>
+        {!isOwner && (
+          <p className="text-sm text-zenshin-navy/40 mt-2">
+            {t("ownerOnly")}
+          </p>
+        )}
       </div>
 
       {/* Danger Zone */}
-      <div className="border border-red-200 rounded-lg p-6">
-        <h2 className="text-sm font-medium text-red-600 flex items-center gap-2 mb-4">
-          <AlertTriangle className="w-4 h-4" />
-          {t("dangerZone")}
-        </h2>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-medium text-zenshin-navy">
-              {t("deleteWorkspace")}
-            </h3>
-            <p className="text-xs text-zenshin-navy/40 mt-0.5">
-              {t("deleteWorkspaceDescription")}
-            </p>
+      {isOwner && (
+        <div className="rounded-lg border border-red-200 bg-red-50/50 p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <h3 className="font-semibold text-red-700">{t("dangerZone")}</h3>
           </div>
-
-          <AlertDialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) setConfirmName("");
-          }}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                {t("deleteButton")}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("deleteConfirmTitle")}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t("deleteConfirmDescription")}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="py-2">
-                <label className="text-sm text-zenshin-navy/70 block mb-2">
-                  {t("deleteConfirmLabel")}
-                </label>
-                <Input
-                  value={confirmName}
-                  onChange={(e) => setConfirmName(e.target.value)}
-                  placeholder={workspaceName}
-                />
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  disabled={confirmName !== workspaceName || isDeleting}
-                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                >
-                  {isDeleting ? t("deleting") : t("deleteConfirmButton")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <p className="text-sm text-red-600/80 mb-4">
+            {t("deleteDescription")}
+          </p>
+          <Button
+            variant="destructive"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            {t("deleteButton")}
+          </Button>
         </div>
-      </div>
+      )}
+
+      {/* 削除確認ダイアログ */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-700">
+              {t("deleteConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <span className="block">
+                {t("deleteConfirmMessage", { name: workspaceName })}
+              </span>
+              <Input
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder={t("deleteConfirmPlaceholder")}
+                className="mt-2"
+                autoComplete="off"
+              />
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              onClick={() => setDeleteConfirmName("")}
+              disabled={isDeleting}
+            >
+              {tc("cancel")}
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={!canDelete || isDeleting}
+            >
+              {isDeleting ? tc("deleting") : t("deleteConfirmButton")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

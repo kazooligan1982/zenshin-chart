@@ -1,8 +1,10 @@
 {
   "common": {
     "save": "保存",
+    "saving": "保存中...",
     "cancel": "キャンセル",
     "delete": "削除",
+    "deleting": "削除中...",
     "edit": "編集",
     "create": "作成",
     "close": "閉じる",
@@ -865,5 +867,23 @@
     "setupStep4": "通知先チャンネルを選択",
     "setupStep5": "通知スケジュールを設定",
     "ownerOnly": "Slack連携はワークスペースのオーナーのみ設定できます"
+  },
+  "workspaceSettings": {
+    "generalTab": "一般",
+    "workspaceName": "ワークスペース名",
+    "workspaceNamePlaceholder": "ワークスペース名を入力",
+    "rename": "名前を変更",
+    "renameSuccess": "ワークスペース名を変更しました",
+    "renameFailed": "名前の変更に失敗しました",
+    "dangerZone": "危険な操作",
+    "deleteDescription": "ワークスペースを削除すると、すべてのチャート・メンバー・設定が完全に削除されます。この操作は取り消せません。",
+    "deleteButton": "ワークスペースを削除",
+    "deleteConfirmTitle": "ワークスペースを削除しますか？",
+    "deleteConfirmMessage": "確認のため、ワークスペース名「{name}」を入力してください。",
+    "deleteConfirmPlaceholder": "ワークスペース名を入力",
+    "deleteConfirmButton": "削除する",
+    "deleteSuccess": "ワークスペースを削除しました",
+    "deleteFailed": "削除に失敗しました",
+    "ownerOnly": "オーナーのみ変更できます"
   }
 }

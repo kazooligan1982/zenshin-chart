@@ -1,8 +1,10 @@
 {
   "common": {
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
+    "deleting": "Deleting...",
     "edit": "Edit",
     "create": "Create",
     "close": "Close",
@@ -865,5 +867,23 @@
     "setupStep4": "Choose a notification channel",
     "setupStep5": "Configure notification schedule",
     "ownerOnly": "Only workspace owners can configure Slack integration"
+  },
+  "workspaceSettings": {
+    "generalTab": "General",
+    "workspaceName": "Workspace Name",
+    "workspaceNamePlaceholder": "Enter workspace name",
+    "rename": "Rename",
+    "renameSuccess": "Workspace renamed successfully",
+    "renameFailed": "Failed to rename workspace",
+    "dangerZone": "Danger Zone",
+    "deleteDescription": "Deleting a workspace will permanently remove all charts, members, and settings. This action cannot be undone.",
+    "deleteButton": "Delete Workspace",
+    "deleteConfirmTitle": "Delete this workspace?",
+    "deleteConfirmMessage": "To confirm, type the workspace name \"{name}\".",
+    "deleteConfirmPlaceholder": "Type workspace name",
+    "deleteConfirmButton": "Delete",
+    "deleteSuccess": "Workspace deleted successfully",
+    "deleteFailed": "Failed to delete workspace",
+    "ownerOnly": "Only the owner can modify settings"
   }
 }
