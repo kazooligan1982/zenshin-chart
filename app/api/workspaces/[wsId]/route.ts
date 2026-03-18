@@ -79,7 +79,24 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json({ success: true });
+    // Determine redirect target to avoid multi-hop redirect chains
+    // (workspace_members for deleted WS are already CASCADE-deleted)
+    const { data: remainingMembers } = await supabase
+      .from("workspace_members")
+      .select("workspace_id, role")
+      .eq("user_id", user.id);
+
+    let redirectTo = "/charts"; // fallback: /charts will create a workspace if needed
+    if (remainingMembers && remainingMembers.length > 0) {
+      // Prefer an owner workspace
+      const ownerWs = remainingMembers.find((m) => m.role === "owner");
+      const targetWsId = ownerWs
+        ? ownerWs.workspace_id
+        : remainingMembers[0].workspace_id;
+      redirectTo = `/workspaces/${targetWsId}/charts`;
+    }
+
+    return NextResponse.json({ success: true, redirectTo });
   } catch (error) {
     console.error("Error in DELETE /api/workspaces/[wsId]:", error);
     return NextResponse.json(

@@ -61,9 +61,10 @@ export function WorkspaceGeneralSettings({
     try {
       const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      // Redirect to the workspace selection page which handles
-      // the routing logic (single WS → direct, multiple → selection)
-      window.location.href = "/workspaces";
+      const data = await res.json();
+      // Navigate directly to the target workspace to avoid redirect chains
+      // that can crash the Next.js Router during hydration
+      window.location.replace(data.redirectTo || "/charts");
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
