@@ -221,7 +221,9 @@
   "workspaceSettings": {
     "title": "一般",
     "description": "ワークスペースの設定を管理します",
+    "generalTab": "一般",
     "workspaceName": "ワークスペース名",
+    "workspaceNamePlaceholder": "ワークスペース名を入力",
     "workspaceNameDescription": "すべてのメンバーに表示されるワークスペースの名前です。",
     "rename": "名前を変更",
     "renameSuccess": "ワークスペース名を変更しました",
@@ -864,22 +866,5 @@
     "setupStep4": "通知先チャンネルを選択",
     "setupStep5": "通知スケジュールを設定",
     "ownerOnly": "Slack連携はワークスペースのオーナーのみ設定できます"
-  },
-  "workspaceSettings": {
-    "generalTab": "一般",
-    "workspaceName": "ワークスペース名",
-    "workspaceNamePlaceholder": "ワークスペース名を入力",
-    "rename": "名前を変更",
-    "renameSuccess": "ワークスペース名を変更しました",
-    "renameFailed": "名前の変更に失敗しました",
-    "deleteSection": "ワークスペースの削除",
-    "deleteContactDescription": "ワークスペースの削除をご希望の場合は、以下の情報を添えて運営チームまでご連絡ください。確認の上、対応いたします。",
-    "deleteRequestButton": "削除を依頼する",
-    "deleteRequestSubject": "[削除依頼] ワークスペース「{name}」",
-    "deleteRequestWorkspaceName": "ワークスペース名",
-    "deleteRequestWorkspaceId": "ワークスペースID",
-    "deleteRequestReason": "削除理由",
-    "ownerOnly": "オーナーのみ変更できます",
-    "cannotDeleteDefault": "デフォルトのマイワークスペースは削除できません。このワークスペースは個人用の基本領域として常に保持されます。"
   }
 }

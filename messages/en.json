@@ -221,7 +221,9 @@
   "workspaceSettings": {
     "title": "General",
     "description": "Manage your workspace settings",
+    "generalTab": "General",
     "workspaceName": "Workspace Name",
+    "workspaceNamePlaceholder": "Enter workspace name",
     "workspaceNameDescription": "The name of your workspace visible to all members.",
     "rename": "Rename",
     "renameSuccess": "Workspace renamed successfully",
@@ -864,22 +866,5 @@
     "setupStep4": "Choose a notification channel",
     "setupStep5": "Configure notification schedule",
     "ownerOnly": "Only workspace owners can configure Slack integration"
-  },
-  "workspaceSettings": {
-    "generalTab": "General",
-    "workspaceName": "Workspace Name",
-    "workspaceNamePlaceholder": "Enter workspace name",
-    "rename": "Rename",
-    "renameSuccess": "Workspace renamed successfully",
-    "renameFailed": "Failed to rename workspace",
-    "deleteSection": "Delete Workspace",
-    "deleteContactDescription": "To delete this workspace, please contact our team with the information below. We will verify and process your request.",
-    "deleteRequestButton": "Request Deletion",
-    "deleteRequestSubject": "[Deletion Request] Workspace \"{name}\"",
-    "deleteRequestWorkspaceName": "Workspace Name",
-    "deleteRequestWorkspaceId": "Workspace ID",
-    "deleteRequestReason": "Reason for deletion",
-    "ownerOnly": "Only the owner can modify settings",
-    "cannotDeleteDefault": "The default My Workspace cannot be deleted. This workspace is always maintained as your personal space."
   }
 }
