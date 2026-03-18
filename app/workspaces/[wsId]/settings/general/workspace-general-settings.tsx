@@ -15,8 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Settings, AlertTriangle } from "lucide-react";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { updateWorkspaceName, deleteWorkspace } from "./actions";
+import { updateWorkspaceName } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
   wsId: string;
@@ -60,17 +59,18 @@ export function WorkspaceGeneralSettings({
     if (!canDelete) return;
     setIsDeleting(true);
     try {
-      // Server Action calls redirect() on the server, which Next.js
-      // processes as an official server-side redirect.
-      await deleteWorkspace(wsId);
-    } catch (error) {
-      // redirect() in a Server Action throws a NEXT_REDIRECT error.
-      // Re-throw it so Next.js can handle the navigation properly.
-      // Swallowing this error causes setIsDeleting(false) to trigger
-      // a re-render that crashes the Next.js Router.
-      if (isRedirectError(error)) {
-        throw error;
-      }
+      const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      const data = await res.json();
+      // Full page reload via window.location.href to completely bypass the
+      // Next.js Router. The Router component (app-router.js) has a known
+      // hook-ordering violation: `throw unresolvedThenable` sits between
+      // hook calls, so when mpaNavigation flips between renders the hook
+      // count changes and React throws "Rendered more hooks than during
+      // the previous render". A plain location assignment avoids triggering
+      // the Router's re-render entirely.
+      window.location.href = data.redirectTo || "/charts";
+    } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
     }
