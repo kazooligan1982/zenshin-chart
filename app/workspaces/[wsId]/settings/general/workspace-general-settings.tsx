@@ -59,7 +59,9 @@ export function WorkspaceGeneralSettings({
     setIsDeleting(true);
     try {
       await deleteWorkspace(wsId);
-      router.push("/");
+      // Use full page navigation to avoid stale layout re-render
+      // after the workspace (and its layout context) has been deleted
+      window.location.href = "/charts";
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);

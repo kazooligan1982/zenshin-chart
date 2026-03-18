@@ -25,7 +25,7 @@ export default async function WorkspaceLayout({
     .eq("user_id", user.id)
     .single();
 
-  if (!membership) redirect("/");
+  if (!membership) redirect("/charts");
 
   await updateLastWorkspace(wsId);
 
