@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Settings, AlertTriangle } from "lucide-react";
-import { updateWorkspaceName } from "./actions";
+import { updateWorkspaceName, deleteWorkspace } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
   wsId: string;
@@ -31,7 +30,6 @@ export function WorkspaceGeneralSettings({
   isOwner,
   isDefaultWorkspace,
 }: WorkspaceGeneralSettingsProps) {
-  const router = useRouter();
   const t = useTranslations("workspaceSettings");
   const tc = useTranslations("common");
 
@@ -61,14 +59,11 @@ export function WorkspaceGeneralSettings({
     if (!canDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      const data = await res.json();
-      // Use Next.js router instead of window.location.replace() to avoid
-      // crashing the internal Router component with a hooks mismatch error.
-      // The API returns a direct URL to the remaining workspace, avoiding
-      // redirect chains.
-      router.push(data.redirectTo || "/charts");
+      // Use Server Action with server-side redirect() to avoid crashing
+      // the Next.js Router component (hooks mismatch error).
+      // Client-side navigation (router.push / window.location) both trigger
+      // the Router's useMemo to miscount hooks during route transitions.
+      await deleteWorkspace(wsId);
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
