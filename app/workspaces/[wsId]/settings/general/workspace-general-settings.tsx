@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Settings, AlertTriangle } from "lucide-react";
-import { updateWorkspaceName } from "./actions";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+import { updateWorkspaceName, deleteWorkspace } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
   wsId: string;
@@ -59,23 +60,17 @@ export function WorkspaceGeneralSettings({
     if (!canDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      const data = await res.json();
-      const url = data.redirectTo || "/charts";
-
-      // Destroy the React component tree before navigating to prevent
-      // the Next.js internal Router component from re-rendering during
-      // the URL change. The Router has a bug (Next.js 15.x) where its
-      // useMemo hook count changes when the route tree structure differs,
-      // causing "Rendered more hooks than during the previous render".
-      const root = document.getElementById("__next");
-      if (root) {
-        root.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui;color:#888">リダイレクト中…</div>';
+      // Server Action calls redirect() on the server, which Next.js
+      // processes as an official server-side redirect.
+      await deleteWorkspace(wsId);
+    } catch (error) {
+      // redirect() in a Server Action throws a NEXT_REDIRECT error.
+      // Re-throw it so Next.js can handle the navigation properly.
+      // Swallowing this error causes setIsDeleting(false) to trigger
+      // a re-render that crashes the Next.js Router.
+      if (isRedirectError(error)) {
+        throw error;
       }
-      window.location.replace(url);
-    } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
     }
