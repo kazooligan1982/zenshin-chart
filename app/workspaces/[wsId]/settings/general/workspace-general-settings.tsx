@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Settings, AlertTriangle } from "lucide-react";
-import { updateWorkspaceName, deleteWorkspace } from "./actions";
+import { updateWorkspaceName } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
   wsId: string;
@@ -57,7 +57,10 @@ export function WorkspaceGeneralSettings({
     if (!canDelete) return;
     setIsDeleting(true);
     try {
-      await deleteWorkspace(wsId);
+      const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      // Hard navigation to avoid stale layout re-render
+      window.location.href = "/charts";
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
