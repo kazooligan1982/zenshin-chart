@@ -4,9 +4,8 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUserWorkspaces } from "@/lib/workspace";
+import { DEFAULT_WS_NAMES } from "@/lib/workspace-utils";
 import { LayoutGrid } from "lucide-react";
-
-const DEFAULT_WS_NAMES = ["マイワークスペース", "My Workspace"];
 
 function getWorkspaceDisplayName(
   name: string | null | undefined,

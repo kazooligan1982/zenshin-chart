@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserMenu } from "@/components/user-menu";
 import { getCurrentWorkspace, getUserWorkspaces } from "@/lib/workspace";
+import { DEFAULT_WS_NAMES } from "@/lib/workspace-utils";
 import { createClient } from "@/lib/supabase/client";
 
 const RECENT_CHARTS_KEY = "zenshin_recent_charts";
@@ -72,8 +73,6 @@ type SidebarProps = {
   currentWorkspace?: { id: string; name: string; role: string } | null;
   workspaces?: { id: string; name: string; role: string }[];
 };
-
-const DEFAULT_WS_NAMES = ["マイワークスペース", "My Workspace"];
 
 export function Sidebar(props?: SidebarProps) {
   const t = useTranslations("sidebar");

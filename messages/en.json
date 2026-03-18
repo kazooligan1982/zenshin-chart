@@ -884,6 +884,7 @@
     "deleteConfirmButton": "Delete",
     "deleteSuccess": "Workspace deleted successfully",
     "deleteFailed": "Failed to delete workspace",
-    "ownerOnly": "Only the owner can modify settings"
+    "ownerOnly": "Only the owner can modify settings",
+    "cannotDeleteDefault": "The default My Workspace cannot be deleted. This workspace is always maintained as your personal space."
   }
 }

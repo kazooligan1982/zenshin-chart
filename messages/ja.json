@@ -884,6 +884,7 @@
     "deleteConfirmButton": "削除する",
     "deleteSuccess": "ワークスペースを削除しました",
     "deleteFailed": "削除に失敗しました",
-    "ownerOnly": "オーナーのみ変更できます"
+    "ownerOnly": "オーナーのみ変更できます",
+    "cannotDeleteDefault": "デフォルトのマイワークスペースは削除できません。このワークスペースは個人用の基本領域として常に保持されます。"
   }
 }

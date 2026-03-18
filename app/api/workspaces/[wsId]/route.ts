@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { isDefaultWorkspaceName } from "@/lib/workspace-utils";
 
 export async function DELETE(
   _request: Request,
@@ -24,6 +25,20 @@ export async function DELETE(
 
     if (!membership || membership.role !== "owner") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Prevent deletion of the default personal workspace
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("name, owner_id")
+      .eq("id", wsId)
+      .single();
+
+    if (workspace && workspace.owner_id === user.id && isDefaultWorkspaceName(workspace.name)) {
+      return NextResponse.json(
+        { error: "Cannot delete the default workspace" },
+        { status: 400 }
+      );
     }
 
     // charts は ON DELETE SET NULL なので先に削除

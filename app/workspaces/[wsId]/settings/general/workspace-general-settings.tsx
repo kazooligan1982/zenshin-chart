@@ -21,12 +21,14 @@ interface WorkspaceGeneralSettingsProps {
   wsId: string;
   workspaceName: string;
   isOwner: boolean;
+  isDefaultWorkspace: boolean;
 }
 
 export function WorkspaceGeneralSettings({
   wsId,
   workspaceName,
   isOwner,
+  isDefaultWorkspace,
 }: WorkspaceGeneralSettingsProps) {
   const t = useTranslations("workspaceSettings");
   const tc = useTranslations("common");
@@ -59,19 +61,9 @@ export function WorkspaceGeneralSettings({
     try {
       const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      // Create a new workspace and navigate directly to it,
-      // bypassing the /charts redirect chain which causes React Router issues
-      const createRes = await fetch("/api/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "マイワークスペース" }),
-      });
-      if (createRes.ok) {
-        const newWs = await createRes.json();
-        window.location.href = `/workspaces/${newWs.id}/charts`;
-      } else {
-        window.location.href = "/";
-      }
+      // Redirect to the workspace selection page which handles
+      // the routing logic (single WS → direct, multiple → selection)
+      window.location.href = "/workspaces";
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
@@ -118,15 +110,23 @@ export function WorkspaceGeneralSettings({
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <h3 className="font-semibold text-red-700">{t("dangerZone")}</h3>
           </div>
-          <p className="text-sm text-red-600/80 mb-4">
-            {t("deleteDescription")}
-          </p>
-          <Button
-            variant="destructive"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            {t("deleteButton")}
-          </Button>
+          {isDefaultWorkspace ? (
+            <p className="text-sm text-zenshin-navy/60">
+              {t("cannotDeleteDefault")}
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-red-600/80 mb-4">
+                {t("deleteDescription")}
+              </p>
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                {t("deleteButton")}
+              </Button>
+            </>
+          )}
         </div>
       )}
 

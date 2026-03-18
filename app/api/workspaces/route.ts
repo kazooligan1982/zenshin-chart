@@ -1,4 +1,5 @@
-import { createNewWorkspace } from "@/lib/workspace";
+import { createNewWorkspace, getUserWorkspaces } from "@/lib/workspace";
+import { isDefaultWorkspaceName } from "@/lib/workspace-utils";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -10,6 +11,20 @@ export async function POST(request: Request) {
         { error: "ワークスペース名は必須です" },
         { status: 400 }
       );
+    }
+
+    // Prevent creating a workspace with the default name if one already exists
+    if (isDefaultWorkspaceName(name.trim())) {
+      const workspaces = await getUserWorkspaces();
+      const hasDefault = workspaces.some(
+        (ws) => isDefaultWorkspaceName(ws.name) && ws.role === "owner"
+      );
+      if (hasDefault) {
+        return NextResponse.json(
+          { error: "デフォルトワークスペースは既に存在します" },
+          { status: 400 }
+        );
+      }
     }
 
     const workspace = await createNewWorkspace(name.trim());
