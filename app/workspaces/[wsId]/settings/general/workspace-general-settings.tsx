@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,12 @@ export function WorkspaceGeneralSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Use a ref instead of useState for isDeleting to avoid triggering a
+  // React re-render. Re-rendering the component tree (including the
+  // Next.js Router) can trigger a React 19 core bug (facebook/react#33580)
+  // where conditional use(thenable) in the Router's useActionQueue causes
+  // "Rendered more hooks than during the previous render".
+  const isDeletingRef = useRef(false);
 
   const hasNameChanged = name.trim() !== workspaceName;
   const canDelete = deleteConfirmName.trim() === workspaceName;
@@ -55,24 +60,33 @@ export function WorkspaceGeneralSettings({
     }
   };
 
-  const handleDelete = async () => {
-    if (!canDelete) return;
-    setIsDeleting(true);
+  const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!canDelete || isDeletingRef.current) return;
+    isDeletingRef.current = true;
+
+    // Update button state via DOM to avoid React re-render.
+    // Any setState here would re-render the entire tree including the
+    // Next.js Router, which can trigger the React 19 hooks bug.
+    const button = e.currentTarget;
+    const cancelButton = button.parentElement?.querySelector(
+      "[data-cancel-button]"
+    ) as HTMLButtonElement | null;
+    button.disabled = true;
+    button.textContent = tc("deleting");
+    if (cancelButton) cancelButton.disabled = true;
+
     try {
       const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       const data = await res.json();
-      // Full page reload via window.location.href to completely bypass the
-      // Next.js Router. The Router component (app-router.js) has a known
-      // hook-ordering violation: `throw unresolvedThenable` sits between
-      // hook calls, so when mpaNavigation flips between renders the hook
-      // count changes and React throws "Rendered more hooks than during
-      // the previous render". A plain location assignment avoids triggering
-      // the Router's re-render entirely.
+      // Full page reload to completely bypass the Next.js Router.
       window.location.href = data.redirectTo || "/charts";
     } catch {
       toast.error(t("deleteFailed"));
-      setIsDeleting(false);
+      isDeletingRef.current = false;
+      button.disabled = false;
+      button.textContent = t("deleteConfirmButton");
+      if (cancelButton) cancelButton.disabled = false;
     }
   };
 
@@ -158,17 +172,17 @@ export function WorkspaceGeneralSettings({
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel
+              data-cancel-button
               onClick={() => setDeleteConfirmName("")}
-              disabled={isDeleting}
             >
               {tc("cancel")}
             </AlertDialogCancel>
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={!canDelete || isDeleting}
+              disabled={!canDelete}
             >
-              {isDeleting ? tc("deleting") : t("deleteConfirmButton")}
+              {t("deleteConfirmButton")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
