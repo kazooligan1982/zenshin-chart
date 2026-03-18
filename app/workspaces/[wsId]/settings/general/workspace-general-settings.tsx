@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export function WorkspaceGeneralSettings({
   isOwner,
   isDefaultWorkspace,
 }: WorkspaceGeneralSettingsProps) {
+  const router = useRouter();
   const t = useTranslations("workspaceSettings");
   const tc = useTranslations("common");
 
@@ -62,9 +64,11 @@ export function WorkspaceGeneralSettings({
       const res = await fetch(`/api/workspaces/${wsId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       const data = await res.json();
-      // Navigate directly to the target workspace to avoid redirect chains
-      // that can crash the Next.js Router during hydration
-      window.location.replace(data.redirectTo || "/charts");
+      // Use Next.js router instead of window.location.replace() to avoid
+      // crashing the internal Router component with a hooks mismatch error.
+      // The API returns a direct URL to the remaining workspace, avoiding
+      // redirect chains.
+      router.push(data.redirectTo || "/charts");
     } catch {
       toast.error(t("deleteFailed"));
       setIsDeleting(false);
