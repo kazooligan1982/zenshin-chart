@@ -4,8 +4,16 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Settings, AlertTriangle, Copy, Mail } from "lucide-react";
+import { Settings, AlertTriangle, Copy, Mail, Check } from "lucide-react";
 import { updateWorkspaceName } from "./actions";
 
 interface WorkspaceGeneralSettingsProps {
@@ -13,6 +21,57 @@ interface WorkspaceGeneralSettingsProps {
   workspaceName: string;
   isOwner: boolean;
   isDefaultWorkspace: boolean;
+}
+
+function CopyField({
+  label,
+  value,
+  mono,
+  copiedLabel,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  copiedLabel: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback: do nothing
+    }
+  };
+
+  return (
+    <div>
+      <label className="text-xs font-medium text-zenshin-navy/50 mb-1 block">
+        {label}
+      </label>
+      <div className="flex items-start gap-2">
+        <div
+          className={`flex-1 rounded-md border border-zenshin-navy/10 bg-zenshin-navy/[0.02] px-3 py-2 text-sm text-zenshin-navy ${mono ? "font-mono text-xs" : ""} whitespace-pre-wrap break-all`}
+        >
+          {value}
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 mt-1 p-1.5 rounded-md text-zenshin-navy/40 hover:text-zenshin-navy/70 hover:bg-zenshin-navy/5 transition-colors"
+          title={copiedLabel}
+        >
+          {copied ? (
+            <Check className="w-4 h-4 text-green-500" />
+          ) : (
+            <Copy className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function WorkspaceGeneralSettings({
@@ -26,6 +85,7 @@ export function WorkspaceGeneralSettings({
 
   const [name, setName] = useState(workspaceName);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const hasNameChanged = name.trim() !== workspaceName;
 
@@ -47,37 +107,16 @@ export function WorkspaceGeneralSettings({
     }
   };
 
-  const handleCopyAll = async () => {
-    const text = [
-      `${t("deleteRequestWorkspaceName")}: ${workspaceName}`,
-      `${t("deleteRequestWorkspaceId")}: ${wsId}`,
-      `URL: ${workspaceUrl}`,
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(tc("copied"));
-    } catch {
-      // fallback: do nothing
-    }
-  };
-
-  const handleRequestDelete = () => {
-    const subject = encodeURIComponent(
-      t("deleteRequestSubject", { name: workspaceName })
-    );
-    const body = encodeURIComponent(
-      [
-        `${t("deleteRequestWorkspaceName")}: ${workspaceName}`,
-        `${t("deleteRequestWorkspaceId")}: ${wsId}`,
-        `URL: ${workspaceUrl}`,
-        "",
-        `${t("deleteRequestReason")}:`,
-        "",
-      ].join("\n")
-    );
-    const mailtoUrl = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
-    window.open(mailtoUrl, "_blank");
-  };
+  const emailTo = "help@u2c.io";
+  const emailSubject = t("deleteRequestSubject", { name: workspaceName });
+  const emailBody = [
+    `${t("deleteRequestWorkspaceName")}: ${workspaceName}`,
+    `${t("deleteRequestWorkspaceId")}: ${wsId}`,
+    `URL: ${workspaceUrl}`,
+    "",
+    `${t("deleteRequestReason")}:`,
+    "",
+  ].join("\n");
 
   return (
     <div className="space-y-8">
@@ -131,44 +170,56 @@ export function WorkspaceGeneralSettings({
                 {t("deleteContactDescription")}
               </p>
 
-              {/* ワークスペース情報 */}
-              <div className="relative rounded-md border border-zenshin-navy/10 bg-zenshin-navy/[0.02] p-4 space-y-2 mb-4">
-                <button
-                  type="button"
-                  onClick={handleCopyAll}
-                  className="absolute top-2 right-2 p-1.5 rounded-md text-zenshin-navy/40 hover:text-zenshin-navy/70 hover:bg-zenshin-navy/5 transition-colors"
-                  title={tc("copyAll")}
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                <div className="text-sm pr-8">
-                  <span className="text-zenshin-navy/40">
-                    {t("deleteRequestWorkspaceName")}:
-                  </span>{" "}
-                  <span className="font-medium text-zenshin-navy break-all">
-                    {workspaceName}
-                  </span>
-                </div>
-                <div className="text-sm pr-8">
-                  <span className="text-zenshin-navy/40">
-                    {t("deleteRequestWorkspaceId")}:
-                  </span>{" "}
-                  <span className="font-mono text-xs text-zenshin-navy break-all">
-                    {wsId}
-                  </span>
-                </div>
-                <div className="text-sm pr-8">
-                  <span className="text-zenshin-navy/40">URL:</span>{" "}
-                  <span className="font-mono text-xs text-zenshin-navy break-all">
-                    {workspaceUrl}
-                  </span>
-                </div>
-              </div>
-
-              <Button variant="outline" onClick={handleRequestDelete}>
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
                 <Mail className="w-4 h-4 mr-2" />
                 {t("deleteRequestButton")}
               </Button>
+
+              <Dialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+              >
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>{t("deleteRequestDialogTitle")}</DialogTitle>
+                    <DialogDescription>
+                      {t("deleteRequestDialogDescription")}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    <CopyField
+                      label={t("deleteRequestTo")}
+                      value={emailTo}
+                      mono
+                      copiedLabel={tc("copied")}
+                    />
+                    <CopyField
+                      label={t("deleteRequestSubjectLabel")}
+                      value={emailSubject}
+                      copiedLabel={tc("copied")}
+                    />
+                    <CopyField
+                      label={t("deleteRequestBodyLabel")}
+                      value={emailBody}
+                      mono
+                      copiedLabel={tc("copied")}
+                    />
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                    >
+                      {tc("close")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </>
           )}
         </div>
