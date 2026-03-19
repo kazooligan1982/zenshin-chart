@@ -47,7 +47,12 @@ export function WorkspaceGeneralSettings({
     }
   };
 
-  const handleCopy = async (text: string) => {
+  const handleCopyAll = async () => {
+    const text = [
+      `${t("deleteRequestWorkspaceName")}: ${workspaceName}`,
+      `${t("deleteRequestWorkspaceId")}: ${wsId}`,
+      `URL: ${workspaceUrl}`,
+    ].join("\n");
     try {
       await navigator.clipboard.writeText(text);
       toast.success(tc("copied"));
@@ -70,7 +75,12 @@ export function WorkspaceGeneralSettings({
         "",
       ].join("\n")
     );
-    window.location.href = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
+    const mailtoUrl = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
+    // window.location.href with mailto: can silently fail in some browsers
+    const w = window.open(mailtoUrl, "_blank");
+    if (!w) {
+      window.location.href = mailtoUrl;
+    }
   };
 
   return (
@@ -127,56 +137,36 @@ export function WorkspaceGeneralSettings({
 
               {/* ワークスペース情報 */}
               <div className="rounded-md border border-zenshin-navy/10 bg-zenshin-navy/[0.02] p-4 space-y-2 mb-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm min-w-0">
-                    <span className="text-zenshin-navy/40">
-                      {t("deleteRequestWorkspaceName")}:
-                    </span>{" "}
-                    <span className="font-medium text-zenshin-navy break-all">
-                      {workspaceName}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(workspaceName)}
-                    className="shrink-0 p-1.5 rounded hover:bg-zenshin-navy/5 text-zenshin-navy/40 hover:text-zenshin-navy/60 transition-colors"
-                    title={tc("copy")}
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
+                <div className="text-sm">
+                  <span className="text-zenshin-navy/40">
+                    {t("deleteRequestWorkspaceName")}:
+                  </span>{" "}
+                  <span className="font-medium text-zenshin-navy break-all">
+                    {workspaceName}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm min-w-0">
-                    <span className="text-zenshin-navy/40">
-                      {t("deleteRequestWorkspaceId")}:
-                    </span>{" "}
-                    <span className="font-mono text-xs text-zenshin-navy break-all">
-                      {wsId}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(wsId)}
-                    className="shrink-0 p-1.5 rounded hover:bg-zenshin-navy/5 text-zenshin-navy/40 hover:text-zenshin-navy/60 transition-colors"
-                    title={tc("copy")}
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
+                <div className="text-sm">
+                  <span className="text-zenshin-navy/40">
+                    {t("deleteRequestWorkspaceId")}:
+                  </span>{" "}
+                  <span className="font-mono text-xs text-zenshin-navy break-all">
+                    {wsId}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm min-w-0">
-                    <span className="text-zenshin-navy/40">URL:</span>{" "}
-                    <span className="font-mono text-xs text-zenshin-navy break-all">
-                      {workspaceUrl}
-                    </span>
-                  </div>
+                <div className="text-sm">
+                  <span className="text-zenshin-navy/40">URL:</span>{" "}
+                  <span className="font-mono text-xs text-zenshin-navy break-all">
+                    {workspaceUrl}
+                  </span>
+                </div>
+                <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => handleCopy(workspaceUrl)}
-                    className="shrink-0 p-1.5 rounded hover:bg-zenshin-navy/5 text-zenshin-navy/40 hover:text-zenshin-navy/60 transition-colors"
-                    title={tc("copy")}
+                    onClick={handleCopyAll}
+                    className="inline-flex items-center gap-1.5 text-xs text-zenshin-navy/50 hover:text-zenshin-navy/70 transition-colors"
                   >
                     <Copy className="w-3.5 h-3.5" />
+                    {tc("copyAll")}
                   </button>
                 </div>
               </div>

@@ -11,7 +11,10 @@
     "confirm": "Confirm",
     "loading": "Loading...",
     "noDate": "No due date",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyAll": "Copy All"
   },
   "sidebar": {
     "currentWorkspace": "Current Workspace",
