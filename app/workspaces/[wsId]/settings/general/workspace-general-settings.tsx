@@ -76,11 +76,7 @@ export function WorkspaceGeneralSettings({
       ].join("\n")
     );
     const mailtoUrl = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
-    // window.location.href with mailto: can silently fail in some browsers
-    const w = window.open(mailtoUrl, "_blank");
-    if (!w) {
-      window.location.href = mailtoUrl;
-    }
+    window.location.href = mailtoUrl;
   };
 
   return (
@@ -136,8 +132,16 @@ export function WorkspaceGeneralSettings({
               </p>
 
               {/* ワークスペース情報 */}
-              <div className="rounded-md border border-zenshin-navy/10 bg-zenshin-navy/[0.02] p-4 space-y-2 mb-4">
-                <div className="text-sm">
+              <div className="relative rounded-md border border-zenshin-navy/10 bg-zenshin-navy/[0.02] p-4 space-y-2 mb-4">
+                <button
+                  type="button"
+                  onClick={handleCopyAll}
+                  className="absolute top-2 right-2 p-1.5 rounded-md text-zenshin-navy/40 hover:text-zenshin-navy/70 hover:bg-zenshin-navy/5 transition-colors"
+                  title={tc("copyAll")}
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                <div className="text-sm pr-8">
                   <span className="text-zenshin-navy/40">
                     {t("deleteRequestWorkspaceName")}:
                   </span>{" "}
@@ -145,7 +149,7 @@ export function WorkspaceGeneralSettings({
                     {workspaceName}
                   </span>
                 </div>
-                <div className="text-sm">
+                <div className="text-sm pr-8">
                   <span className="text-zenshin-navy/40">
                     {t("deleteRequestWorkspaceId")}:
                   </span>{" "}
@@ -153,21 +157,11 @@ export function WorkspaceGeneralSettings({
                     {wsId}
                   </span>
                 </div>
-                <div className="text-sm">
+                <div className="text-sm pr-8">
                   <span className="text-zenshin-navy/40">URL:</span>{" "}
                   <span className="font-mono text-xs text-zenshin-navy break-all">
                     {workspaceUrl}
                   </span>
-                </div>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyAll}
-                    className="inline-flex items-center gap-1.5 text-xs text-zenshin-navy/50 hover:text-zenshin-navy/70 transition-colors"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    {tc("copyAll")}
-                  </button>
                 </div>
               </div>
 
