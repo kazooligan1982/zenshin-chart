@@ -76,7 +76,9 @@ export function WorkspaceGeneralSettings({
       ].join("\n")
     );
     const mailtoUrl = `mailto:help@u2c.io?subject=${subject}&body=${body}`;
-    window.location.href = mailtoUrl;
+    const a = document.createElement("a");
+    a.href = mailtoUrl;
+    a.click();
   };
 
   return (
