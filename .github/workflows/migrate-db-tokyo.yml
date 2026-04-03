@@ -24,7 +24,7 @@ jobs:
             --no-privileges \
             --clean \
             --if-exists \
-            -h aws-0-ap-south-1.pooler.supabase.com \
+            -h aws-1-ap-south-1.pooler.supabase.com \
             -p 5432 \
             -U postgres.ijjucbnkythlwxrknzch \
             -d postgres \
