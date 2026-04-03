@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           psql \
-            -h aws-0-ap-northeast-1.pooler.supabase.com \
+            -h aws-1-ap-northeast-1.pooler.supabase.com \
             -p 5432 \
             -U postgres.wglutqoufuvnzmkruewg \
             -d postgres \
