@@ -45,8 +45,9 @@ jobs:
         run: |
           set -euo pipefail
           psql \
-            -h db.wglutqoufuvnzmkruewg.supabase.co \
-            -U postgres \
+            -h aws-0-ap-northeast-1.pooler.supabase.com \
+            -p 5432 \
+            -U postgres.wglutqoufuvnzmkruewg \
             -d postgres \
             -f backup.sql
           echo "✅ リストア完了"
