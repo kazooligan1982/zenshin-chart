@@ -24,8 +24,9 @@ jobs:
             --no-privileges \
             --clean \
             --if-exists \
-            -h db.ijjucbnkythlwxrknzch.supabase.co \
-            -U postgres \
+            -h aws-0-ap-south-1.pooler.supabase.com \
+            -p 5432 \
+            -U postgres.ijjucbnkythlwxrknzch \
             -d postgres \
             -f backup.sql
           echo "✅ Dump完了: $(wc -l < backup.sql) 行"
