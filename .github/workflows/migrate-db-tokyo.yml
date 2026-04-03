@@ -1,0 +1,44 @@
+name: Migrate DB to Tokyo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump from zenshin-web (India → backup.sql)
+        env:
+          PGPASSWORD: ${{ secrets.OLD_DB_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          pg_dump \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            -h db.ijjucbnkythlwxrknzch.supabase.co \
+            -U postgres \
+            -d postgres \
+            -f backup.sql
+          echo "✅ Dump完了: $(wc -l < backup.sql) 行"
+
+      - name: Restore to zenshin-chart (Tokyo)
+        env:
+          PGPASSWORD: ${{ secrets.NEW_DB_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          psql \
+            -h db.wglutqoufuvnzmkruewg.supabase.co \
+            -U postgres \
+            -d postgres \
+            -f backup.sql
+          echo "✅ リストア完了"
