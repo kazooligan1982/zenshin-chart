@@ -52,3 +52,13 @@ export function canGenerateInviteLink(role: WorkspaceRole): boolean {
 export function canManageWorkspace(role: WorkspaceRole): boolean {
   return role === "owner";
 }
+
+/** Proposal作成可能（editor以上） */
+export function canCreateProposal(role: WorkspaceRole): boolean {
+  return ["owner", "consultant", "editor"].includes(role);
+}
+
+/** Proposal承認・却下可能（owner/consultant のみ） */
+export function canApproveProposal(role: WorkspaceRole): boolean {
+  return ["owner", "consultant"].includes(role);
+}
