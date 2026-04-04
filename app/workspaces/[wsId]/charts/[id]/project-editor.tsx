@@ -32,6 +32,7 @@ import {
   Minimize2,
   Calendar as CalendarIcon,
   Camera,
+  FileText,
   Settings,
   MoreVertical,
   CheckCircle2,
@@ -128,6 +129,8 @@ import { useDndHandlers } from "./hooks/useDndHandlers";
 import { WelcomeCard } from "@/components/ai-assistant/WelcomeCard";
 import { AICoachButton, type StructuredItems } from "@/components/ai-coach-button";
 import { collectChartDataForAI } from "@/lib/ai/collect-chart-data";
+import ProposalsPanel from "@/components/proposals-panel";
+import { canApproveProposal } from "@/lib/permissions";
 
 const CalendarComponent = dynamic(
   () => import("@/components/ui/calendar").then((mod) => mod.Calendar),
@@ -290,6 +293,8 @@ export function ProjectEditor({
   const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
   const snapshotDropdownRef = useRef<HTMLDivElement>(null);
   const [isChartMenuLoading, setIsChartMenuLoading] = useState(false);
+  const [isProposalsPanelOpen, setIsProposalsPanelOpen] = useState(false);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState(0);
   const [currentUser] = useState<{
     id: string;
     email: string;
@@ -1300,6 +1305,20 @@ export function ProjectEditor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [snapshotDropdownOpen]);
 
+  // Fetch pending proposals count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const res = await fetch(`/api/proposals/list?chartId=${chartId}&status=pending`);
+        const data = await res.json();
+        setPendingProposalsCount(data.proposals?.length ?? 0);
+      } catch {
+        // silently ignore
+      }
+    };
+    fetchPendingCount();
+  }, [chartId]);
+
   const handleArchiveChart = async () => {
     if (!chart?.id) return;
     setArchiveChartDialogOpen(false);
@@ -1492,6 +1511,20 @@ export function ProjectEditor({
           </nav>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 relative"
+              onClick={() => setIsProposalsPanelOpen(true)}
+            >
+              <FileText className="w-4 h-4 mr-1.5" />
+              Proposals
+              {pendingProposalsCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingProposalsCount}
+                </span>
+              )}
+            </Button>
             <div className="relative" ref={snapshotDropdownRef}>
               <Button
                 variant="outline"
@@ -2748,6 +2781,21 @@ export function ProjectEditor({
           onCommentCountChange={handleCommentCountChange}
         />
       )}
+      <ProposalsPanel
+        chartId={chart.id}
+        isOpen={isProposalsPanelOpen}
+        onClose={() => setIsProposalsPanelOpen(false)}
+        canApprove={canApproveProposal(
+          (workspaceMembers.find((m) => m.id === (currentUserId || currentUser?.id))?.role as "owner" | "consultant" | "editor" | "viewer") || "viewer"
+        )}
+        onApproved={() => {
+          router.refresh();
+          fetch(`/api/proposals/list?chartId=${chart.id}&status=pending`)
+            .then((r) => r.json())
+            .then((d) => setPendingProposalsCount(d.proposals?.length ?? 0))
+            .catch(() => {});
+        }}
+      />
       <AICoachButton
           chartData={collectChartDataForAI(
             chart,
