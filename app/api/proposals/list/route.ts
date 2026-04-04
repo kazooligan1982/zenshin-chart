@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("chart_proposals")
-    .select("*, profiles:proposed_by(display_name, avatar_url)")
+    .select("*")
     .eq("chart_id", chartId)
     .order("created_at", { ascending: false });
 
