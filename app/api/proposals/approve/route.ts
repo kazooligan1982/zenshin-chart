@@ -108,6 +108,14 @@ export async function POST(req: NextRequest) {
 
   const chartId = proposal.chart_id;
 
+  // Build full content from title + description
+  const buildContent = (item: ProposalItem): string => {
+    if (item.description && item.description.trim()) {
+      return item.description.trim();
+    }
+    return item.title;
+  };
+
   // Insert visions
   const visionItems = itemsToApply.filter(
     (i) => i.type === "vision" && i.action === "add"
@@ -116,7 +124,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("visions").insert(
       visionItems.map((v, idx) => ({
         chart_id: chartId,
-        content: v.title,
+        content: buildContent(v),
         sort_order: idx,
       }))
     );
@@ -133,7 +141,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("realities").insert(
       realityItems.map((r, idx) => ({
         chart_id: chartId,
-        content: r.title,
+        content: buildContent(r),
         sort_order: idx,
       }))
     );
@@ -152,7 +160,7 @@ export async function POST(req: NextRequest) {
       .from("tensions")
       .insert({
         chart_id: chartId,
-        title: t.title,
+        title: buildContent(t),
         status: "active",
       })
       .select("id")
@@ -174,7 +182,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase.from("actions").insert(
       actionItems.map((a) => ({
         chart_id: chartId,
-        title: a.title,
+        title: buildContent(a),
         tension_id:
           a.tensionIndex != null && tensionIds[a.tensionIndex]
             ? tensionIds[a.tensionIndex]
