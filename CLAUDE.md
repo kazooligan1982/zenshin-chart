@@ -374,3 +374,9 @@ git checkout main && git pull origin main
 | `docs/HANDOFF.md` | 開発引き継ぎ（※2026-02-14時点。最新はこのCLAUDE.mdを参照） |
 | `UNIFIED-MODAL-DESIGN.md` | 統一モーダル設計（Phase 1〜3のmd群含む） |
 | `fritz_structural_principles.md` | AI Coach用システムプロンプト原本（556行、Fritz構造思考の全原則、企業名なし） ※過去チャットで作成、リポジトリ外に保管 |
+
+## コミットメッセージ規約
+コミットメッセージの末尾にClickUpタスクIDを含めること。
+形式: `feat/fix/refactor/docs: 内容 #86exXXXXX`
+例: `feat: Proposal承認UI追加 #86ex50eam`
+これによりbrain-botのgit-syncが自動でClickUpタスクにコメントを追加する。
