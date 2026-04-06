@@ -55,11 +55,19 @@ interface ExtractedVRTAItem {
   enabled: boolean;
 }
 
+interface StructuralDiagnosis {
+  type: "advancing" | "oscillating" | "unclear";
+  conflict_pattern?: string | null;
+  hierarchy_selected?: boolean;
+  reasoning?: string;
+}
+
 interface ExtractedVRTA {
   visions: ExtractedVRTAItem[];
   realities: ExtractedVRTAItem[];
   tensions: ExtractedVRTAItem[];
   actions: ExtractedVRTAItem[];
+  structural_diagnosis?: StructuralDiagnosis | null;
 }
 
 interface AICoachButtonProps {
@@ -436,6 +444,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
         realities: (data.realities || []).map((r: { title?: string; description?: string }) => ({ ...r, title: r.title || "", description: r.description || "", enabled: true })),
         tensions: (data.tensions || []).map((t: { title?: string; description?: string }) => ({ ...t, title: t.title || "", description: t.description || "", enabled: true })),
         actions: (data.actions || []).map((a: { title?: string; description?: string; due_date?: string | null }) => ({ ...a, title: a.title || "", description: a.description || "", enabled: true })),
+        structural_diagnosis: data.structural_diagnosis || null,
       });
     } catch (error) {
       console.error("VRTA extraction error:", error);
@@ -447,22 +456,43 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
   };
 
   const handleAddToCurrentChart = async () => {
-    if (!extractedVrta || !onAddItems) return;
+    if (!extractedVrta) return;
     setIsApplyingVrta(true);
     try {
-      const items: StructurizeResult = {
-        visions: extractedVrta.visions.filter((v) => v.enabled).map((v) => ({ title: v.title })),
-        realities: extractedVrta.realities.filter((r) => r.enabled).map((r) => ({ title: r.title })),
-        tensions: extractedVrta.tensions.filter((t) => t.enabled).map((t) => ({ title: t.title })),
-        actions: extractedVrta.actions.filter((a) => a.enabled).map((a) => ({ title: a.title })),
-      };
-      await onAddItems(items);
-      toast.success(t("brainstorm.addedToChart"));
+      // Save as proposal (propose mode) instead of direct INSERT
+      const res = await fetch("/api/ai/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chartId,
+          mode: "propose",
+          source: "ai_brainstorm",
+          title: locale === "ja" ? "壁打ちから抽出" : "From brainstorm",
+          visions: extractedVrta.visions.filter((v) => v.enabled).map((v) => ({ title: v.title, description: v.description })),
+          realities: extractedVrta.realities.filter((r) => r.enabled).map((r) => ({ title: r.title, description: r.description })),
+          tensions: extractedVrta.tensions.filter((t) => t.enabled).map((t) => ({ title: t.title, description: t.description })),
+          actions: extractedVrta.actions.filter((a) => a.enabled).map((a) => ({ title: a.title, description: a.description, due_date: a.due_date })),
+          metadata: {
+            structural_diagnosis: extractedVrta.structural_diagnosis || null,
+            conversation_excerpt: messages.slice(-4).map((m) => `${m.role}: ${m.content.slice(0, 100)}`).join("\n"),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(
+          locale === "ja"
+            ? "提案として保存しました。Proposalsパネルで確認・承認してください。"
+            : "Saved as proposal. Review and approve in the Proposals panel."
+        );
+      } else {
+        throw new Error(data.error || "Failed to save proposal");
+      }
       setShowBrainstormPreview(false);
       setExtractedVrta(null);
     } catch (error) {
-      console.error("Apply VRTA error:", error);
-      toast.error(t("brainstorm.addFailed"));
+      console.error("Save proposal error:", error);
+      toast.error(locale === "ja" ? "提案の保存に失敗しました" : "Failed to save proposal");
     } finally {
       setIsApplyingVrta(false);
     }
@@ -473,12 +503,14 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     setEditingField(null);
   };
 
-  const updateVrtaItem = (section: keyof ExtractedVRTA, index: number, field: string, value: string | boolean) => {
+  type VRTASection = "visions" | "realities" | "tensions" | "actions";
+
+  const updateVrtaItem = (section: VRTASection, index: number, field: string, value: string | boolean) => {
     setExtractedVrta((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        [section]: prev[section].map((item, i) =>
+        [section]: prev[section].map((item: ExtractedVRTAItem, i: number) =>
           i === index ? { ...item, [field]: value } : item
         ),
       };
@@ -791,7 +823,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
     const showReflectButton = isBrainstorm && userMessageCount >= 3 && !isLoading;
 
     if (isBrainstorm && showBrainstormPreview) {
-      const vrtaSections: { key: keyof ExtractedVRTA; label: string; color: string; borderColor: string; dotColor: string }[] = [
+      const vrtaSections: { key: VRTASection; label: string; color: string; borderColor: string; dotColor: string }[] = [
         { key: "visions", label: "Vision", color: "text-emerald-700", borderColor: "border-emerald-200", dotColor: "bg-emerald-500" },
         { key: "realities", label: "Reality", color: "text-orange-700", borderColor: "border-orange-200", dotColor: "bg-orange-500" },
         { key: "tensions", label: "Tension", color: "text-sky-700", borderColor: "border-sky-200", dotColor: "bg-sky-500" },

@@ -15,13 +15,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
     >
       <Sonner
       theme={theme as ToasterProps["theme"]}
-      className="toaster group !z-[99999]"
-      style={{ zIndex: 99999 }}
+      className="toaster group !z-[200000]"
+      style={{ zIndex: 200000 }}
       position="bottom-center"
       closeButton={true}
       toastOptions={{
-        className: "!z-[99999]",
-        style: { zIndex: 99999, pointerEvents: "auto" },
+        className: "!z-[200000]",
+        style: { zIndex: 200000, pointerEvents: "auto" },
         classNames: {
           toast:
             "group toast group-[.toaster]:bg-white group-[.toaster]:text-zenshin-navy group-[.toaster]:border-gray-200 group-[.toaster]:shadow-lg group-[.toaster]:rounded-xl group-[.toaster]:px-4 group-[.toaster]:py-3",
