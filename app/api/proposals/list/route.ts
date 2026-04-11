@@ -12,6 +12,10 @@ export async function GET(req: NextRequest) {
 
   const chartId = req.nextUrl.searchParams.get("chartId");
   const status = req.nextUrl.searchParams.get("status"); // optional filter
+  // Source filter: "ai_brainstorm" | "ai_structurize" | "ai_tool_sync"
+  //                | "claude_chat" | "clickup_webhook" | "manual"
+  // Accepts a single value or a comma-separated list.
+  const sourceParam = req.nextUrl.searchParams.get("source");
 
   if (!chartId) {
     return NextResponse.json(
@@ -28,6 +32,18 @@ export async function GET(req: NextRequest) {
 
   if (status) {
     query = query.eq("status", status);
+  }
+
+  if (sourceParam) {
+    const sources = sourceParam
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (sources.length === 1) {
+      query = query.eq("source", sources[0]);
+    } else if (sources.length > 1) {
+      query = query.in("source", sources);
+    }
   }
 
   const { data: proposals, error } = await query;

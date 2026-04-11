@@ -25,7 +25,8 @@ import { toast } from "sonner";
 
 // --- Types ---
 
-interface ProposalItem {
+// Legacy VRTA-extract shape (ai_brainstorm / ai_structurize).
+interface LegacyProposalItem {
   id: string;
   type: "vision" | "reality" | "tension" | "action";
   action: "add" | "update" | "remove";
@@ -35,6 +36,47 @@ interface ProposalItem {
   due_date?: string | null;
   old_title?: string;
 }
+
+// Operation items (#86ex7fyrx) used by tool-sync / claude-chat / manual flows.
+interface CreateActionItem {
+  id: string;
+  type: "create_action";
+  tension_id: string;
+  title: string;
+  description?: string;
+  due_date?: string | null;
+  status?: "todo" | "in_progress";
+  external_url?: string;
+}
+
+interface UpdateActionStatusItem {
+  id: string;
+  type: "update_action_status";
+  action_id: string;
+  new_status: "todo" | "in_progress" | "done";
+  note?: string;
+}
+
+interface CreateTensionItem {
+  id: string;
+  type: "create_tension";
+  title: string;
+  description?: string;
+  vision_ids?: string[];
+  reality_ids?: string[];
+}
+
+type ProposalItem =
+  | LegacyProposalItem
+  | CreateActionItem
+  | UpdateActionStatusItem
+  | CreateTensionItem;
+
+const isLegacyItem = (item: ProposalItem): item is LegacyProposalItem =>
+  item.type === "vision" ||
+  item.type === "reality" ||
+  item.type === "tension" ||
+  item.type === "action";
 
 interface StructuralDiagnosis {
   type: "advancing" | "oscillating" | "unclear";
@@ -77,6 +119,8 @@ const SOURCE_ICONS: Record<string, typeof Bot> = {
   ai_brainstorm: Bot,
   ai_structurize: FileText,
   ai_tool_sync: Link2,
+  clickup_webhook: Link2,
+  claude_chat: Bot,
   manual: Pencil,
 };
 
@@ -84,6 +128,8 @@ const SOURCE_LABELS: Record<string, { ja: string; en: string }> = {
   ai_brainstorm: { ja: "壁打ちから抽出", en: "From brainstorm" },
   ai_structurize: { ja: "テキストから構造化", en: "Structured from text" },
   ai_tool_sync: { ja: "ツール同期", en: "Tool sync" },
+  clickup_webhook: { ja: "ClickUp連携", en: "ClickUp webhook" },
+  claude_chat: { ja: "Claudeチャット", en: "Claude chat" },
   manual: { ja: "手動提案", en: "Manual proposal" },
 };
 
@@ -394,6 +440,133 @@ export default function ProposalsPanel({
                   {isExpanded && (
                     <div className="px-3 pb-3 space-y-1.5">
                       {items.map((item) => {
+                        const isChecked = selected.has(item.id);
+
+                        // --- New operation-item shapes (#86ex7fyrx) ---
+                        if (item.type === "create_action") {
+                          const title = (item as CreateActionItem).title;
+                          const desc = (item as CreateActionItem).description;
+                          const url = (item as CreateActionItem).external_url;
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 pl-2 pr-1 py-1.5 rounded border-l-2 border-l-emerald-500"
+                            >
+                              {canApprove && (
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() =>
+                                    toggleItem(proposal.id, item.id)
+                                  }
+                                  className="mt-0.5"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px] h-4 px-1.5">
+                                  {lang === "ja" ? "新規Action" : "New Action"}
+                                </Badge>
+                                <p className="text-sm mt-0.5">{title}</p>
+                                {desc && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {desc}
+                                  </p>
+                                )}
+                                {url && (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-sky-600 hover:underline mt-0.5"
+                                  >
+                                    <Link2 className="h-3 w-3" />
+                                    {url}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (item.type === "update_action_status") {
+                          const u = item as UpdateActionStatusItem;
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 pl-2 pr-1 py-1.5 rounded border-l-2 border-l-sky-500"
+                            >
+                              {canApprove && (
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() =>
+                                    toggleItem(proposal.id, item.id)
+                                  }
+                                  className="mt-0.5"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <Badge className="bg-sky-100 text-sky-800 hover:bg-sky-100 text-[10px] h-4 px-1.5">
+                                  {lang === "ja"
+                                    ? "ステータス変更"
+                                    : "Status change"}
+                                </Badge>
+                                <p className="text-sm mt-0.5">
+                                  → {u.new_status}
+                                </p>
+                                {u.note && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {u.note}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (item.type === "create_tension") {
+                          const tItem = item as CreateTensionItem;
+                          const linkCount =
+                            (tItem.vision_ids?.length ?? 0) +
+                            (tItem.reality_ids?.length ?? 0);
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 pl-2 pr-1 py-1.5 rounded border-l-2 border-l-orange-500"
+                            >
+                              {canApprove && (
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() =>
+                                    toggleItem(proposal.id, item.id)
+                                  }
+                                  className="mt-0.5"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 text-[10px] h-4 px-1.5">
+                                  {lang === "ja"
+                                    ? "新規Tension"
+                                    : "New Tension"}
+                                </Badge>
+                                <p className="text-sm mt-0.5">{tItem.title}</p>
+                                {tItem.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {tItem.description}
+                                  </p>
+                                )}
+                                {linkCount > 0 && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {lang === "ja"
+                                      ? `V×${tItem.vision_ids?.length ?? 0} / R×${tItem.reality_ids?.length ?? 0} にリンク`
+                                      : `links V×${tItem.vision_ids?.length ?? 0} / R×${tItem.reality_ids?.length ?? 0}`}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // --- Legacy VRTA-extract shape ---
+                        if (!isLegacyItem(item)) return null;
                         const ActionIcon =
                           ACTION_ICONS[item.action] || Plus;
                         const typeColor =
@@ -402,7 +575,6 @@ export default function ProposalsPanel({
                           TYPE_LABELS[item.type]?.[
                             lang === "ja" ? "ja" : "en"
                           ] || item.type;
-                        const isChecked = selected.has(item.id);
 
                         return (
                           <div
