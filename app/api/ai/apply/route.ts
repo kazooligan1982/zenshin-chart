@@ -1,5 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { isValidStructuralDiagnosis } from "@/lib/ai/fritz-prompt";
+
+// AI-generated proposal sources MUST include metadata.structural_diagnosis
+// per #86ex7fyrx. Manual / legacy sources may omit it.
+const AI_SOURCES_REQUIRING_DIAGNOSIS = new Set([
+  "ai_brainstorm",
+  "ai_structurize",
+  "ai_tool_sync",
+  "claude_chat",
+  "clickup_webhook",
+]);
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -34,6 +45,23 @@ export async function POST(req: NextRequest) {
 
   // --- Propose mode: save to chart_proposals ---
   if (mode === "propose") {
+    // Enforce the Fritz structural_diagnosis contract on AI-sourced proposals.
+    // `unclear` with a reasoning string is still a valid diagnosis, so we
+    // only block when the shape is actively malformed or absent.
+    if (AI_SOURCES_REQUIRING_DIAGNOSIS.has(source)) {
+      const diagnosis = (metadata as { structural_diagnosis?: unknown } | null)
+        ?.structural_diagnosis;
+      if (!isValidStructuralDiagnosis(diagnosis)) {
+        return NextResponse.json(
+          {
+            error:
+              "metadata.structural_diagnosis is required for AI-generated proposals. Expected { type: 'advancing' | 'oscillating' | 'unclear', reasoning: string, conflict_pattern?: string }.",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const items: Array<{
       id: string;
       type: string;

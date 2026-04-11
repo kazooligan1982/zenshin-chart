@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
+import { buildFritzProposalPreamble } from "@/lib/ai/fritz-prompt";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -21,8 +22,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
   }
 
-  const systemPrompt =
-    language === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA;
+  // Prepend the shared Fritz terminology + proposal-validation preamble so
+  // AI-generated proposals stay consistent with coach/route.ts. See
+  // lib/ai/fritz-prompt.ts for the rationale and KB references (#86ex7fyrx).
+  const locale: "ja" | "en" = language === "en" ? "en" : "ja";
+  const systemPrompt = `${buildFritzProposalPreamble(locale)}\n\n${
+    locale === "en" ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_JA
+  }`;
 
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [2000, 5000, 10000];
