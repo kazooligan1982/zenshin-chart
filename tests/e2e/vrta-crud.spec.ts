@@ -11,10 +11,12 @@ import { uniqueTitle } from "./helpers/test-data";
 
 async function createChart(page: Page, title: string) {
   await page.goto("/charts");
+  // /charts redirects to /workspaces/{wsId}/charts — wait for that to settle.
+  await page.waitForURL(/\/workspaces\/[a-f0-9-]+\/charts(\/|$|\?)/);
   // The "チャートを作成" button is rendered by NewChartButton.
   await page.getByRole("button", { name: /チャートを作成/ }).click();
-  // Redirects to /charts/[id] or /workspaces/[wsId]/charts/[id]
-  await page.waitForURL(/\/charts\/[a-f0-9-]+/);
+  // Redirects to /workspaces/[wsId]/charts/[id]
+  await page.waitForURL(/\/workspaces\/[a-f0-9-]+\/charts\/[a-f0-9-]+/);
 
   // Rename via the chart title input. The placeholder is "チャートの目的を一言で".
   const titleInput = page.getByPlaceholder(/チャートの目的を一言で/);

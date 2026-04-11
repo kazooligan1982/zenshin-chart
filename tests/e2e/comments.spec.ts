@@ -22,8 +22,9 @@ async function bootstrapChartWithAction(page: Page, label: string) {
   const chartTitle = uniqueTitle(label);
 
   await page.goto("/charts");
+  await page.waitForURL(/\/workspaces\/[a-f0-9-]+\/charts(\/|$|\?)/);
   await page.getByRole("button", { name: /チャートを作成/ }).click();
-  await page.waitForURL(/\/charts\/[a-f0-9-]+/);
+  await page.waitForURL(/\/workspaces\/[a-f0-9-]+\/charts\/[a-f0-9-]+/);
 
   await page.getByPlaceholder(/チャートの目的を一言で/).fill(chartTitle);
   await page.keyboard.press("Tab");
