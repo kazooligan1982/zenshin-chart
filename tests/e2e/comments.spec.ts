@@ -118,15 +118,28 @@ async function openDetailModal(page: Page, which: keyof typeof DETAIL_INDEX) {
 }
 
 async function postComment(page: Page, body: string) {
-  // Tiptap renders the editor as a contenteditable. The placeholder is shown
-  // via a CSS pseudo-element, so we cannot target it with getByPlaceholder —
-  // instead, find the contenteditable inside the dialog.
+  // The unified detail modal contains TWO Tiptap contenteditable editors:
+  //   1. 補足説明 (description) — near the top of the dialog
+  //   2. コメント入力 (activity section) — below the アクティビティ heading
+  // Both render as `.ProseMirror[contenteditable="true"]`. Using `.first()`
+  // targets the description editor and silently edits the wrong field, so
+  // scope explicitly to the element whose `data-placeholder` contains the
+  // comment placeholder text (set by Tiptap's Placeholder extension).
   const dialog = page.getByRole("dialog");
-  const editor = dialog.locator('[contenteditable="true"]').first();
+  // CSS :has() — resolve the (empty) comment editor via its data-placeholder,
+  // which Tiptap only sets while the node is empty. Click it once to move
+  // focus; afterwards the :has selector will NO LONGER match (because the
+  // paragraph is no longer empty), so we must drive subsequent typing and
+  // the Cmd+Enter submit through page.keyboard rather than a fresh locator
+  // re-resolution.
+  const editor = dialog.locator(
+    '.ProseMirror[contenteditable="true"]:has([data-placeholder*="コメントを入力"])'
+  );
   await editor.click();
   await page.keyboard.type(body);
-  // Cmd+Enter binding submits.
-  await page.keyboard.press("Meta+Enter");
+  await page.keyboard.press("ControlOrMeta+Enter");
+  // Wait for the server action to complete before the caller reloads.
+  await page.waitForLoadState("networkidle");
 }
 
 test.describe("Comment regression #86ex792ze (F1-F3)", () => {
