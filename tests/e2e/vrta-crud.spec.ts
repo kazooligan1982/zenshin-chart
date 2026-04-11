@@ -1,6 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 import { uniqueTitle } from "./helpers/test-data";
 
+async function waitForInputWithValue(page: Page, text: string, timeout = 5000) {
+  await page.waitForFunction(
+    (t) =>
+      Array.from(document.querySelectorAll("input, textarea")).some(
+        (el) => (el as HTMLInputElement | HTMLTextAreaElement).value === t
+      ),
+    text,
+    { timeout }
+  );
+}
+
 /**
  * Core VRTA CRUD coverage. Each test creates its own chart so the suite is
  * order-independent. Charts are tagged with [E2E] for easy cleanup.
@@ -138,28 +149,29 @@ test.describe("Tension & Action CRUD (D1, E1)", () => {
     // Add Tension. The placeholder lives in editor.tensionGapPlaceholder.
     const tensionTitle = `tension-${Date.now()}`;
     const tensionInput = page
-      .getByPlaceholder(/VisionとRealityのギャップ|テンションのタイトル/)
+      .getByPlaceholder(/Tensionを追加|VisionとRealityのギャップ/)
       .first();
     await tensionInput.fill(tensionTitle);
     await tensionInput.press("Enter");
-    await expect(page.getByText(tensionTitle)).toBeVisible();
+    // Tension title lands in an editable textbox — match on the live value.
+    await waitForInputWithValue(page, tensionTitle);
+    // Wait for the optimistic "temp-xxx" id to be replaced by a real UUID
+    // before adding an action (otherwise the server rejects it with
+    // "invalid input syntax for type uuid: temp-...").
+    await page.waitForLoadState("networkidle");
 
-    // Add Action under the tension. Placeholder: "Actionを記述..." or
-    // the link "＋ このTensionにActionを追加".
+    // Add Action under the tension. The add-action input is itself a textbox
+    // (placeholder "＋ このTensionにActionを追加") — no link to click first.
     const actionTitle = `action-${Date.now()}`;
-    const addActionLink = page.getByText(/このTensionにActionを追加/).first();
-    if (await addActionLink.isVisible().catch(() => false)) {
-      await addActionLink.click();
-    }
     const actionInput = page
-      .getByPlaceholder(/Actionを記述|アクションを追加/)
+      .getByPlaceholder(/このTensionにActionを追加|Actionを記述/)
       .first();
     await actionInput.fill(actionTitle);
     await actionInput.press("Enter");
 
-    await expect(page.getByText(actionTitle)).toBeVisible();
+    await waitForInputWithValue(page, actionTitle);
     await page.reload();
-    await expect(page.getByText(actionTitle)).toBeVisible();
-    await expect(page.getByText(tensionTitle)).toBeVisible();
+    await waitForInputWithValue(page, actionTitle);
+    await waitForInputWithValue(page, tensionTitle);
   });
 });
