@@ -158,7 +158,7 @@ export function ChartCard({ chart }: ChartCardProps) {
               className={cn(
                 "h-8 w-8 relative z-[102] transition-all",
                 isLocked
-                  ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                  ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                   : "text-gray-600 hover:text-gray-700 hover:bg-gray-50",
                 isPressing ? "scale-95 bg-gray-100 dark:bg-gray-800" : ""
               )}

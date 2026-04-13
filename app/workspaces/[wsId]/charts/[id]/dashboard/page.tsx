@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -236,6 +236,14 @@ function SnapshotMoreMenu({
 }
 
 export default function SnapshotsPage() {
+  return (
+    <Suspense>
+      <SnapshotsPageContent />
+    </Suspense>
+  );
+}
+
+function SnapshotsPageContent() {
   const t = useTranslations("snapshot");
   const tCommon = useTranslations("common");
   const tDashboard = useTranslations("dashboard");
