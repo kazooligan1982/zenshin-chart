@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+import { Suspense } from "react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import {
@@ -51,13 +52,15 @@ export default async function DashboardPage({
       </div>
 
       {/* コンテキストバー（sticky） */}
-      <DashboardContextBar
-        chartTree={chartTree}
-        selectedChartId={selectedChartId}
-        period={period}
-        from={from}
-        to={to}
-      />
+      <Suspense fallback={null}>
+        <DashboardContextBar
+          chartTree={chartTree}
+          selectedChartId={selectedChartId}
+          period={period}
+          from={from}
+          to={to}
+        />
+      </Suspense>
 
       {/* ファーストビュー: スコア + 推移グラフ 横並び */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">

@@ -50,7 +50,7 @@ export function ChartCard({ chart, isMaster = false, wsId }: { chart: ChartWithM
     : "bg-zenshin-cream/50 border-zenshin-navy/6 hover:bg-white";
 
   return (
-    <div className={`group relative rounded-xl border p-4 h-full hover:shadow-md hover:border-zenshin-orange/30 hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col ${bgClass}`}>
+    <div className={`group relative rounded-xl border p-4 h-full hover:shadow-md hover:border-zenshin-teal/30 hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col ${bgClass}`}>
       <Link href={chartHref} className="flex flex-col flex-1 min-h-0 min-w-0">
         <div className="flex items-start justify-between mb-1">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -62,7 +62,7 @@ export function ChartCard({ chart, isMaster = false, wsId }: { chart: ChartWithM
         </div>
 
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <h4 className={`font-bold text-zenshin-navy leading-snug line-clamp-2 group-hover:text-zenshin-orange transition-colors flex-1 min-w-0 ${isMaster ? "text-base" : "text-sm"}`}>
+          <h4 className={`font-bold text-zenshin-navy leading-snug line-clamp-2 group-hover:text-zenshin-teal transition-colors flex-1 min-w-0 ${isMaster ? "text-base" : "text-sm"}`}>
             {chart.title}
           </h4>
           {chart.status === "completed" && (
