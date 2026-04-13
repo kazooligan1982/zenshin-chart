@@ -3,7 +3,7 @@
 // Usage: npx tsx autofix.ts [--dry-run] [--report ./results/analysis-report-xxx.json]
 
 import * as fs from "fs/promises";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
 import type { AnalysisReport, PageAnalysis } from "./analyze";
 
 import { config as dotenvConfig } from "dotenv";
@@ -42,16 +42,38 @@ async function createGitHubIssue(analysis: PageAnalysis, dryRun: boolean): Promi
   ].join("\n");
 
   const title = `[e2e-vision] ${analysis.page}[${analysis.viewport}]: ${analysis.summary}`;
+  const titlePrefix = `[e2e-vision] ${analysis.page}[${analysis.viewport}]`;
 
   if (dryRun) {
     console.log(`    [DRY RUN] Would create issue: ${title}`);
     return "dry-run";
   }
 
+  // Check for existing issue with same page+viewport prefix
   try {
-    const result = execSync(
-      `gh issue create --repo ${CONFIG.githubRepo} --title "${title.replace(/"/g, '\\"')}" --body "${body.replace(/"/g, '\\"')}" --label "e2e-vision,bug"`,
+    const existing = execFileSync(
+      "gh",
+      ["issue", "list", "--repo", CONFIG.githubRepo, "--label", "e2e-vision", "--search", titlePrefix, "--json", "title", "--limit", "5"],
       { encoding: "utf-8", cwd: CONFIG.repoPath }
+    );
+    const existingIssues = JSON.parse(existing) as Array<{ title: string }>;
+    if (existingIssues.some((i) => i.title.startsWith(titlePrefix))) {
+      console.log(`    Skipped (existing issue found for ${titlePrefix})`);
+      return "existing";
+    }
+  } catch {}
+
+  try {
+    const result = execFileSync(
+      "gh",
+      [
+        "issue", "create",
+        "--repo", CONFIG.githubRepo,
+        "--title", title.slice(0, 256),
+        "--body-file", "-",
+        "--label", "e2e-vision,bug",
+      ],
+      { encoding: "utf-8", cwd: CONFIG.repoPath, input: body }
     );
     const issueUrl = result.trim();
     console.log(`    Issue created: ${issueUrl}`);
@@ -95,26 +117,29 @@ Related issue: ${issueUrl}`;
 
   console.log(`    Running Claude Code CLI (${fixableIssues.length} issues)...`);
   try {
-    execSync(`git checkout -b ${branchName}`, { cwd: CONFIG.repoPath, stdio: "pipe" });
-    execSync(
-      `claude --print --allowedTools "${CONFIG.allowedTools}" "${prompt.replace(/"/g, '\\"')}"`,
-      { cwd: CONFIG.repoPath, stdio: "inherit", timeout: 300000 }
+    execFileSync("git", ["checkout", "-b", branchName], { cwd: CONFIG.repoPath, stdio: "pipe" });
+    execFileSync(
+      "claude",
+      ["--print", "--allowedTools", CONFIG.allowedTools],
+      { cwd: CONFIG.repoPath, stdio: ["pipe", "inherit", "inherit"], input: prompt, timeout: 600000 }
     );
 
     // Create PR
     const prTitle = `[e2e-vision] Auto-fix: ${analysis.page} [${analysis.viewport}]`;
-    execSync(
-      `gh pr create --repo ${CONFIG.githubRepo} --title "${prTitle}" --body "Automated fix by e2e-vision pipeline.\n\nCloses ${issueUrl}" --base develop`,
-      { cwd: CONFIG.repoPath, stdio: "inherit" }
+    const prBody = `Automated fix by e2e-vision pipeline.\n\nCloses ${issueUrl}`;
+    execFileSync(
+      "gh",
+      ["pr", "create", "--repo", CONFIG.githubRepo, "--title", prTitle, "--body-file", "-", "--base", "develop"],
+      { cwd: CONFIG.repoPath, stdio: ["pipe", "inherit", "inherit"], input: prBody }
     );
 
     // Return to develop
-    execSync(`git checkout develop`, { cwd: CONFIG.repoPath, stdio: "pipe" });
+    execFileSync("git", ["checkout", "develop"], { cwd: CONFIG.repoPath, stdio: "pipe" });
     console.log(`    PR created for ${branchName}`);
     return true;
   } catch (e) {
     console.error(`    Autofix failed:`, (e as Error).message);
-    try { execSync(`git checkout develop`, { cwd: CONFIG.repoPath, stdio: "pipe" }); } catch {}
+    try { execFileSync("git", ["checkout", "develop"], { cwd: CONFIG.repoPath, stdio: "pipe" }); } catch {}
     return false;
   }
 }
@@ -165,25 +190,25 @@ async function main() {
     return;
   }
 
-  let fixCount = 0;
+  let fixAttempts = 0;
+  let fixSuccesses = 0;
   let issueCount = 0;
 
   for (const analysis of pagesWithIssues) {
-    if (fixCount >= CONFIG.maxAutofix) {
-      console.log(`  Max autofix (${CONFIG.maxAutofix}) reached. Remaining as Issues only.`);
-    }
-
     console.log(`\n  ${analysis.page} [${analysis.viewport}] — Score: ${analysis.overallScore}/100`);
     const issueUrl = await createGitHubIssue(analysis, dryRun);
     issueCount++;
 
-    if (fixCount < CONFIG.maxAutofix) {
+    if (fixAttempts < CONFIG.maxAutofix) {
+      fixAttempts++;
       const fixed = await runAutofix(analysis, issueUrl, dryRun);
-      if (fixed) fixCount++;
+      if (fixed) fixSuccesses++;
+    } else {
+      console.log(`    Skipped autofix (max ${CONFIG.maxAutofix} attempts reached)`);
     }
   }
 
-  console.log(`\n  Summary: ${issueCount} issues, ${fixCount} PRs ${dryRun ? "(dry run)" : ""}\n`);
+  console.log(`\n  Summary: ${issueCount} issues, ${fixSuccesses}/${fixAttempts} PRs ${dryRun ? "(dry run)" : ""}\n`);
 }
 
 main().catch((e) => { console.error("Fatal:", e); process.exit(1); });
