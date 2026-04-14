@@ -31,6 +31,7 @@ export default function GlobalError({
             >
               Try again
             </button>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               style={{ padding: "8px 16px", fontSize: 14, fontWeight: 500, borderRadius: 6, border: "1px solid #15466533", color: "#154665", textDecoration: "none", cursor: "pointer" }}
