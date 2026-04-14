@@ -68,6 +68,7 @@ export async function getOrCreateWorkspace(): Promise<string> {
     .insert({
       name: "マイワークスペース",
       owner_id: user.id,
+      is_personal: true,
     })
     .select()
     .single();

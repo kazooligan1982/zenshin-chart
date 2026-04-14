@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { isDefaultWorkspaceName } from "@/lib/workspace-utils";
+import { createClient } from "@/lib/supabase/server";
+import { isPersonalWorkspace } from "@/lib/workspace-utils";
 
 export async function updateWorkspaceName(wsId: string, name: string) {
   const trimmed = name.trim();
@@ -16,13 +16,13 @@ export async function updateWorkspaceName(wsId: string, name: string) {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("owner_id, name")
+    .select("owner_id, is_personal, name")
     .eq("id", wsId)
     .single();
   if (!workspace || workspace.owner_id !== user.id) {
     throw new Error("Forbidden");
   }
-  if (isDefaultWorkspaceName(workspace.name)) {
+  if (isPersonalWorkspace(workspace)) {
     throw new Error("Default workspace cannot be renamed");
   }
 
@@ -43,60 +43,40 @@ export async function deleteWorkspace(wsId: string) {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("owner_id, name")
+    .select("owner_id, is_personal, name")
     .eq("id", wsId)
     .single();
   if (!workspace || workspace.owner_id !== user.id) {
     throw new Error("Forbidden");
   }
-  if (isDefaultWorkspaceName(workspace.name)) {
+  if (isPersonalWorkspace(workspace)) {
     throw new Error("Default workspace cannot be deleted");
   }
 
-  const serviceClient = createServiceRoleClient();
-  const errors: string[] = [];
+  // Use authenticated client — RLS allows owner to delete their own workspace.
+  // Cascade rules handle cleanup:
+  //   CASCADE: workspace_members, workspace_invitation_requests,
+  //            workspace_slack_settings, chart_proposals
+  //   SET NULL: charts.workspace_id — must delete charts explicitly first
 
-  // Helper: delete from table, log errors but continue
-  async function safeDelete(table: string, column: string, value: string) {
-    const { error } = await serviceClient.from(table).delete().eq(column, value);
-    if (error) {
-      console.error(`[deleteWorkspace] ${table}: ${error.message}`);
-      errors.push(`${table}: ${error.message}`);
-    }
+  // 1. Delete charts (SET NULL FK — won't cascade, so delete explicitly)
+  const { error: chartsError } = await supabase
+    .from("charts")
+    .delete()
+    .eq("workspace_id", wsId);
+  if (chartsError) {
+    console.error("[deleteWorkspace] charts:", chartsError);
+    throw new Error(`Failed to delete charts: ${chartsError.message}`);
   }
 
-  // Delete in dependency order (children first)
-  // 1. Tables referencing workspace_id (explicit delete for safety)
-  await safeDelete("chart_proposals", "workspace_id", wsId);
-  await safeDelete("workspace_slack_settings", "workspace_id", wsId);
-  await safeDelete("workspace_invitation_requests", "workspace_id", wsId);
-  await safeDelete("momentum_scores", "workspace_id", wsId);
-
-  // 2. Charts (workspace_id is ON DELETE SET NULL — must delete explicitly)
-  //    Child tables (visions, realities, tensions, actions, snapshots, etc.) cascade from charts
-  await safeDelete("charts", "workspace_id", wsId);
-
-  // 3. Members (has CASCADE but explicit for clarity)
-  await safeDelete("workspace_members", "workspace_id", wsId);
-
-  // 4. Clear last_workspace_id references in user_preferences
-  await serviceClient
-    .from("user_preferences")
-    .update({ last_workspace_id: null })
-    .eq("last_workspace_id", wsId);
-
-  // 5. Delete the workspace itself
-  const { error } = await serviceClient
+  // 2. Delete workspace — cascades to members, invitations, slack settings, proposals
+  const { error } = await supabase
     .from("workspaces")
     .delete()
     .eq("id", wsId);
 
   if (error) {
-    console.error("[deleteWorkspace] Final delete failed:", error);
+    console.error("[deleteWorkspace] workspace:", error);
     throw new Error(`Failed to delete workspace: ${error.message}`);
-  }
-
-  if (errors.length > 0) {
-    console.warn("[deleteWorkspace] Completed with warnings:", errors);
   }
 }
