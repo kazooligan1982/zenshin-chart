@@ -48,31 +48,48 @@ export async function deleteWorkspace(wsId: string) {
 
   const serviceClient = createServiceRoleClient();
 
-  // Delete related data in order
+  // Delete related data in dependency order (children first)
+  // 1. Tables referencing workspace_id without ON DELETE CASCADE
+  await serviceClient
+    .from("chart_proposals")
+    .delete()
+    .eq("workspace_id", wsId);
+
   await serviceClient
     .from("workspace_slack_settings")
     .delete()
     .eq("workspace_id", wsId);
 
+  // 2. Invitation requests (correct table name; has CASCADE but explicit is safer)
   await serviceClient
-    .from("workspace_invitations")
+    .from("workspace_invitation_requests")
     .delete()
     .eq("workspace_id", wsId);
 
-  // Delete all charts in the workspace
+  // 3. Momentum scores referencing workspace_id
+  await serviceClient
+    .from("momentum_scores")
+    .delete()
+    .eq("workspace_id", wsId);
+
+  // 4. Charts (workspace_id is ON DELETE SET NULL, so must delete explicitly)
+  //    Child tables (visions, realities, tensions, actions, etc.) cascade from charts
   await serviceClient.from("charts").delete().eq("workspace_id", wsId);
 
-  // Delete members
+  // 5. Members (has CASCADE but explicit for clarity)
   await serviceClient
     .from("workspace_members")
     .delete()
     .eq("workspace_id", wsId);
 
-  // Delete the workspace itself
+  // 6. Delete the workspace itself
   const { error } = await serviceClient
     .from("workspaces")
     .delete()
     .eq("id", wsId);
 
-  if (error) throw new Error("Failed to delete workspace");
+  if (error) {
+    console.error("[deleteWorkspace] Failed:", error);
+    throw new Error("Failed to delete workspace");
+  }
 }
