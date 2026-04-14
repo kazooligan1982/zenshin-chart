@@ -5,6 +5,7 @@
     "delete": "Delete",
     "edit": "Edit",
     "create": "Create",
+    "creating": "Creating...",
     "close": "Close",
     "confirm": "Confirm",
     "loading": "Loading...",

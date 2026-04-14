@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Plus,
   Check,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -109,10 +110,12 @@ export function Sidebar(props?: SidebarProps) {
 
   const router = useRouter();
   const [isCreatingWs, setIsCreatingWs] = useState(false);
+  const [isSavingWs, setIsSavingWs] = useState(false);
   const [newWsName, setNewWsName] = useState("");
 
   const handleCreateWorkspace = async () => {
-    if (!newWsName.trim()) return;
+    if (!newWsName.trim() || isSavingWs) return;
+    setIsSavingWs(true);
     try {
       const res = await fetch("/api/workspaces", {
         method: "POST",
@@ -127,6 +130,8 @@ export function Sidebar(props?: SidebarProps) {
       router.refresh();
     } catch (error) {
       console.error("Failed to create workspace:", error);
+    } finally {
+      setIsSavingWs(false);
     }
   };
 
@@ -341,17 +346,19 @@ export function Sidebar(props?: SidebarProps) {
                 <div className="flex gap-1.5">
                   <button
                     onClick={handleCreateWorkspace}
-                    disabled={!newWsName.trim()}
-                    className="flex-1 px-2 py-1 text-xs font-medium text-white bg-zenshin-teal rounded-md hover:bg-zenshin-teal/90 disabled:opacity-40"
+                    disabled={!newWsName.trim() || isSavingWs}
+                    className="flex-1 px-2 py-1 text-xs font-medium text-white bg-zenshin-teal rounded-md hover:bg-zenshin-teal/90 disabled:opacity-40 flex items-center justify-center gap-1"
                   >
-                    {tc("create")}
+                    {isSavingWs && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isSavingWs ? tc("creating") : tc("create")}
                   </button>
                   <button
                     onClick={() => {
                       setIsCreatingWs(false);
                       setNewWsName("");
                     }}
-                    className="flex-1 px-2 py-1 text-xs font-medium text-zenshin-navy/60 bg-zenshin-navy/5 rounded-md hover:bg-zenshin-navy/10"
+                    disabled={isSavingWs}
+                    className="flex-1 px-2 py-1 text-xs font-medium text-zenshin-navy/60 bg-zenshin-navy/5 rounded-md hover:bg-zenshin-navy/10 disabled:opacity-40"
                   >
                     {tc("cancel")}
                   </button>
