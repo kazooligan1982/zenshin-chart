@@ -3,8 +3,15 @@ import { getTranslations } from "next-intl/server";
 import { SignupForm } from "@/components/auth/signup-form";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
-export default async function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ redirect?: string }>;
+}) {
   const t = await getTranslations("auth");
+  const params = await searchParams;
+  const redirectTo = params?.redirect || "/charts";
+
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -18,7 +25,7 @@ export default async function SignupPage() {
         <p className="text-muted-foreground mt-2">{t("signup")}</p>
       </div>
 
-      <OAuthButtons />
+      <OAuthButtons redirectTo={redirectTo} />
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
@@ -29,11 +36,14 @@ export default async function SignupPage() {
         </div>
       </div>
 
-      <SignupForm />
+      <SignupForm redirectTo={redirectTo} />
 
       <p className="text-center text-sm text-muted-foreground">
         {t("hasAccount")}{" "}
-        <Link href="/login" className="text-zenshin-teal hover:text-zenshin-teal/80 hover:underline font-medium">
+        <Link
+          href={`/login${params?.redirect ? `?redirect=${params.redirect}` : ""}`}
+          className="text-zenshin-teal hover:text-zenshin-teal/80 hover:underline font-medium"
+        >
           {t("loginLink")}
         </Link>
       </p>
