@@ -221,6 +221,7 @@
     "description": "ワークスペースの設定を管理します",
     "workspaceName": "ワークスペース名",
     "workspaceNameDescription": "すべてのメンバーに表示されるワークスペースの名前です。",
+    "defaultWorkspaceNote": "マイワークスペースの名前は変更できません。",
     "rename": "名前を変更",
     "renaming": "変更中...",
     "renameSuccess": "ワークスペース名を更新しました",

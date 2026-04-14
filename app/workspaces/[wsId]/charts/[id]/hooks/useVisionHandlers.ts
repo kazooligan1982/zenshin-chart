@@ -1,4 +1,5 @@
 import type { VisionItem, Area } from "@/types/chart";
+import type { MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ export function useVisionHandlers({
   newVisionInput,
   chart,
   router,
+  optimisticOpsRef,
 }: {
   chartId: string;
   visions: VisionItem[];
@@ -28,6 +30,7 @@ export function useVisionHandlers({
   newVisionInput: { setValue: (val: string) => void };
   chart: { areas: Area[] };
   router: ReturnType<typeof useRouter>;
+  optimisticOpsRef?: MutableRefObject<number>;
 }) {
   const tt = useTranslations("toast");
   const tTags = useTranslations("tags");
@@ -54,6 +57,7 @@ export function useVisionHandlers({
     setVisions((prev) => [...prev, optimisticVision]);
     if (areaIdOverride === undefined) newVisionInput.setValue("");
 
+    if (optimisticOpsRef) optimisticOpsRef.current++;
     try {
       const newVision = await addVision(chartId, contentToAdd, areaId);
       if (newVision) {
@@ -72,6 +76,7 @@ export function useVisionHandlers({
       setVisions((prev) => prev.filter((v) => v.id !== tempId));
       newVisionInput.setValue(contentToAdd);
     } finally {
+      if (optimisticOpsRef) optimisticOpsRef.current--;
       setIsSubmittingVision(false);
     }
   };
@@ -101,6 +106,7 @@ export function useVisionHandlers({
         )
       );
       toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
+      if (optimisticOpsRef) optimisticOpsRef.current++;
       try {
         const success = await updateVisionItem(id, chartId, field, value);
         if (!success) {
@@ -108,11 +114,12 @@ export function useVisionHandlers({
           toast.error(tt("moveFailed"), { duration: 5000 });
           console.error("[handleUpdateVision] 更新失敗");
         }
-        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } catch (error) {
         console.error("[handleUpdateVision] エラー:", error);
         setVisions(previousState);
         toast.error(tt("moveFailed"), { duration: 5000 });
+      } finally {
+        if (optimisticOpsRef) optimisticOpsRef.current--;
       }
       return;
     }

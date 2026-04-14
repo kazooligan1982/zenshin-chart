@@ -234,6 +234,8 @@ export function ProjectEditor({
   const [visions, setVisions] = useState<VisionItem[]>(chart.visions ?? []);
   const [realities, setRealities] = useState<RealityItem[]>(chart.realities ?? []);
   const [tensions, setTensions] = useState<Tension[]>(chart.tensions);
+  // 楽観的操作中のカウンター（0より大きい間はサーバーデータでstateを上書きしない）
+  const optimisticOpsRef = useRef(0);
   const [breadcrumbs] = useState<BreadcrumbItem[]>(chart.breadcrumbs || []);
   const [hoveredSection, setHoveredSection] = useState<
     "vision" | "reality" | "tension" | null
@@ -320,6 +322,7 @@ export function ProjectEditor({
     newVisionInput,
     chart,
     router,
+    optimisticOpsRef,
   });
 
   const { handleAddReality, handleUpdateReality, handleDeleteReality } = useRealityHandlers({
@@ -334,6 +337,7 @@ export function ProjectEditor({
     newRealityInput,
     chart,
     router,
+    optimisticOpsRef,
   });
 
   const { handleAddTension, handleUpdateTension, handleDeleteTension, handleMoveTensionArea, toggleVisionRealityLink, handleOptimisticMove } = useTensionHandlers({
@@ -657,7 +661,8 @@ export function ProjectEditor({
   // Chartデータが更新されたら状態を更新
   // initialChartが変更されたら（router.refresh()後）状態を更新
   useEffect(() => {
-    // ※ _pendingScrollRestore はユーザー操作時点で保存済み（ここでは上書きしない）
+    // 楽観的操作中はサーバーデータで上書きしない（フラッシュバック防止）
+    if (optimisticOpsRef.current > 0) return;
 
     // areasがundefinedの場合に空配列を設定
     const chartWithAreas: Chart = {

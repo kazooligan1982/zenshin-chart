@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { SettingsNav } from "../settings-nav";
 import { WorkspaceGeneralSettings } from "./workspace-general-settings";
+import { isDefaultWorkspaceName } from "@/lib/workspace-utils";
 
 export default async function GeneralSettingsPage({
   params,
@@ -24,6 +25,7 @@ export default async function GeneralSettingsPage({
   if (!workspace) redirect("/");
 
   const isOwner = workspace.owner_id === user.id;
+  const isDefault = isOwner && isDefaultWorkspaceName(workspace.name);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-6">
@@ -32,6 +34,7 @@ export default async function GeneralSettingsPage({
         wsId={wsId}
         workspaceName={workspace.name}
         isOwner={isOwner}
+        isDefaultWorkspace={isDefault}
       />
     </div>
   );

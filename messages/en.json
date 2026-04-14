@@ -221,6 +221,7 @@
     "description": "Manage your workspace settings",
     "workspaceName": "Workspace name",
     "workspaceNameDescription": "The name of your workspace visible to all members.",
+    "defaultWorkspaceNote": "The default workspace cannot be renamed.",
     "rename": "Rename",
     "renaming": "Renaming...",
     "renameSuccess": "Workspace name updated",

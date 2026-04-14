@@ -1,4 +1,5 @@
 import type { RealityItem, Area } from "@/types/chart";
+import type { MutableRefObject } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ export function useRealityHandlers({
   newRealityInput,
   chart,
   router,
+  optimisticOpsRef,
 }: {
   chartId: string;
   realities: RealityItem[];
@@ -28,6 +30,7 @@ export function useRealityHandlers({
   newRealityInput: { setValue: (val: string) => void };
   chart: { areas: Area[] };
   router: ReturnType<typeof useRouter>;
+  optimisticOpsRef?: MutableRefObject<number>;
 }) {
   const tt = useTranslations("toast");
   const tTags = useTranslations("tags");
@@ -54,6 +57,7 @@ export function useRealityHandlers({
     setRealities((prev) => [...prev, optimisticReality]);
     if (areaIdOverride === undefined) newRealityInput.setValue("");
 
+    if (optimisticOpsRef) optimisticOpsRef.current++;
     try {
       const newReality = await addReality(chartId, contentToAdd, areaId);
       if (newReality) {
@@ -72,6 +76,7 @@ export function useRealityHandlers({
       setRealities((prev) => prev.filter((r) => r.id !== tempId));
       newRealityInput.setValue(contentToAdd);
     } finally {
+      if (optimisticOpsRef) optimisticOpsRef.current--;
       setIsSubmittingReality(false);
     }
   };
@@ -101,6 +106,7 @@ export function useRealityHandlers({
       toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
     }
 
+    if (field === "areaId" && optimisticOpsRef) optimisticOpsRef.current++;
     try {
       const success = await updateRealityItem(id, chartId, field, value);
       if (!success) {
@@ -113,6 +119,8 @@ export function useRealityHandlers({
       setRealities(originalRealities);
       if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
       console.error("[handleUpdateReality] エラー:", error);
+    } finally {
+      if (field === "areaId" && optimisticOpsRef) optimisticOpsRef.current--;
     }
   };
 
