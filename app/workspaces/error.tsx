@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-export default function Error({
+
+export default function WorkspacesError({
   error,
   reset,
 }: {
@@ -9,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[app/error]", error);
+    console.error("[workspaces/error]", error);
   }, [error]);
 
   return (

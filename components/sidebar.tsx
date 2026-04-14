@@ -124,13 +124,10 @@ export function Sidebar(props?: SidebarProps) {
       });
       if (!res.ok) throw new Error(tt("createFailed"));
       const workspace = await res.json();
-      setIsCreatingWs(false);
-      setNewWsName("");
-      router.push(`/workspaces/${workspace.id}/charts`);
-      router.refresh();
+      // Full page navigation to properly load the new workspace layout
+      window.location.href = `/workspaces/${workspace.id}/charts`;
     } catch (error) {
       console.error("Failed to create workspace:", error);
-    } finally {
       setIsSavingWs(false);
     }
   };
@@ -171,10 +168,14 @@ export function Sidebar(props?: SidebarProps) {
   useEffect(() => {
     if (props?.currentWorkspace && props?.workspaces) return;
     async function loadWorkspaces() {
-      const current = await getCurrentWorkspace();
-      const all = await getUserWorkspaces();
-      setFetchedWorkspace(current);
-      setFetchedAllWorkspaces(all);
+      try {
+        const current = await getCurrentWorkspace();
+        const all = await getUserWorkspaces();
+        setFetchedWorkspace(current);
+        setFetchedAllWorkspaces(all);
+      } catch (error) {
+        console.error("[Sidebar] Failed to load workspaces:", error);
+      }
     }
     loadWorkspaces();
   }, [props?.currentWorkspace, props?.workspaces]);

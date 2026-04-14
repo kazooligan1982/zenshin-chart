@@ -18,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { updateWorkspaceName, deleteWorkspace } from "./actions";
+import { updateWorkspaceName } from "./actions";
 
 type Props = {
   wsId: string;
@@ -60,7 +60,17 @@ export function WorkspaceGeneralSettings({
   async function handleDelete() {
     setIsDeleting(true);
     try {
-      await deleteWorkspace(wsId);
+      // Use fetch instead of server action to avoid automatic route revalidation
+      // which would cause the workspace layout to redirect mid-deletion
+      const res = await fetch("/api/workspaces", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wsId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete workspace");
+      }
       // Full page navigation to avoid re-rendering deleted workspace's layout
       window.location.href = "/";
       return;
