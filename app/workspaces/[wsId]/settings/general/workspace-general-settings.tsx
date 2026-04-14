@@ -61,7 +61,9 @@ export function WorkspaceGeneralSettings({
     setIsDeleting(true);
     try {
       await deleteWorkspace(wsId);
-      router.push("/");
+      // Full page navigation to avoid re-rendering deleted workspace's layout
+      window.location.href = "/";
+      return;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       toast.error(`${t("deleteFailed")}${msg ? `: ${msg}` : ""}`, { duration: 10000 });
