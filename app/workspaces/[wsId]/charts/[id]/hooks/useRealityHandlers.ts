@@ -101,11 +101,18 @@ export function useRealityHandlers({
       toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
     }
 
-    const success = await updateRealityItem(id, chartId, field, value);
-    if (!success) {
-      // 失敗: ロールバック
+    try {
+      const success = await updateRealityItem(id, chartId, field, value);
+      if (!success) {
+        // 失敗: ロールバック
+        setRealities(originalRealities);
+        if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
+        console.error("[handleUpdateReality] 更新失敗 - ロールバック");
+      }
+    } catch (error) {
       setRealities(originalRealities);
-      console.error("[handleUpdateReality] 更新失敗 - ロールバック");
+      if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
+      console.error("[handleUpdateReality] エラー:", error);
     }
   };
 

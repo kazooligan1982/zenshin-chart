@@ -91,26 +91,28 @@ export function useVisionHandlers({
     }
     if (field === "areaId") {
       const previousState = visions;
+      const areaName = value
+        ? chart.areas.find((area: Area) => area.id === value)?.name
+        : tTags("untagged");
+      // 楽観的に即座にタグ位置を変更（UIは即反映）
       setVisions((prev) =>
         prev.map((vision) =>
           vision.id === id ? { ...vision, area_id: value as string | null } : vision
         )
       );
+      toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
       try {
         const success = await updateVisionItem(id, chartId, field, value);
-        if (success) {
-          const areaName = value
-            ? chart.areas.find((area: Area) => area.id === value)?.name
-            : "未分類";
-          toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
-          router.refresh();
-        } else {
+        if (!success) {
           setVisions(previousState);
+          toast.error(tt("moveFailed"), { duration: 5000 });
           console.error("[handleUpdateVision] 更新失敗");
         }
+        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } catch (error) {
         console.error("[handleUpdateVision] エラー:", error);
         setVisions(previousState);
+        toast.error(tt("moveFailed"), { duration: 5000 });
       }
       return;
     }

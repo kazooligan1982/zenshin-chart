@@ -100,7 +100,6 @@ export function useTensionHandlers({
                 onClick: async () => {
                   setTensions(previousState);
                   await updateTensionItem(tensionId, chartId, "status", prevStatus);
-                  router.refresh();
                 },
               },
             });
@@ -112,13 +111,12 @@ export function useTensionHandlers({
                 onClick: async () => {
                   setTensions(previousState);
                   await updateTensionItem(tensionId, chartId, "status", prevStatus);
-                  router.refresh();
                 },
               },
             });
           }
         }
-        router.refresh();
+        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } else {
         setTensions(previousState);
         console.error("[handleUpdateTension] 更新失敗");
@@ -152,11 +150,10 @@ export function useTensionHandlers({
             onClick: async () => {
               setTensions(previousState);
               await updateTensionArea(tensionId, prevAreaId ?? null, chartId, true);
-              router.refresh();
             },
           },
         });
-        router.refresh();
+        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } else {
         setTensions(previousState);
         toast.error(tt("moveFailed"), { duration: 5000 });
