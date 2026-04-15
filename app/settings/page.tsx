@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Archive, FolderOpen } from "lucide-react";
-import { getArchivedCharts } from "@/app/charts/actions";
+import { getArchivedCharts } from "@/lib/charts-actions";
 
 export default async function SettingsPage() {
   const archivedCharts = await getArchivedCharts();

@@ -104,7 +104,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { archiveChart, restoreChart, deleteChart } from "@/app/charts/actions";
+import { archiveChart, restoreChart, deleteChart } from "@/lib/charts-actions";
 import { removeChartFromRecent } from "@/lib/recent-charts";
 import { updateChartStatusAction } from "./actions";
 import { useItemInput } from "@/hooks/use-item-input";

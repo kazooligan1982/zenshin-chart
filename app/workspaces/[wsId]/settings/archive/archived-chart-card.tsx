@@ -6,7 +6,7 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { restoreChart, deleteChart } from "@/app/charts/actions";
+import { restoreChart, deleteChart } from "@/lib/charts-actions";
 import { removeChartFromRecent } from "@/lib/recent-charts";
 import {
   AlertDialog,

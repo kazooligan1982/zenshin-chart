@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Archive, FolderOpen } from "lucide-react";
-import { getArchivedCharts } from "@/app/charts/actions";
+import { getArchivedCharts } from "@/lib/charts-actions";
 import { ArchivedChartCard } from "./archived-chart-card";
 import { SettingsNav } from "../settings-nav";
 
