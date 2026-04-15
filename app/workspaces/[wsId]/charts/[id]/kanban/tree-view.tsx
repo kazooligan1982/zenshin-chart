@@ -44,7 +44,7 @@ import {
 import {
   checkIncompleteTelescopeActions,
   updateActionStatus,
-} from "@/app/charts/[id]/actions";
+} from "@/app/workspaces/[wsId]/charts/[id]/actions";
 
 interface TreeNode {
   id: string;

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Target, Search, Zap, Play, GitBranch, ChevronRight } from "lucide-react";
-import { getItemRelations, type ItemRelation } from "@/app/charts/[id]/actions";
+import { getItemRelations, type ItemRelation } from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import type { ItemType } from "./ModalHeader";
 
 // Vision: Target, Reality: Search, Tension: Zap, Action: Play

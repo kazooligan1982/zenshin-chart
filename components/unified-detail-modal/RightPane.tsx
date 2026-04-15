@@ -12,7 +12,7 @@ import {
   fetchActionComments,
   fetchVisionComments,
   fetchRealityComments,
-} from "@/app/charts/[id]/actions";
+} from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import { linkifyUrls } from "@/lib/utils";
 import type { ItemType } from "./ModalHeader";
 import type { TimelineComment } from "@/types/database";

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { ClickUpIcon, NotionIcon, JiraIcon, LinearIcon, AsanaIcon } from "@/components/icons/service-icons";
 import { toast } from "sonner";
-import { getItemLinks, addItemLink, deleteItemLink, type ItemLink } from "@/app/charts/[id]/actions";
+import { getItemLinks, addItemLink, deleteItemLink, type ItemLink } from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import type { ItemType } from "./ModalHeader";
 
 interface LinkedResourcesProps {

@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { createComment, createRealityComment, createVisionComment } from "@/app/charts/[id]/actions";
+import { createComment, createRealityComment, createVisionComment } from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import {
   searchWorkspaceItems,
   searchWorkspaceMembers,

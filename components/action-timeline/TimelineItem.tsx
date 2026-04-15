@@ -22,7 +22,7 @@ import {
   deleteVisionComment,
   updateRealityComment,
   deleteRealityComment,
-} from "@/app/charts/[id]/actions"
+} from "@/app/workspaces/[wsId]/charts/[id]/actions"
 import { linkifyUrls } from "@/lib/utils"
 import type { TimelineComment } from "@/types/database"
 

@@ -16,7 +16,7 @@ import {
   fetchActionComments,
   fetchRealityComments,
   fetchVisionComments,
-} from "@/app/charts/[id]/actions";
+} from "@/app/workspaces/[wsId]/charts/[id]/actions";
 
 interface ItemDetailPanelProps {
   isOpen: boolean;
