@@ -1,5 +1,7 @@
-import type { RealityItem, Area } from "@/types/chart";
+import type { RealityItem, Area, VisionItem, ActionPlan, Tension } from "@/types/chart";
 import type { MutableRefObject } from "react";
+
+type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -25,8 +27,8 @@ export function useRealityHandlers({
   selectedAreaId: string;
   isSubmittingReality: boolean;
   setIsSubmittingReality: React.Dispatch<React.SetStateAction<boolean>>;
-  pendingDeletions: Record<string, { type: string; item: any; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
-  setPendingDeletions: React.Dispatch<React.SetStateAction<any>>;
+  pendingDeletions: PendingDeletionMap;
+  setPendingDeletions: React.Dispatch<React.SetStateAction<PendingDeletionMap>>;
   newRealityInput: { setValue: (val: string) => void };
   chart: { areas: Area[] };
   router: ReturnType<typeof useRouter>;
@@ -148,7 +150,7 @@ export function useRealityHandlers({
         setRealities(originalRealities);
         toast.error(tt("deleteFailed"), { duration: 5000 });
       }
-      setPendingDeletions((prev: Record<string, any>) => {
+      setPendingDeletions((prev: PendingDeletionMap) => {
         const next = { ...prev };
         delete next[existingKey];
         return next;
@@ -156,7 +158,7 @@ export function useRealityHandlers({
     }, 15000);
 
     // 削除予約を保存
-    setPendingDeletions((prev: Record<string, any>) => ({
+    setPendingDeletions((prev: PendingDeletionMap) => ({
       ...prev,
       [existingKey]: {
         type: "reality",
@@ -172,7 +174,7 @@ export function useRealityHandlers({
         onClick: () => {
           clearTimeout(timeoutId);
           setRealities(originalRealities);
-          setPendingDeletions((prev: Record<string, any>) => {
+          setPendingDeletions((prev: PendingDeletionMap) => {
             const next = { ...prev };
             delete next[existingKey];
             return next;

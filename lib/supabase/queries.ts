@@ -16,7 +16,8 @@ import type {
 export async function getChartById(chartId: string): Promise<Chart | null> {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data: { user: _user } } = await supabase.auth.getUser();
 
     // Chart基本情報を取得
     const { data: chart, error: chartError } = await supabase
@@ -78,7 +79,7 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
     if (areasError) console.error("Error fetching areas:", areasError);
 
     // Tension関係を並列取得
-    const tensionIds = tensions?.map((t: any) => t.id) || [];
+    const tensionIds = tensions?.map((t: { id: string }) => t.id) || [];
     const [{ data: tensionVisions }, { data: tensionRealities }] =
       await Promise.all([
         supabase
@@ -93,7 +94,7 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
 
     // データを整形
     const visionMap = new Map(
-      (visions || []).map((v: any) => [
+      (visions || []).map((v: { id: string; content: string; created_at: string; updated_at: string; assignee: string | null; due_date: string | null; target_date: string | null; is_locked: boolean | null; area_id: string | null; vision_comments: { count: number }[]; description: string | null }) => [
         v.id,
         {
           id: v.id,
@@ -112,7 +113,7 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
     );
 
     const realityMap = new Map(
-      (realities || []).map((r: any) => [
+      (realities || []).map((r: { id: string; content: string; created_at: string; due_date: string | null; related_vision_id: string | null; area_id: string | null; is_locked: boolean | null; created_by: string | null; reality_comments: { count: number }[]; description: string | null }) => [
         r.id,
         {
           id: r.id,
@@ -131,13 +132,13 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
 
     const actionMap = new Map<string, ActionPlan[]>();
     const looseActions: ActionPlan[] = [];
-    (actions || []).forEach((a: any) => {
+    (actions || []).forEach((a: { id: string; title: string; due_date: string | null; assignee: string | null; status: string | null; has_sub_chart: boolean | null; sub_chart_id: string | null; child_chart_id: string | null; is_completed: boolean | null; description: string | null; area_id: string | null; action_comments: { count: number }[]; tension_id: string | null }) => {
       const action: ActionPlan = {
         id: a.id,
         title: a.title,
         dueDate: a.due_date || undefined,
         assignee: a.assignee || undefined,
-        status: a.status || null,
+        status: a.status as ActionPlan["status"] || null,
         hasSubChart: !!(a.has_sub_chart || a.child_chart_id), // child_chart_idがあればhasSubChartもtrue
         subChartId: a.sub_chart_id || undefined,
         childChartId: a.child_chart_id || undefined,
@@ -156,15 +157,15 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
       }
     });
 
-    const tensionsWithRelations: Tension[] = (tensions || []).map((t: any) => {
+    const tensionsWithRelations: Tension[] = (tensions || []).map((t: { id: string; title: string; description: string | null; status: string; area_id: string | null }) => {
       const visionIds =
         tensionVisions
-          ?.filter((tv: any) => tv.tension_id === t.id)
-          .map((tv: any) => tv.vision_id) || [];
+          ?.filter((tv: { tension_id: string; vision_id: string }) => tv.tension_id === t.id)
+          .map((tv: { tension_id: string; vision_id: string }) => tv.vision_id) || [];
       const realityIds =
         tensionRealities
-          ?.filter((tr: any) => tr.tension_id === t.id)
-          .map((tr: any) => tr.reality_id) || [];
+          ?.filter((tr: { tension_id: string; reality_id: string }) => tr.tension_id === t.id)
+          .map((tr: { tension_id: string; reality_id: string }) => tr.reality_id) || [];
 
       return {
         id: t.id,
@@ -185,7 +186,7 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
     ]);
 
     // Areasを整形
-    const areasList: Area[] = (areas || []).map((a: any) => ({
+    const areasList: Area[] = (areas || []).map((a: { id: string; name: string; color: string; sort_order: number; chart_id: string; created_at: string; updated_at: string }) => ({
       id: a.id,
       name: a.name,
       color: a.color,
@@ -198,10 +199,10 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
     return {
       id: chart.id,
       title: chart.title,
-      description: (chart as any).description || null,
-      due_date: (chart as any).due_date || null,
-      workspace_id: (chart as any).workspace_id ?? null,
-      status: ((chart as any).status as ChartStatus) || "active",
+      description: (chart as Record<string, unknown>).description as string | null || null,
+      due_date: (chart as Record<string, unknown>).due_date as string | null || null,
+      workspace_id: (chart as Record<string, unknown>).workspace_id as string | null ?? null,
+      status: ((chart as Record<string, unknown>).status as ChartStatus) || "active",
       visions: Array.from(visionMap.values()) as VisionItem[],
       realities: Array.from(realityMap.values()) as RealityItem[],
       tensions: tensionsWithRelations,
@@ -265,7 +266,8 @@ async function getBreadcrumbsFromSQL(
 }
 
 // Breadcrumbsを構築（親アクション情報を含む）- 後方互換性のため残す
-async function buildBreadcrumbsWithAction(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _buildBreadcrumbsWithAction(
   parentChartId: string | null,
   parentActionId: string | null | undefined,
   parentInfo: { parentChartId?: string; parentChartTitle?: string; parentActionId?: string; parentActionTitle?: string } | null
@@ -298,7 +300,8 @@ async function buildBreadcrumbsWithAction(
 // 注意: この関数は parent_chart_id を使用していましたが、現在のDBスキーマには存在しないため、
 // parent_action_id 経由で親チャートを取得する必要があります。
 // 実際には getBreadcrumbsFromSQL が使用されているため、この関数は使用されていません。
-async function buildBreadcrumbs(
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _buildBreadcrumbs(
   parentChartId: string | null,
   breadcrumbs: Array<{ id: string; title: string }> = []
 ): Promise<Array<{ id: string; title: string }>> {
@@ -338,7 +341,7 @@ export async function createVision(
     const user = await getAuthenticatedUser();
     const serverSupabase = await createClient();
     // IDはDBが自動生成するため、idフィールドは含めない
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       chart_id: chartId,
       content: content.trim(),
       user_id: user.id,
@@ -389,7 +392,7 @@ export async function updateVision(
 ): Promise<boolean> {
   try {
     const serverClient = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.content !== undefined) updateData.content = updates.content;
     if (updates.assignee !== undefined) updateData.assignee = updates.assignee;
     if (updates.dueDate !== undefined) {
@@ -481,7 +484,7 @@ export async function createReality(
     const user = await getAuthenticatedUser();
     const serverSupabase = await createClient();
     // IDはDBが自動生成するため、idフィールドは含めない
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       chart_id: chartId,
       content: content.trim(),
       user_id: user.id,
@@ -531,7 +534,7 @@ export async function updateReality(
 ): Promise<boolean> {
   try {
     const serverClient = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.content !== undefined) updateData.content = updates.content;
     if (updates.isLocked !== undefined) updateData.is_locked = updates.isLocked;
     if (updates.area_id !== undefined) updateData.area_id = updates.area_id;
@@ -634,7 +637,7 @@ export async function updateTension(
 ): Promise<boolean> {
   try {
     const serverClient = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.description !== undefined)
       updateData.description = updates.description;
@@ -804,7 +807,7 @@ export async function createAction(
       return { action: null, chartId: null };
     }
 
-    const insertData: any = {
+    const insertData: Record<string, unknown> = {
       chart_id: chartId,
       tension_id: tensionId,
       title,
@@ -850,11 +853,12 @@ export async function updateAction(
   actionId: string,
   tensionId: string | null,
   updates: Partial<ActionPlan>,
-  chartId?: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _chartId?: string
 ): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
     if (updates.assignee !== undefined) updateData.assignee = updates.assignee;
@@ -980,13 +984,13 @@ export async function updateChart(
 ): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.due_date !== undefined) {
       // Dateオブジェクトの場合はISO文字列に変換、nullの場合はそのまま
-      updateData.due_date = updates.due_date instanceof Date 
-        ? updates.due_date.toISOString().split('T')[0] 
+      updateData.due_date = updates.due_date instanceof Date
+        ? updates.due_date.toISOString().split('T')[0]
         : updates.due_date;
     }
 
@@ -1236,7 +1240,7 @@ export async function getChildChartProgress(
       return { total: 0, completed: 0, percentage: 0 };
     }
 
-    const tensionIds = tensions.map((t: any) => t.id);
+    const tensionIds = tensions.map((t: { id: string }) => t.id);
 
     // すべてのActionを取得
     const { data: actions } = await supabase
@@ -1253,8 +1257,8 @@ export async function getChildChartProgress(
     // 注意: より正確には、各Actionにstatusフィールドを追加する方が良いが、
     // 現在はTensionのstatusで判定
     const resolvedTensionIds = tensions
-      .filter((t: any) => t.status === "resolved")
-      .map((t: any) => t.id);
+      .filter((t: { id: string; status: string }) => t.status === "resolved")
+      .map((t: { id: string; status: string }) => t.id);
     
     const { data: completedActions } = await supabase
       .from("actions")
@@ -1340,7 +1344,7 @@ export async function updateArea(
 ): Promise<boolean> {
   try {
     const supabase = await createClient();
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name.trim();
     if (updates.color !== undefined) updateData.color = updates.color;
 
@@ -1430,7 +1434,7 @@ export async function getItemHistory(
       return [];
     }
 
-    return (data || []).map((item: any) => ({
+    return (data || []).map((item: { id: string; content: string; type: string; created_at: string; created_by: string | null }) => ({
       id: item.id,
       content: item.content,
       type: item.type as "update" | "comment",

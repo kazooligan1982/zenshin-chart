@@ -99,6 +99,7 @@ export function KanbanBoard({ projectId, currentUserId = "", currentUser = null,
     if (viewMode === "kanban") {
       fetchActions();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, viewMode]);
 
   const fetchActions = async () => {

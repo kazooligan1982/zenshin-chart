@@ -1,4 +1,6 @@
-import type { Tension, ActionPlan } from "@/types/chart";
+import type { Tension, ActionPlan, VisionItem, RealityItem } from "@/types/chart";
+
+type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -34,8 +36,8 @@ export function useActionHandlers({
   setLooseActions: React.Dispatch<React.SetStateAction<ActionPlan[]>>;
   isSubmittingAction: Record<string, boolean>;
   setIsSubmittingAction: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  pendingDeletions: Record<string, { type: string; item: any; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
-  setPendingDeletions: React.Dispatch<React.SetStateAction<any>>;
+  pendingDeletions: PendingDeletionMap;
+  setPendingDeletions: React.Dispatch<React.SetStateAction<PendingDeletionMap>>;
   setTelescopingActionId: React.Dispatch<React.SetStateAction<string | null>>;
   router: ReturnType<typeof useRouter>;
 }) {
@@ -282,7 +284,7 @@ export function useActionHandlers({
         setLooseActions(originalLooseActions);
         toast.error(tt("deleteFailed"), { duration: 5000 });
       }
-      setPendingDeletions((prev: Record<string, any>) => {
+      setPendingDeletions((prev: PendingDeletionMap) => {
         const next = { ...prev };
         delete next[existingKey];
         return next;
@@ -290,7 +292,7 @@ export function useActionHandlers({
     }, 15000);
 
     // 削除予約を保存
-    setPendingDeletions((prev: Record<string, any>) => ({
+    setPendingDeletions((prev: PendingDeletionMap) => ({
       ...prev,
       [existingKey]: {
         type: "action",
@@ -308,7 +310,7 @@ export function useActionHandlers({
           clearTimeout(timeoutId);
           setTensions(originalTensions);
           setLooseActions(originalLooseActions);
-          setPendingDeletions((prev: Record<string, any>) => {
+          setPendingDeletions((prev: PendingDeletionMap) => {
             const next = { ...prev };
             delete next[existingKey];
             return next;

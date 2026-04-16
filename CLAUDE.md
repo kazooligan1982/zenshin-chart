@@ -238,23 +238,207 @@ UNIFIED-MODAL-PHASE2-FIX.md         # 統一モーダル Phase 2 修正
 
 ## データベース（Supabase）
 
-### 主要テーブル
-- `workspaces` — ワークスペース（name, owner_id）
-- `workspace_members` — メンバー（role: owner/consultant/editor/viewer）
-- `workspace_invitations` — 招待（invite_code方式）
-- `charts` — チャート（title, status, workspace_id, parent_action_id）
-- `areas` — タグ（色付きカテゴリ）
-- `visions` / `realities` — V/Rアイテム
-- `tensions` — Tensionカード
-- `actions` — Actionアイテム（status, is_completed, child_chart_id, tension_id）
-- `tension_visions` / `tension_realities` — T↔V/R関連付け
-- `action_comments` / `vision_comments` / `reality_comments` — タイムライン
-- `snapshots` — スナップショット（再帰取得）
-- `snapshot_comparisons` — 比較結果保存
-- `momentum_scores` — 週次モメンタムスコア + ai_insight
-- `profiles` — ユーザー情報
-- `user_preferences` — locale等のユーザー設定
-- `audit_logs` — 監査ログ（post-demo追加）
+### ER図（Mermaid）
+
+```mermaid
+erDiagram
+    workspaces ||--o{ workspace_members : has
+    workspaces ||--o{ charts : contains
+    workspaces ||--o{ workspace_invitations : has
+    workspaces ||--o{ workspace_invitation_requests : has
+    workspaces ||--o{ workspace_slack_settings : has
+    workspaces ||--o{ chart_proposals : has
+
+    charts ||--o{ visions : has
+    charts ||--o{ realities : has
+    charts ||--o{ tensions : has
+    charts ||--o{ actions : has
+    charts ||--o{ areas : has
+    charts ||--o{ snapshots : has
+    charts ||--o{ chart_history : has
+    charts ||--o{ item_links : has
+    charts ||--o{ item_relations : has
+    charts ||--o{ momentum_scores : has
+    charts ||--o{ action_dependencies : has
+    charts ||--o{ chart_proposals : has
+    charts }o--o| actions : "parent_action_id"
+
+    tensions ||--o{ actions : has
+    tensions }o--o| areas : tagged
+    visions }o--o| areas : tagged
+    realities }o--o| areas : tagged
+    actions }o--o| areas : tagged
+    actions }o--o| charts : "child_chart_id (telescope)"
+    realities }o--o| visions : "related_vision_id"
+
+    tensions ||--o{ tension_visions : links
+    tensions ||--o{ tension_realities : links
+    visions ||--o{ tension_visions : links
+    realities ||--o{ tension_realities : links
+
+    actions ||--o{ action_comments : has
+    visions ||--o{ vision_comments : has
+    realities ||--o{ reality_comments : has
+
+    profiles ||--o{ action_comments : writes
+    profiles ||--o{ vision_comments : writes
+    profiles ||--o{ reality_comments : writes
+```
+
+### テーブル詳細（カラム一覧）
+
+#### コアテーブル
+
+**workspaces** (35行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | uuid_generate_v4() | PK |
+| name | text | NO | | |
+| owner_id | uuid | NO | | FK → auth.users |
+| created_at | timestamptz | NO | now() | |
+| updated_at | timestamptz | NO | now() | |
+| slack_notify | bool | NO | false | |
+| is_personal | bool | NO | false | |
+
+**workspace_members** (47行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | uuid_generate_v4() | PK |
+| workspace_id | uuid | NO | | FK → workspaces |
+| user_id | uuid | NO | | FK → auth.users |
+| role | text | NO | 'owner' | CHECK: owner/consultant/editor/viewer |
+| created_at | timestamptz | NO | now() | |
+
+**charts** (132行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| title | text | NO | | |
+| parent_action_id | uuid | YES | | FK → actions (テレスコープ) |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+| description | text | YES | | |
+| due_date | timestamptz | YES | | |
+| archived_at | timestamptz | YES | | |
+| user_id | uuid | YES | | FK → auth.users |
+| workspace_id | uuid | YES | | FK → workspaces |
+| status | text | YES | 'active' | 'active' / 'completed' |
+
+**visions** (215行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| chart_id | uuid | YES | | FK → charts |
+| content | text | NO | | |
+| target_date | timestamptz | YES | | |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+| is_locked | bool | YES | false | |
+| assignee | text | YES | | |
+| sort_order | float8 | YES | 0 | |
+| area_id | uuid | YES | | FK → areas |
+| due_date | timestamptz | YES | | |
+| user_id | uuid | YES | | FK → auth.users |
+| description | text | YES | '' | |
+
+**realities** (232行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| chart_id | uuid | YES | | FK → charts |
+| content | text | NO | | |
+| related_vision_id | uuid | YES | | FK → visions |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+| sort_order | float8 | YES | 0 | |
+| area_id | uuid | YES | | FK → areas |
+| due_date | timestamptz | YES | | |
+| user_id | uuid | YES | | FK → auth.users |
+| created_by | uuid | YES | | FK → auth.users |
+| description | text | YES | '' | |
+
+**tensions** (171行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| chart_id | uuid | YES | | FK → charts |
+| title | text | YES | | |
+| description | text | YES | | |
+| status | text | YES | 'active' | active/review_needed/resolved |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+| area_id | uuid | YES | | FK → areas |
+| due_date | timestamptz | YES | | |
+| sort_order | float8 | YES | 0 | |
+| user_id | uuid | YES | | FK → auth.users |
+
+**actions** (276行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| tension_id | uuid | YES | | FK → tensions |
+| title | text | NO | | |
+| due_date | timestamptz | YES | | |
+| is_completed | bool | YES | false | |
+| child_chart_id | uuid | YES | | FK → charts (テレスコープ) |
+| created_at | timestamptz | YES | now() | |
+| updated_at | timestamptz | YES | now() | |
+| has_sub_chart | bool | YES | false | |
+| assignee | text | YES | | |
+| sort_order | float8 | YES | 0 | |
+| status | text | NO | 'todo' | CHECK: todo/in_progress/done/pending/canceled |
+| description | text | YES | | |
+| area_id | uuid | YES | | FK → areas |
+| chart_id | uuid | YES | | FK → charts |
+| user_id | uuid | YES | | FK → auth.users |
+
+**areas** (56行)
+| カラム | 型 | NULL | デフォルト | 備考 |
+|--------|-----|------|-----------|------|
+| id | uuid | NO | gen_random_uuid() | PK |
+| chart_id | uuid | NO | | FK → charts |
+| name | text | NO | | |
+| color | text | YES | '#94a3b8' | |
+| sort_order | int4 | YES | 0 | |
+| created_at | timestamptz | NO | now() | |
+| user_id | uuid | YES | | FK → auth.users |
+| display_order | int4 | YES | 0 | |
+
+#### 関連テーブル
+
+**tension_visions** — PK: (tension_id, vision_id)、FK → tensions, visions
+**tension_realities** — PK: (tension_id, reality_id)、FK → tensions, realities
+**action_comments** — id(PK), action_id(FK→actions), user_id(FK→profiles), content, created_at, updated_at
+**vision_comments** — id(PK), vision_id(FK→visions), user_id(FK→profiles), content, created_at, updated_at
+**reality_comments** — id(PK), reality_id(FK→realities), user_id(FK→profiles), content, created_at, updated_at
+**action_dependencies** — id(PK), chart_id(FK→charts), blocker_action_id(FK→actions), blocked_action_id(FK→actions), created_by, created_at
+
+#### ユーザー・認証
+
+**profiles** — id(PK, FK→auth.users), email, name, avatar_url, updated_at
+**user_preferences** — user_id(PK, FK→auth.users), locale, last_workspace_id(FK→workspaces), created_at, updated_at
+
+#### ワークスペース補助
+
+**workspace_invitations** — id(PK), workspace_id(FK), invite_code(UNIQUE), created_by(FK), expires_at, is_active, created_at
+**workspace_invitation_requests** — id(PK), workspace_id(FK), email, role(CHECK: consultant/editor/viewer), invited_by(FK), token(UNIQUE), status(CHECK: pending/accepted/expired/revoked), created_at, expires_at, accepted_at
+**workspace_slack_settings** — id(PK), workspace_id(FK,UNIQUE), slack_team_id, slack_bot_token, slack_channel_id, daily_enabled, weekly_enabled, 他
+
+#### スナップショット・履歴
+
+**snapshots** — id(PK), chart_id(FK), snapshot_type('manual'), data(jsonb), scope, trigger_type, is_pinned, created_by, created_at
+**snapshot_comparisons** — id(PK), snapshot_before_id(FK), snapshot_after_id(FK), title, diff_summary(jsonb), diff_details(jsonb), ai_analysis, created_by, created_at
+**momentum_scores** — id(PK), chart_id(FK), score(int4), calculated_at, ai_insight
+**chart_history** — id(PK), chart_id(FK), entity_type(CHECK: vision/reality/tension/action/comment/attachment), entity_id, event_type(CHECK: created/updated/deleted/completed/reopened/moved), field, old_value, new_value, user_id, reason, created_at
+
+#### その他
+
+**chart_proposals** — id(PK), chart_id(FK), workspace_id(FK), proposed_by(FK), source, status('pending'), title, items(jsonb), metadata(jsonb), reviewed_by, reviewed_at, created_at
+**item_links** — id(PK), chart_id(FK), item_type(CHECK: action/vision/reality/tension), item_id, url, title, service, created_by, created_at
+**item_relations** — id(PK), chart_id(FK), source_item_type, source_item_id, target_item_type, target_item_id, created_at
+**item_history** — id(PK), item_type(CHECK: vision/reality/action), item_id, content, type('comment'), created_at, created_by
+**audit_logs** — id(PK), user_id, workspace_id, action, resource_type, resource_id, metadata(jsonb), ip_address, created_at
+**projects** — id(PK), user_id(FK), title, description, created_at, updated_at（※レガシー、未使用）
 
 ### RLS
 全テーブルにRLS有効。workspace_membersを経由した権限チェック。

@@ -219,7 +219,8 @@ export function TimelineItem({
               if (mention) {
                 const mentionId = mention.getAttribute("data-id");
                 if (mentionId) {
-                  const [mentionType, targetChartId] = mentionId.split(":");
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const [_mentionType, targetChartId] = mentionId.split(":");
                   if (targetChartId) {
                     const chartPath = workspaceId
                       ? `/workspaces/${workspaceId}/charts/${targetChartId}`

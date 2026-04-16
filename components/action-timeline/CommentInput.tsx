@@ -22,6 +22,14 @@ import {
 } from "@/lib/workspace-search";
 import type { TimelineComment } from "@/types/database";
 
+interface MentionSuggestionCallbackProps {
+  command: (item: { id: string; label: string }) => void;
+  query?: string;
+  decorationNode?: { text?: string } | null;
+  editor: { view: { dom: HTMLElement; coordsAtPos: (pos: number) => { left: number; top: number } }; commands: { blur: () => void } };
+  range: { from: number; to?: number };
+}
+
 interface CommentInputProps {
   type: "action" | "vision" | "reality";
   itemId: string;
@@ -193,7 +201,7 @@ function createMentionSuggestion(
       }
 
       return {
-        onStart: async (props: any) => {
+        onStart: async (props: MentionSuggestionCallbackProps) => {
           command = props.command;
           currentQuery = (props.query ?? props.decorationNode?.text?.slice(1) ?? "") as string;
           activeTab = "items";
@@ -248,7 +256,7 @@ function createMentionSuggestion(
 
           document.addEventListener("mousedown", clickOutsideHandler, true);
         },
-        onUpdate: async (props: any) => {
+        onUpdate: async (props: MentionSuggestionCallbackProps) => {
           command = props.command;
           const newQuery = (props.query ?? props.decorationNode?.text?.slice(1) ?? "") as string;
           if (newQuery !== currentQuery) {
@@ -359,6 +367,7 @@ export function CommentInput({
             `@${node.attrs.label ?? node.attrs.id}`,
           ];
         },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         suggestion: mentionSuggestion as any,
       }),
     ],
@@ -403,6 +412,7 @@ export function CommentInput({
     setLinkPopoverOpen(false);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleSubmit = async () => {
     if (!editor?.getHTML || editor.isEmpty || isSubmitting) return;
     const htmlContent = editor.getHTML().trim();

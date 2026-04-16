@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/auth";
 import { getOrCreateWorkspace } from "@/lib/workspace";
 import { canCreateChart } from "@/lib/permissions";
 
@@ -299,7 +298,7 @@ export async function restoreChart(chartId: string) {
 }
 
 async function getActionStatusCountsByChart(
-  supabase: any,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   chartIds: string[]
 ): Promise<Map<string, ActionStatusCounts>> {
   const result = new Map<string, ActionStatusCounts>();
@@ -353,7 +352,7 @@ async function getActionStatusCountsByChart(
 }
 
 async function getAssigneesByChart(
-  supabase: any,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   chartIds: string[]
 ): Promise<Map<string, ChartAssignee[]>> {
   const result = new Map<string, ChartAssignee[]>();
@@ -423,7 +422,7 @@ async function getAssigneesByChart(
 }
 
 async function getAllDescendantChartIds(
-  supabase: any,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   chartId: string
 ): Promise<string[]> {
   const result: string[] = [];

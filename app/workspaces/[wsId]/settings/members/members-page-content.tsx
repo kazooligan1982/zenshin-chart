@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Copy, Check, Users, Crown, User, X, Loader2, Shield, Eye, Stethoscope, Mail } from "lucide-react";
 import {
   createInvitation,
-  getWorkspaceMembers,
   removeMember,
 } from "@/lib/workspace";
 import { inviteMember, revokeInvitation, getPendingInvitations } from "./actions";

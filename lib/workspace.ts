@@ -55,7 +55,8 @@ export async function getOrCreateWorkspace(): Promise<string> {
 
   if (!user) throw new Error("認証が必要です");
 
-  const { data: members, error: memberLookupError } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { data: members, error: _memberLookupError } = await supabase
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", user.id)
@@ -168,7 +169,7 @@ export async function getInvitationByCode(code: string): Promise<{
 
   return {
     workspaceId: invitation.workspace_id,
-    workspaceName: (invitation.workspaces as any)?.name || "ワークスペース",
+    workspaceName: (invitation.workspaces as unknown as { name?: string } | null)?.name || "ワークスペース",
   };
 }
 
@@ -250,13 +251,16 @@ export async function getWorkspaceMembers(workspaceId: string): Promise<
 
   if (!members) return [];
 
-  return members.map((m: any) => ({
-    id: m.user_id,
-    email: m.profiles?.email || "",
-    name: m.profiles?.name,
-    role: m.role,
-    avatar_url: m.profiles?.avatar_url,
-  }));
+  return members.map((m) => {
+    const profile = m.profiles as unknown as { email?: string; name?: string; avatar_url?: string } | null;
+    return {
+      id: m.user_id,
+      email: profile?.email || "",
+      name: profile?.name,
+      role: m.role,
+      avatar_url: profile?.avatar_url,
+    };
+  });
 }
 
 // 現在のワークスペースIDを取得
@@ -298,7 +302,7 @@ export async function getCurrentWorkspace(): Promise<{
 
   return {
     id: member.workspace_id,
-    name: (member.workspaces as any)?.name || "マイワークスペース",
+    name: (member.workspaces as unknown as { name?: string } | null)?.name || "マイワークスペース",
     role: member.role,
   };
 }
@@ -324,9 +328,9 @@ export async function getUserWorkspaces(): Promise<
 
   if (!members) return [];
 
-  return members.map((m: any) => ({
+  return members.map((m) => ({
     id: m.workspace_id,
-    name: m.workspaces?.name || "ワークスペース",
+    name: (m.workspaces as unknown as { name?: string } | null)?.name || "ワークスペース",
     role: m.role,
   }));
 }

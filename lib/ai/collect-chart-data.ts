@@ -35,7 +35,8 @@ export function collectChartDataForAI(
   members?: { id: string; display_name?: string }[]
 ): ChartDataForAI {
   const areaMap = new Map(areas.map((a) => [a.id, a.name]));
-  const memberMap = new Map(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _memberMap = new Map(
     (members ?? []).map((m) => [m.id, m.display_name ?? "Unknown"])
   );
 

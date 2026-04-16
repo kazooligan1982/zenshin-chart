@@ -66,7 +66,8 @@ export function SortableActionItem({
   tensionId,
   parentTensionAreaId,
   hideAreaBadge = false,
-  availableTensions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  availableTensions: _availableTensions,
   isCompleted,
   handleUpdateActionPlan,
   handleDeleteActionPlan,
@@ -176,7 +177,8 @@ export function SortableActionItem({
     !hideAreaBadge &&
     parentTensionAreaId !== undefined &&
     (actionPlan.area_id ?? null) !== (parentTensionAreaId ?? null);
-  const [isMovingToTension, setIsMovingToTension] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isMovingToTension, setIsMovingToTension] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [incompleteDialog, setIncompleteDialog] = useState<{
     isOpen: boolean;

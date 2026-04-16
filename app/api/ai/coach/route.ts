@@ -314,7 +314,25 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ error: "AI coaching failed after retries" }, { status: 500 });
 }
 
-function formatSnapshotSummary(snapshotData: any, language: string): string {
+interface SnapshotSummaryData {
+  visions?: { content?: string; title?: string }[];
+  realities?: { content?: string; title?: string }[];
+  tensions?: { title?: string; content?: string }[];
+  actions?: unknown[];
+}
+
+interface ComparisonSummaryData {
+  before?: { createdAt?: string };
+  after?: { createdAt?: string };
+  summary?: { addedCount?: number; modifiedCount?: number; removedCount?: number };
+  diff?: {
+    added?: { content?: string }[];
+    modified?: { content?: string }[];
+    removed?: { content?: string }[];
+  };
+}
+
+function formatSnapshotSummary(snapshotData: SnapshotSummaryData | null | undefined, language: string): string {
   if (!snapshotData) return language === "ja" ? "(データなし)" : "(no data)";
   const isEn = language === "en";
   let s = "";
@@ -325,20 +343,20 @@ function formatSnapshotSummary(snapshotData: any, language: string): string {
   s += isEn ? `Visions: ${v}, Realities: ${r}, Tensions: ${t}, Actions: ${a}\n` : `ビジョン: ${v}, リアリティ: ${r}, テンション: ${t}, アクション: ${a}\n`;
   if (snapshotData.visions?.length) {
     s += isEn ? "Visions: " : "ビジョン: ";
-    s += snapshotData.visions.map((x: any) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
+    s += snapshotData.visions.map((x) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
   }
   if (snapshotData.realities?.length) {
     s += isEn ? "Realities: " : "リアリティ: ";
-    s += snapshotData.realities.map((x: any) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
+    s += snapshotData.realities.map((x) => (x.content || x.title || "").slice(0, 80)).join("; ") + "\n";
   }
   if (snapshotData.tensions?.length) {
     s += isEn ? "Tensions: " : "テンション: ";
-    s += snapshotData.tensions.map((x: any) => (x.title || x.content || "").slice(0, 80)).join("; ") + "\n";
+    s += snapshotData.tensions.map((x) => (x.title || x.content || "").slice(0, 80)).join("; ") + "\n";
   }
   return s || (isEn ? "(empty)" : "(空)");
 }
 
-function formatComparisonSummary(comparisonData: any, language: string): string {
+function formatComparisonSummary(comparisonData: ComparisonSummaryData | null | undefined, language: string): string {
   if (!comparisonData) return language === "ja" ? "(データなし)" : "(no data)";
   const isEn = language === "en";
   const s = comparisonData.summary;
@@ -350,13 +368,13 @@ function formatComparisonSummary(comparisonData: any, language: string): string 
     : `サマリー: +${s?.addedCount ?? 0} 追加, ${s?.modifiedCount ?? 0} 変更, -${s?.removedCount ?? 0} 削除\n`;
   const diff = comparisonData.diff;
   if (diff?.added?.length) {
-    out += (isEn ? "Added: " : "追加: ") + diff.added.map((x: any) => (x.content || "").slice(0, 60)).join("; ") + "\n";
+    out += (isEn ? "Added: " : "追加: ") + diff.added.map((x) => (x.content || "").slice(0, 60)).join("; ") + "\n";
   }
   if (diff?.modified?.length) {
-    out += (isEn ? "Modified: " : "変更: ") + diff.modified.map((x: any) => (x.content || "").slice(0, 60)).join("; ") + "\n";
+    out += (isEn ? "Modified: " : "変更: ") + diff.modified.map((x) => (x.content || "").slice(0, 60)).join("; ") + "\n";
   }
   if (diff?.removed?.length) {
-    out += (isEn ? "Removed: " : "削除: ") + diff.removed.map((x: any) => (x.content || "").slice(0, 60)).join("; ") + "\n";
+    out += (isEn ? "Removed: " : "削除: ") + diff.removed.map((x) => (x.content || "").slice(0, 60)).join("; ") + "\n";
   }
   return out || (isEn ? "(empty)" : "(空)");
 }
@@ -837,14 +855,24 @@ function formatDateForPrompt(isoDate: string): string {
   }
 }
 
-function buildComparisonAnalyzeSystemPrompt(comparisonData: any, isEn: boolean): string {
+function buildComparisonAnalyzeSystemPrompt(comparisonData: ComparisonSummaryData | null | undefined, isEn: boolean): string {
   const beforeDate = formatDateForPrompt(comparisonData?.before?.createdAt ?? "");
   const afterDate = formatDateForPrompt(comparisonData?.after?.createdAt ?? "");
   const template = isEn ? COMPARISON_ANALYZE_PROMPT_EN : COMPARISON_ANALYZE_PROMPT_JA;
   return template.replace(/\{before\.createdAt\}/g, beforeDate).replace(/\{after\.createdAt\}/g, afterDate);
 }
 
-function formatComparisonDataForAI(comparisonData: any, isEn: boolean): string {
+interface ComparisonDataForAI extends ComparisonSummaryData {
+  before?: ComparisonSummaryData["before"] & { data?: Record<string, unknown> };
+  after?: ComparisonSummaryData["after"] & { data?: Record<string, unknown> };
+  diff?: ComparisonSummaryData["diff"] & {
+    added?: { type?: string; content?: string }[];
+    modified?: { type?: string; content?: string; oldContent?: string }[];
+    removed?: { type?: string; content?: string }[];
+  };
+}
+
+function formatComparisonDataForAI(comparisonData: ComparisonDataForAI | null | undefined, isEn: boolean): string {
   const { before, after, diff, summary } = comparisonData || {};
   const lines: string[] = [];
 

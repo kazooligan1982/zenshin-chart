@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ interface TreeNode {
 }
 
 async function findRootChartIdSimple(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string
 ): Promise<string> {
   let currentId = chartId;
@@ -42,11 +43,12 @@ async function findRootChartIdSimple(
       .limit(1)
       .single();
 
-    if (!parentAction || !parentAction.tensions?.chart_id) {
+    const tensionData = parentAction?.tensions as unknown as { chart_id: string } | null;
+    if (!parentAction || !tensionData?.chart_id) {
       break;
     }
 
-    currentId = parentAction.tensions.chart_id;
+    currentId = tensionData.chart_id;
     iterations++;
   }
 
@@ -54,7 +56,7 @@ async function findRootChartIdSimple(
 }
 
 async function getTensionsWithActions(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string
 ): Promise<TreeNode[]> {
   const { data: tensions, error: tensionError } = await supabase
@@ -86,7 +88,7 @@ async function getTensionsWithActions(
       console.error(`[getTensionsWithActions] Actions error:`, actionError);
     }
 
-    return (actions || []).map((action: any) => ({
+    return (actions || []).map((action: { id: string; title: string; description: string | null; due_date: string | null; assignee: string | null; status: string | null; is_completed: boolean | null; child_chart_id: string | null; tension_id: string | null }) => ({
       id: action.id,
       type: "action" as const,
       title: action.title || action.description || "(無題)",
@@ -148,8 +150,8 @@ async function getTensionsWithActions(
       type: "tension",
       title: tension.title || tension.description || "(無題)",
       area_id: tension.area_id,
-      area_name: tension.areas?.name,
-      area_color: tension.areas?.color,
+      area_name: (tension.areas as unknown as { name?: string } | null)?.name,
+      area_color: (tension.areas as unknown as { color?: string } | null)?.color,
       children: actionNodes,
     });
   }
@@ -166,7 +168,8 @@ export async function GET(
     const supabase = await createClient();
     const rootChartId = await findRootChartIdSimple(supabase, chartId);
 
-    const { data: chart, error: chartError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { data: chart, error: _chartError } = await supabase
       .from("charts")
       .select("id, title")
       .eq("id", rootChartId)

@@ -40,6 +40,13 @@ interface SnapshotViewerProps {
   autoOpen?: boolean;
 }
 
+interface SnapshotItem {
+  id?: string;
+  content?: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
 interface SnapshotDetail {
   id: string;
   chart_id: string;
@@ -73,17 +80,17 @@ interface SnapshotDetail {
       title: string;
       depth: number;
       role: string;
-      visions?: any[];
-      realities?: any[];
-      tensions?: any[];
-      actions?: any[];
+      visions?: SnapshotItem[];
+      realities?: SnapshotItem[];
+      tensions?: SnapshotItem[];
+      actions?: SnapshotItem[];
     }>;
-    visions?: any[];
-    realities?: any[];
-    tensions?: any[];
-    tension_visions?: any[];
-    tension_realities?: any[];
-    actions?: any[];
+    visions?: SnapshotItem[];
+    realities?: SnapshotItem[];
+    tensions?: SnapshotItem[];
+    tension_visions?: SnapshotItem[];
+    tension_realities?: SnapshotItem[];
+    actions?: SnapshotItem[];
   };
 }
 
@@ -318,7 +325,7 @@ function TreeSnapshotModalContent({
                 <div key={label} className="min-w-0">
                   <p className={`text-xs font-medium mb-1 ${color}`}>{label}</p>
                   <ul className="list-disc list-inside text-sm space-y-0.5">
-                    {arr.map((item: any, i: number) => (
+                    {arr.map((item: SnapshotItem, i: number) => (
                       <li key={i} className="break-words whitespace-pre-wrap">
                         {item.content ?? item.title ?? t("noTitle")}
                       </li>
@@ -413,9 +420,11 @@ export function SnapshotViewer({ snapshot, autoOpen = false }: SnapshotViewerPro
     if (autoOpen) {
       handleOpen();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpen]);
 
-  const handleClose = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleClose = () => {
     setIsOpen(false);
     setDetailData(null);
     setError(null);

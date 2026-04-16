@@ -35,14 +35,14 @@ export interface SnapshotEscalationContext {
   type: "snapshot_escalation";
   snapshotId: string;
   analysisResult: string;
-  snapshotData: any;
+  snapshotData: Record<string, unknown>;
   chartName: string;
 }
 
 export interface ComparisonEscalationContext {
   type: "comparison_escalation";
   analysisResult: string;
-  comparisonData: any;
+  comparisonData: Record<string, unknown>;
   chartName: string;
 }
 

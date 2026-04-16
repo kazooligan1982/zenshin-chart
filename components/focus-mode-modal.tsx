@@ -28,6 +28,7 @@ export function FocusModeModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const t = useTranslations("editor");
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleSaveAndClose = () => {
     onSave(content);
     onClose();

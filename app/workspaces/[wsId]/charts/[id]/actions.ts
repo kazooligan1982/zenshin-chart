@@ -154,11 +154,11 @@ export async function updateRealityItem(
   field: "content" | "isLocked" | "areaId" | "dueDate" | "description",
   value: string | boolean | null
 ) {
-  const updates: any = {};
+  const updates: Partial<Pick<RealityItem, "content" | "isLocked" | "area_id" | "dueDate" | "description">> = {};
   if (field === "content") updates.content = value as string;
   if (field === "isLocked") updates.isLocked = value as boolean;
   if (field === "areaId") updates.area_id = value as string | null;
-  if (field === "dueDate") updates.dueDate = value as string | null;
+  if (field === "dueDate") updates.dueDate = (value as string | null) ?? undefined;
   if (field === "description") updates.description = value as string;
   const result = await updateReality(realityId, chartId, updates);
   if (result) {
@@ -502,22 +502,19 @@ export async function updateVisionArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseVisionQuery = supabase
       .from("visions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .is("due_date", null)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredVisionQuery = areaId === null
+      ? baseVisionQuery.is("area_id", null)
+      : baseVisionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredVisionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -565,21 +562,18 @@ export async function updateRealityArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseRealityQuery = supabase
       .from("realities")
       .select("sort_order")
       .eq("chart_id", projectId)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredRealityQuery = areaId === null
+      ? baseRealityQuery.is("area_id", null)
+      : baseRealityQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredRealityQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -626,21 +620,18 @@ export async function updateTensionArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseTensionQuery = supabase
       .from("tensions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredTensionQuery = areaId === null
+      ? baseTensionQuery.is("area_id", null)
+      : baseTensionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredTensionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -734,22 +725,19 @@ export async function updateActionArea(
       console.warn("[DEBUG] Failed to fetch action child_chart_id:", actionMetaError);
     } else {
     }
-    let maxOrderQuery: any = supabase
+    const baseActionQuery = supabase
       .from("actions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .is("due_date", null)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredActionQuery = areaId === null
+      ? baseActionQuery.is("area_id", null)
+      : baseActionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredActionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -1033,7 +1021,7 @@ export async function checkIncompleteTelescopeActions(actionId: string): Promise
 }
 
 async function getIncompleteActionsRecursive(
-  supabase: any,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   chartId: string
 ): Promise<{ id: string; title: string; status: string }[]> {
   const result: { id: string; title: string; status: string }[] = [];
@@ -1488,12 +1476,35 @@ export async function getActionProgress(childChartId: string) {
   return await getChildChartProgress(childChartId);
 }
 
+interface RecursiveChartData {
+  chart: Record<string, unknown>;
+  areas: Record<string, unknown>[];
+  visions: Record<string, unknown>[];
+  realities: Record<string, unknown>[];
+  tensions: Record<string, unknown>[];
+  tension_visions: Record<string, unknown>[];
+  tension_realities: Record<string, unknown>[];
+  actions: Record<string, unknown>[];
+  comments: {
+    visions: Record<string, unknown>[];
+    realities: Record<string, unknown>[];
+    actions: Record<string, unknown>[];
+  };
+  children: RecursiveChartData[];
+  metadata: {
+    snapshot_at: string;
+    total_visions: number;
+    total_actions: number;
+    child_charts_count: number;
+  };
+}
+
 // スナップショット作成
 async function getChartDataRecursive(
   chartId: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
   visited: Set<string>
-): Promise<any> {
+): Promise<RecursiveChartData | null> {
   if (visited.has(chartId)) {
     return null;
   }
@@ -1522,7 +1533,7 @@ async function getChartDataRecursive(
   const tensions = tensionsResult.data || [];
   const actions = actionsResult.data || [];
 
-  const tensionIds = tensions.map((t: any) => t.id);
+  const tensionIds = tensions.map((t: { id: string }) => t.id);
   const [tensionVisionsResult, tensionRealitiesResult] = await Promise.all([
     tensionIds.length > 0
       ? supabase.from("tension_visions").select("*").in("tension_id", tensionIds)
@@ -1532,9 +1543,9 @@ async function getChartDataRecursive(
       : Promise.resolve({ data: [] }),
   ]);
 
-  const visionIds = visions.map((v: any) => v.id);
-  const realityIds = realities.map((r: any) => r.id);
-  const actionIds = actions.map((a: any) => a.id);
+  const visionIds = visions.map((v: { id: string }) => v.id);
+  const realityIds = realities.map((r: { id: string }) => r.id);
+  const actionIds = actions.map((a: { id: string }) => a.id);
 
   const [visionCommentsResult, realityCommentsResult, actionCommentsResult] =
     await Promise.all([
@@ -1550,12 +1561,12 @@ async function getChartDataRecursive(
     ]);
 
   const childChartIds = [
-    ...new Set(actions.map((a: any) => a.child_chart_id).filter(Boolean)),
+    ...new Set(actions.map((a: { child_chart_id: string | null }) => a.child_chart_id).filter(Boolean)),
   ] as string[];
 
-  const children = [];
+  const children: RecursiveChartData[] = [];
   for (const childId of childChartIds) {
-    const childData: any = await getChartDataRecursive(childId, supabase, visited);
+    const childData = await getChartDataRecursive(childId, supabase, visited);
     if (childData) children.push(childData);
   }
 
@@ -1730,7 +1741,7 @@ export async function updateActionStatus(
     const supabase = await createClient();
 
     // statusを更新し、doneの場合はis_completedもtrueに、それ以外はfalseに
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status: newStatus,
       is_completed: newStatus === "done",
     };

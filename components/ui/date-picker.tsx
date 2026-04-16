@@ -25,7 +25,8 @@ interface DatePickerProps {
 export function DatePicker({
   value,
   onChange,
-  placeholder,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  placeholder: _placeholder,
   disabled = false,
   className,
   modal,

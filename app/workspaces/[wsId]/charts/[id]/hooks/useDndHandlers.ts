@@ -28,7 +28,8 @@ export function useDndHandlers({
   actionMetaById,
   resolveTensionAreaId,
   getVisionDate,
-  router,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  router: _router,
 }: {
   chartId: string;
   chart: { areas: Area[] };

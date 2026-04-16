@@ -67,7 +67,8 @@ export function PropertiesPanel({
   const createdAt = "createdAt" in item ? (item as VisionItem | RealityItem).createdAt : null;
   const status = itemType === "action" ? (item as ActionPlan).status : null;
 
-  const area = areas.find((a) => a.id === areaId);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _area = areas.find((a) => a.id === areaId);
   const assigneeMember =
     members.find((m) => m.email === assignee) ??
     (currentUser && assignee === currentUser.email ? currentUser : null);

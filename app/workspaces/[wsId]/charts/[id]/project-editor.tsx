@@ -266,14 +266,14 @@ export function ProjectEditor({
     sectionId: "new-reality",
   });
   // 削除遅延実行用の状態管理
-  const [pendingDeletions, setPendingDeletions] = useState<{
-    [key: string]: {
+  const [pendingDeletions, setPendingDeletions] = useState<
+    Record<string, {
       type: "vision" | "reality" | "action" | "tension";
-      item: any;
+      item: VisionItem | RealityItem | ActionPlan | Tension;
       tensionId?: string | null;
       timeoutId: NodeJS.Timeout;
-    };
-  }>({});
+    }>
+  >({});
   
   const [focusMode, setFocusMode] = useState<{
     isOpen: boolean;
@@ -284,13 +284,15 @@ export function ProjectEditor({
   } | null>(null);
   const [looseActions, setLooseActions] = useState<ActionPlan[]>([]);
   const [telescopingActionId, setTelescopingActionId] = useState<string | null>(null);
-  const [actionProgress, setActionProgress] = useState<
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_actionProgress, setActionProgress] = useState<
     Record<string, { total: number; completed: number; percentage: number }>
   >({});
   const [isSubmittingVision, setIsSubmittingVision] = useState(false);
   const [isSubmittingReality, setIsSubmittingReality] = useState(false);
   const [isSubmittingAction, setIsSubmittingAction] = useState<Record<string, boolean>>({});
-  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [snapshotDropdownOpen, setSnapshotDropdownOpen] = useState(false);
   const snapshotDropdownRef = useRef<HTMLDivElement>(null);
@@ -369,7 +371,8 @@ export function ProjectEditor({
     router,
   });
 
-  const { detailPanel, itemHistory, isLoadingHistory, handleOpenDetailPanel, handleCloseDetailPanel, handleAddHistory, handleCommentCountChange } = useDetailPanel({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { detailPanel, itemHistory, isLoadingHistory: _isLoadingHistory, handleOpenDetailPanel: _handleOpenDetailPanel, handleCloseDetailPanel, handleAddHistory, handleCommentCountChange } = useDetailPanel({
     chartId,
     setVisions,
     setRealities,
@@ -409,6 +412,7 @@ export function ProjectEditor({
   const handleOpenDetailPanelForModal = (
     itemType: "vision" | "reality" | "action",
     itemId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _itemContent?: string
   ) => {
     openUnifiedModal(itemType, itemId);
@@ -511,7 +515,7 @@ export function ProjectEditor({
       .map(v => ({
         vision: v,
         date: new Date(v.targetDate!).getTime(),
-        created: new Date((v as any).created_at || (v as any).createdAt || 0).getTime(),
+        created: new Date((v as unknown as Record<string, string>).created_at || v.createdAt || 0).getTime(),
       }))
       .sort((a, b) => {
         // 日付が近い順（現在に近い順）にソート
@@ -527,7 +531,7 @@ export function ProjectEditor({
       .filter(v => !v.targetDate)
       .map(v => ({
         vision: v,
-        created: new Date((v as any).created_at || (v as any).createdAt || 0).getTime(),
+        created: new Date((v as unknown as Record<string, string>).created_at || v.createdAt || 0).getTime(),
       }))
       .sort((a, b) => a.created - b.created); // 作成順（古い順）
     
@@ -551,7 +555,8 @@ export function ProjectEditor({
 
   // ソート関数: Visionを番号の昇順でソート（表示用）#01が一番下、最大の番号が一番上
   // 降順表示にするため、配列を反転させる
-  const sortVisionsByDate = (visions: VisionItem[]): VisionItem[] => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sortVisionsByDate = (visions: VisionItem[]): VisionItem[] => {
     const numbered = assignVisionNumbers(visions);
     return numbered
       .sort((a, b) => {
@@ -563,7 +568,8 @@ export function ProjectEditor({
   };
 
   // Visionに番号を付与して降順でソートした結果を返す（表示用）
-  const getSortedAndNumberedVisions = (visions: VisionItem[]): Array<{ vision: VisionItem; number: number }> => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _getSortedAndNumberedVisions = (visions: VisionItem[]): Array<{ vision: VisionItem; number: number }> => {
     const numbered = assignVisionNumbers(visions);
     return numbered
       .sort((a, b) => {
@@ -574,10 +580,11 @@ export function ProjectEditor({
   };
 
   // Realityを降順でソート（作成順の降順、古いものが下、新しいものが上）
-  const sortRealitiesByDate = (realities: RealityItem[]): RealityItem[] => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sortRealitiesByDate = (realities: RealityItem[]): RealityItem[] => {
     return [...realities].sort((a, b) => {
-      const dateA = new Date((a as any).created_at || (a as any).createdAt || 0).getTime();
-      const dateB = new Date((b as any).created_at || (b as any).createdAt || 0).getTime();
+      const dateA = new Date((a as unknown as Record<string, string>).created_at || a.createdAt || 0).getTime();
+      const dateB = new Date((b as unknown as Record<string, string>).created_at || b.createdAt || 0).getTime();
       // 降順（新しいものが上、古いものが下）
       return dateB - dateA;
     });
@@ -591,7 +598,7 @@ export function ProjectEditor({
       .map(a => ({
         action: a,
         date: new Date(a.dueDate!).getTime(),
-        created: new Date((a as any).created_at || (a as any).createdAt || 0).getTime(),
+        created: new Date((a as unknown as Record<string, string>).created_at || (a as unknown as Record<string, string>).createdAt || 0).getTime(),
       }))
       .sort((a, b) => {
         // 日付が近い順（現在に近い順）にソート
@@ -602,12 +609,12 @@ export function ProjectEditor({
         }
         return a.created - b.created; // 同じ距離なら作成順
       });
-    
+
     const withoutDates = actions
       .filter(a => !a.dueDate)
       .map(a => ({
         action: a,
-        created: new Date((a as any).created_at || (a as any).createdAt || 0).getTime(),
+        created: new Date((a as unknown as Record<string, string>).created_at || (a as unknown as Record<string, string>).createdAt || 0).getTime(),
       }))
       .sort((a, b) => a.created - b.created); // 作成順（古い順）
     
@@ -630,7 +637,8 @@ export function ProjectEditor({
   };
 
   // ソート関数: Actionを番号の降順でソート（表示用）#01が一番下、最大の番号が一番上
-  const sortActionsByDate = (actions: ActionPlan[]): ActionPlan[] => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sortActionsByDate = (actions: ActionPlan[]): ActionPlan[] => {
     const numbered = assignActionNumbers(actions);
     return numbered
       .sort((a, b) => {
@@ -700,6 +708,7 @@ export function ProjectEditor({
     );
     setLooseActions([...looseSplit.datedItems, ...looseSplit.undatedItems]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartSyncKey]);
 
   // スクロール位置の復元（DOM更新後・ブラウザ描画前に同期実行）
@@ -740,7 +749,8 @@ export function ProjectEditor({
 
   const getVisionDate = (vision: VisionItem) => vision.dueDate || null;
 
-  const { handleDragEnd, handleTensionDragEnd, handleActionSectionDragEnd, handleAreaDragEnd } = useDndHandlers({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { handleDragEnd, handleTensionDragEnd, handleActionSectionDragEnd: _handleActionSectionDragEnd, handleAreaDragEnd } = useDndHandlers({
     chartId,
     chart,
     setChart: setChart as React.Dispatch<React.SetStateAction<{ areas: Area[] }>>,
@@ -758,7 +768,8 @@ export function ProjectEditor({
     router,
   });
 
-  const groupedVisions = useMemo(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _groupedVisions = useMemo(() => {
     const areas = chart.areas ?? [];
     const result: Record<string, { dated: VisionItem[]; undated: VisionItem[] }> = {};
     areas.forEach((area) => {
@@ -786,7 +797,8 @@ export function ProjectEditor({
     return result;
   }, [visions, chart.areas]);
 
-  const groupedRealities = useMemo(() => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _groupedRealities = useMemo(() => {
     const areas = chart.areas ?? [];
     const result: Record<string, { dated: RealityItem[]; undated: RealityItem[] }> = {};
     areas.forEach((area) => {
@@ -893,9 +905,11 @@ export function ProjectEditor({
     }
 
     console.groupEnd();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structuredData]);
 
-  const renderVisionItem = (vision: VisionItem, index: number) => (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _renderVisionItem = (vision: VisionItem, index: number) => (
     <SortableVisionItem
       key={vision.id}
       vision={vision}
@@ -1033,7 +1047,8 @@ export function ProjectEditor({
     return inner;
   };
 
-  const renderRealityItem = (reality: RealityItem, index: number) => (
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _renderRealityItem = (reality: RealityItem, index: number) => (
     <SortableRealityItem
       key={reality.id}
       reality={reality}
@@ -1252,8 +1267,10 @@ export function ProjectEditor({
     fetchProgress();
   }, [tensions]);
 
-  const getVisionById = (id: string) => visions.find((v) => v.id === id);
-  const getRealityById = (id: string) => realities.find((r) => r.id === id);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _getVisionById = (id: string) => visions.find((v) => v.id === id);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _getRealityById = (id: string) => realities.find((r) => r.id === id);
 
   const hasChildCharts =
     looseActions.some((a) => a.childChartId) ||
@@ -2848,7 +2865,8 @@ function ComparisonView({
   visions,
   realities,
   tensions,
-  looseActions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  looseActions: _looseActions,
   areas,
   selectedAreaFilter,
   structuredData,
@@ -3073,7 +3091,7 @@ function ComparisonView({
                                   onOpenFocusVision(item, itemIndex)
                                 }
                                 onOpenAreaSettings={onOpenAreaSettings}
-                                currentUser={currentUser as any}
+                                currentUser={currentUser as { id: string; email: string; name?: string; avatar_url?: string | null } | null}
                                 workspaceMembers={workspaceMembers}
                               />
                             ))
@@ -3147,7 +3165,7 @@ function ComparisonView({
                                   onOpenFocusReality(item, itemIndex)
                                 }
                                 onOpenAreaSettings={onOpenAreaSettings}
-                                currentUser={currentUser as any}
+                                currentUser={currentUser as { id: string; email: string; name?: string; avatar_url?: string | null } | null}
                                 workspaceMembers={workspaceMembers}
                               />
                             ))

@@ -1,7 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+
+/** Row returned from actions query with optional joined data */
+interface ActionRow {
+  id: string;
+  title: string;
+  content: string | null;
+  description: string | null;
+  due_date: string | null;
+  assignee: string | null;
+  status: string | null;
+  is_completed: boolean | null;
+  tension_id: string | null;
+  child_chart_id: string | null;
+}
 
 interface ActionWithHierarchy {
   id: string;
@@ -25,7 +40,7 @@ interface ActionWithHierarchy {
 }
 
 async function getVisionTagMap(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string,
   tensionIds: string[]
 ) {
@@ -52,7 +67,7 @@ async function getVisionTagMap(
 
   const visionIndexMap = new Map<string, number>();
   const visionContentMap = new Map<string, string>();
-  visions?.forEach((v: any, index: number) => {
+  visions?.forEach((v: { id: string; content: string | null }, index: number) => {
     visionIndexMap.set(v.id, index + 1);
     if (v.content) {
       visionContentMap.set(v.id, v.content);
@@ -62,12 +77,12 @@ async function getVisionTagMap(
   const tensionVisionTitleMap = new Map<string, string>();
   tensionIds.forEach((tensionId) => {
     const related = (tensionVisions || [])
-      .filter((tv: any) => tv.tension_id === tensionId)
-      .map((tv: any) => ({
+      .filter((tv: { tension_id: string; vision_id: string }) => tv.tension_id === tensionId)
+      .map((tv: { tension_id: string; vision_id: string }) => ({
         visionId: tv.vision_id,
         index: visionIndexMap.get(tv.vision_id) || Number.MAX_SAFE_INTEGER,
       }))
-      .sort((a: any, b: any) => a.index - b.index);
+      .sort((a: { index: number }, b: { index: number }) => a.index - b.index);
     const first = related[0];
     if (first) {
       const title = visionContentMap.get(first.visionId);
@@ -85,7 +100,7 @@ async function getVisionTagMap(
 }
 
 async function getActionsWithHierarchy(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string,
   depth: number = 0,
   parentActionId: string | null = null,
@@ -108,7 +123,7 @@ async function getActionsWithHierarchy(
     (t: { status?: string }) => t.status !== "resolved"
   );
 
-  const tensionIds = activeTensions.map((t: any) => t.id);
+  const tensionIds = activeTensions.map((t: { id: string }) => t.id);
   const { tensionVisions, visionIndexMap, tensionVisionTitleMap } =
     await getVisionTagMap(supabase, chartId, tensionIds);
 
@@ -121,13 +136,13 @@ async function getActionsWithHierarchy(
 
     const actionsList = actions || [];
     const actionsWithChildren = actionsList.filter(
-      (a: any) => a.child_chart_id
+      (a: ActionRow) => a.child_chart_id
     );
     const childResults = await Promise.all(
-      actionsWithChildren.map((a: any) =>
+      actionsWithChildren.map((a: ActionRow) =>
         getActionsWithHierarchy(
           supabase,
-          a.child_chart_id,
+          a.child_chart_id!,
           depth + 1,
           a.id,
           tensionInfo
@@ -135,7 +150,7 @@ async function getActionsWithHierarchy(
       )
     );
     const childMap = new Map<string, ActionWithHierarchy[]>();
-    actionsWithChildren.forEach((a: any, i: number) => {
+    actionsWithChildren.forEach((a: ActionRow, i: number) => {
       childMap.set(a.id, childResults[i]);
     });
 
@@ -168,7 +183,7 @@ async function getActionsWithHierarchy(
   }
 
   const tensionActionResults = await Promise.all(
-    activeTensions.map((tension: any) =>
+    activeTensions.map((tension: { id: string }) =>
       supabase
         .from("actions")
         .select("*")
@@ -181,21 +196,22 @@ async function getActionsWithHierarchy(
     const tension = activeTensions[i];
     const { data: actions } = tensionActionResults[i];
     const actionsList = actions || [];
+    const tensionAreas = tension.areas as unknown as { name?: string; color?: string } | null;
     const currentTensionInfo = {
       title: tension.title || tension.description || null,
-      areaName: tension.areas?.name || null,
-      areaColor: tension.areas?.color || null,
+      areaName: tensionAreas?.name || null,
+      areaColor: tensionAreas?.color || null,
       visionTitle: tensionVisionTitleMap?.get(tension.id) || null,
     };
 
     const actionsWithChildren = actionsList.filter(
-      (a: any) => a.child_chart_id
+      (a: ActionRow) => a.child_chart_id
     );
     const childResults = await Promise.all(
-      actionsWithChildren.map((a: any) =>
+      actionsWithChildren.map((a: ActionRow) =>
         getActionsWithHierarchy(
           supabase,
-          a.child_chart_id,
+          a.child_chart_id!,
           depth + 1,
           a.id,
           currentTensionInfo
@@ -203,14 +219,14 @@ async function getActionsWithHierarchy(
       )
     );
     const childMap = new Map<string, ActionWithHierarchy[]>();
-    actionsWithChildren.forEach((a: any, idx: number) => {
+    actionsWithChildren.forEach((a: ActionRow, idx: number) => {
       childMap.set(a.id, childResults[idx]);
     });
 
     for (const action of actionsList) {
       const relatedVisions = tensionVisions
-        .filter((tv: any) => tv.tension_id === action.tension_id)
-        .map((tv: any) => {
+        .filter((tv: { tension_id: string; vision_id: string }) => tv.tension_id === action.tension_id)
+        .map((tv: { tension_id: string; vision_id: string }) => {
           const index = visionIndexMap.get(tv.vision_id);
           return index ? `V-${String(index).padStart(2, "0")}` : null;
         })
@@ -280,7 +296,8 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { actionId, tensionId, field, value } = body as {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { actionId, tensionId: _tensionId, field, value } = body as {
       actionId: string;
       tensionId: string | null;
       field: "status" | "title" | "assignee" | "dueDate" | "description";

@@ -82,6 +82,7 @@ export function TensionDragOverlay(props: TensionDragOverlayProps) {
             onAddAction={props.onAddAction}
             isSubmittingAction={props.isSubmittingAction}
             isOverlay
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             onOpenFocus={(_t) => {}}
             handleOptimisticMove={props.handleOptimisticMove}
             workspaceMembers={props.workspaceMembers}

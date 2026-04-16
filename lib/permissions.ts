@@ -24,7 +24,8 @@ export function canEditContent(role: WorkspaceRole): boolean {
 }
 
 /** コメント可能（全ロール可） */
-export function canComment(role: WorkspaceRole): boolean {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function canComment(_role: WorkspaceRole): boolean {
   return true;
 }
 

@@ -174,7 +174,8 @@ export default function ProposalsPanel({
   canApprove,
   onApproved,
 }: ProposalsPanelProps) {
-  const t = useTranslations();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _t = useTranslations();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);

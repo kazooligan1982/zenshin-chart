@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import type { TimelineComment } from "@/types/database";
 import {
   Select,
   SelectContent,
@@ -189,7 +190,8 @@ export function ActionEditModal({
   action,
   isOpen,
   onClose,
-  onSave,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onSave: _onSave,
   onDataRefresh,
   projectId,
   currentUserId = "",
@@ -207,7 +209,7 @@ export function ActionEditModal({
   const [assignee, setAssignee] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [description, setDescription] = useState("");
-  const [actionComments, setActionComments] = useState<any[]>([]);
+  const [actionComments, setActionComments] = useState<TimelineComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;

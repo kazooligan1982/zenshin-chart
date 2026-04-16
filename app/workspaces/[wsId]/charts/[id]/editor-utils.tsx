@@ -236,7 +236,7 @@ export const splitItemsByDate = <T extends { id: string }>(
     .filter((item) => !getDate(item))
     .sort(
       (a, b) =>
-        ((a as any).sort_order ?? 0) - ((b as any).sort_order ?? 0)
+        ((a as unknown as Record<string, number>).sort_order ?? 0) - ((b as unknown as Record<string, number>).sort_order ?? 0)
     );
   const indexById = new Map(
     [...datedItems, ...undatedItems].map((item, index) => [item.id, index])

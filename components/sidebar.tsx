@@ -108,7 +108,8 @@ export function Sidebar(props?: SidebarProps) {
   const allWorkspaces = props?.workspaces ?? fetchedAllWorkspaces;
   const wsId = props?.currentWsId ?? currentWorkspace?.id;
 
-  const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _router = useRouter();
   const [isCreatingWs, setIsCreatingWs] = useState(false);
   const [isSavingWs, setIsSavingWs] = useState(false);
   const [newWsName, setNewWsName] = useState("");

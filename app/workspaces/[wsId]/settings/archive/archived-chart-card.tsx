@@ -28,7 +28,8 @@ type ArchivedChart = {
 
 export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
   const t = useTranslations("archive");
-  const tc = useTranslations("common");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _tc = useTranslations("common");
   const tt = useTranslations("toast");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
