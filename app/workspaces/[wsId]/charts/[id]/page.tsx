@@ -67,8 +67,20 @@ export default async function ProjectDetailPage({ params }: PageProps) {
     if (workspaceId) {
       workspaceMembers = await getWorkspaceMembers(workspaceId);
       if (user) {
+        // getWorkspaceMembers uses "use server" context which may lose auth.
+        // Directly query the current user's role as a reliable fallback.
         const found = workspaceMembers.find((m) => m.id === user.id);
-        currentUserRole = found?.role || "viewer";
+        if (found) {
+          currentUserRole = found.role;
+        } else {
+          const { data: directRole } = await supabase
+            .from("workspace_members")
+            .select("role")
+            .eq("workspace_id", workspaceId)
+            .eq("user_id", user.id)
+            .single();
+          currentUserRole = directRole?.role || "viewer";
+        }
       }
     }
 
