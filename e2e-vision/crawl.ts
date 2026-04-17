@@ -194,7 +194,10 @@ async function main() {
   console.log(`  Viewports: ${viewports.map((v) => v.label).join(", ")}\n`);
 
   const browser: Browser = await chromium.launch({ headless: !headed });
-  const context: BrowserContext = await browser.newContext();
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const context: BrowserContext = await browser.newContext({
+    ...(bypassSecret ? { extraHTTPHeaders: { "x-vercel-protection-bypass": bypassSecret } } : {}),
+  });
   const page: Page = await context.newPage();
 
   // Auth (skip for public-only runs)

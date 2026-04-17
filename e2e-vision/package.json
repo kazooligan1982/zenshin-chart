@@ -11,8 +11,11 @@
     "analyze": "tsx analyze.ts",
     "autofix": "tsx autofix.ts",
     "autofix:dry": "tsx autofix.ts --dry-run",
+    "crawl:op": "op run --env-file=.env.tpl.example -- tsx crawl.ts",
+    "analyze:op": "op run --env-file=.env.tpl.example -- tsx analyze.ts",
     "test:vision": "tsx crawl.ts && tsx analyze.ts",
     "test:vision:fix": "tsx crawl.ts && tsx analyze.ts && tsx autofix.ts",
+    "test:vision:op": "op run --env-file=.env.tpl.example -- bash -c 'tsx crawl.ts && tsx analyze.ts'",
     "setup": "playwright install chromium"
   },
   "dependencies": {
