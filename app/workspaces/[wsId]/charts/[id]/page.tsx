@@ -63,8 +63,13 @@ export default async function ProjectDetailPage({ params }: PageProps) {
 
     const workspaceId = wsId || chart.workspace_id;
     let workspaceMembers: { id: string; email: string; name?: string; role: string; avatar_url?: string }[] = [];
+    let currentUserRole = "viewer";
     if (workspaceId) {
       workspaceMembers = await getWorkspaceMembers(workspaceId);
+      if (user) {
+        const found = workspaceMembers.find((m) => m.id === user.id);
+        currentUserRole = found?.role || "viewer";
+      }
     }
 
     return (
@@ -75,6 +80,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
         currentUserId={user?.id ?? ""}
         currentUser={currentUser}
         workspaceMembers={workspaceMembers}
+        currentUserRole={currentUserRole}
       />
     );
   } catch (error) {
