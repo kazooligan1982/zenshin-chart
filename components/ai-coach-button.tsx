@@ -400,6 +400,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
           realities: createResult.realities.filter((r) => r.enabled).map((r) => ({ title: r.title })),
           tensions: createResult.tensions.filter((t) => t.enabled).map((t) => ({ title: t.title })),
           actions: createResult.actions.filter((a) => a.enabled).map((a) => ({ title: a.title, tensionIndex: a.tensionIndex })),
+          source: "manual", // TODO: ai_structurize + structural_diagnosis 対応時に元に戻す (ClickUp: 86ex9e5xn)
         }),
       });
       if (!res.ok) throw new Error("Apply failed");

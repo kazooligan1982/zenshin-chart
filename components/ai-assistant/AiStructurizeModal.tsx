@@ -112,6 +112,7 @@ export function AiStructurizeModal({
             title: a.title,
             tensionIndex: a.tensionIndex,
           })),
+          source: "manual", // TODO: ai_structurize + structural_diagnosis 対応時に元に戻す (ClickUp: 86ex9e5xn)
         }),
       });
       if (!res.ok) throw new Error("Apply failed");
