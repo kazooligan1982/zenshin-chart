@@ -32,7 +32,8 @@ export function SortableRealityItem({
   handleDeleteReality,
   areas,
   onOpenDetail,
-  onOpenFocus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOpenFocus: _onOpenFocus,
   onOpenAreaSettings,
   currentUser,
   workspaceMembers = [],
@@ -58,7 +59,8 @@ export function SortableRealityItem({
   const t = useTranslations("editor");
   const tc = useTranslations("common");
   const tTags = useTranslations("tags");
-  const area = areas.find((a) => a.id === reality.area_id);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _area = areas.find((a) => a.id === reality.area_id);
   const realityInput = useItemInput({
     initialValue: reality.content || "",
     onSave: (val) => {

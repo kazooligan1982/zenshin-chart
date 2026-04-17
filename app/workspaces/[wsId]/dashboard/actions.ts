@@ -1,8 +1,29 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateMomentumScore, type MomentumScoreResult } from "@/lib/momentum-score";
 import { getPeriodRange } from "./utils";
+
+/** Action row returned from the joined Supabase query (runtime shape after !inner join) */
+interface DashboardActionRow {
+  id: string;
+  title: string;
+  status: string;
+  is_completed: boolean | null;
+  due_date: string | null;
+  assignee: string | null;
+  created_at: string;
+  updated_at: string;
+  tension_id: string | null;
+  tensions?: { chart_id: string; charts?: { id: string; title: string } } | null;
+}
+
+/** Dependency row */
+interface DependencyRow {
+  blocker_action_id: string;
+  blocked_action_id?: string;
+}
 
 function getMondayOfWeek(d: Date): string {
   const day = d.getDay();
@@ -367,14 +388,14 @@ export async function getDashboardData(
     console.error("[getDashboardData] actions error:", actionsError);
   }
 
-  const allActions = actions || [];
+  const allActions = (actions || []) as unknown as DashboardActionRow[];
   const allCharts = charts || [];
 
   let actionsForPeriodStats = allActions;
   if (periodRange) {
     const startTime = periodRange.start.getTime();
     const endTime = periodRange.end.getTime();
-    actionsForPeriodStats = allActions.filter((action: any) => {
+    actionsForPeriodStats = allActions.filter((action) => {
       const createdAt = action.created_at ? new Date(action.created_at).getTime() : 0;
       return createdAt >= startTime && createdAt <= endTime;
     });
@@ -403,7 +424,7 @@ export async function getDashboardData(
   if (periodRange) {
     const startTime = periodRange.start.getTime();
     const endTime = periodRange.end.getTime();
-    completedActions = allActions.filter((action: any) => {
+    completedActions = allActions.filter((action) => {
       const status = action.status || (action.is_completed ? "done" : "todo");
       if (status !== "done") return false;
       const updatedAt = action.updated_at ? new Date(action.updated_at).getTime() : 0;
@@ -439,12 +460,12 @@ export async function getDashboardData(
     .sort((a, b) => b.daysSinceUpdate - a.daysSinceUpdate);
 
   const overdueActionIds = allActions
-    .filter((a: any) => {
+    .filter((a) => {
       if (!a.due_date) return false;
       if (a.status === "done" || a.status === "canceled") return false;
       return new Date(a.due_date) < now;
     })
-    .map((a: any) => a.id);
+    .map((a) => a.id);
 
   let blockingCountByActionId: Record<string, number> = {};
   if (overdueActionIds.length > 0) {
@@ -453,12 +474,12 @@ export async function getDashboardData(
       .select("blocker_action_id")
       .in("blocker_action_id", overdueActionIds);
     blockingCountByActionId = (deps || []).reduce(
-      (acc: Record<string, number>, row: any) => {
+      (acc: Record<string, number>, row: DependencyRow) => {
         const bid = row.blocker_action_id;
         acc[bid] = (acc[bid] || 0) + 1;
         return acc;
       },
-      {}
+      {} as Record<string, number>
     );
   }
 
@@ -469,16 +490,17 @@ export async function getDashboardData(
       const dueDate = new Date(action.due_date);
       return dueDate <= sevenDaysFromNow;
     })
-    .map((action: any) => {
-      const dueDate = new Date(action.due_date);
+    .map((action) => {
+      const dueDate = new Date(action.due_date!);
       const daysUntilDue = Math.ceil(
         (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
       );
-      const chartData = action.tensions?.charts;
+      const actionRow = action as unknown as DashboardActionRow;
+      const chartData = actionRow.tensions?.charts;
       return {
         id: action.id,
         title: action.title || "(無題)",
-        due_date: action.due_date,
+        due_date: action.due_date!,
         status: action.status || "todo",
         chart_id: chartData?.id || "",
         chart_title: chartData?.title || "",
@@ -586,14 +608,14 @@ export async function getDashboardData(
 }
 
 async function buildDelayImpacts(
-  supabase: any,
-  allActions: any[],
+  supabase: SupabaseClient,
+  allActions: DashboardActionRow[],
   overdueActionIds: string[],
   now: Date
 ): Promise<DelayImpact[]> {
   if (overdueActionIds.length === 0) return [];
 
-  const actionMap = new Map(allActions.map((a) => [a.id, a]));
+  const actionMap = new Map<string, DashboardActionRow>(allActions.map((a) => [a.id, a]));
 
   const { data: deps } = await supabase
     .from("action_dependencies")
@@ -625,7 +647,7 @@ async function buildDelayImpacts(
       )
       .in("id", missingBlockedIds);
     for (const a of extraActions || []) {
-      actionMap.set((a as { id: string }).id, a);
+      actionMap.set((a as { id: string }).id, a as unknown as DashboardActionRow);
     }
   }
 
@@ -656,7 +678,7 @@ async function buildDelayImpacts(
   const impacts: DelayImpact[] = overdueActionIds
     .map((actionId) => {
       const action = actionMap.get(actionId);
-      if (!action) return null;
+      if (!action || !action.due_date) return null;
       const dueDate = new Date(action.due_date);
       const daysOverdue = Math.ceil(
         (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -666,15 +688,16 @@ async function buildDelayImpacts(
       const blockedActions = blockedIds
         .map((bid) => actionMap.get(bid))
         .filter(Boolean)
-        .map((a: any) => {
-          const t = Array.isArray(a.tensions) ? a.tensions[0] : a.tensions;
+        .map((a) => {
+          const aTyped = a as DashboardActionRow;
+          const t = Array.isArray(aTyped.tensions) ? (aTyped.tensions as unknown as DashboardActionRow["tensions"][])[0] : aTyped.tensions;
           const c = t?.charts ?? t;
           return {
-            id: a.id,
-            title: a.title || "(無題)",
-            chartId: c?.id ?? "",
-            chartTitle: c?.title ?? "",
-            assignee: a.assignee ? profileByEmail[a.assignee] || null : null,
+            id: aTyped.id,
+            title: aTyped.title || "(無題)",
+            chartId: (c as { id?: string })?.id ?? "",
+            chartTitle: (c as { title?: string })?.title ?? "",
+            assignee: aTyped.assignee ? profileByEmail[aTyped.assignee] || null : null,
           };
         });
 
@@ -718,29 +741,29 @@ function countDescendants(node: CascadeNode): number {
 }
 
 async function buildDelayCascade(
-  supabase: any,
-  allActions: any[],
+  supabase: SupabaseClient,
+  allActions: DashboardActionRow[],
   overdueActionIds: string[],
   now: Date
 ): Promise<CascadeNode[]> {
   if (overdueActionIds.length === 0) return [];
 
-  const actionMap = new Map(allActions.map((a) => [a.id, a]));
+  const actionMap = new Map<string, DashboardActionRow>(allActions.map((a) => [a.id, a]));
 
   const { data: deps } = await supabase
     .from("action_dependencies")
     .select("blocked_action_id, blocker_action_id")
     .in("blocker_action_id", overdueActionIds);
 
-  let allDeps = deps || [];
+  let allDeps = (deps || []) as DependencyRow[];
   let toFetch = [...overdueActionIds];
 
   while (toFetch.length > 0) {
     const blockedIds = [
       ...new Set(
         allDeps
-          .filter((d: any) => toFetch.includes(d.blocker_action_id))
-          .map((d: any) => d.blocked_action_id)
+          .filter((d: DependencyRow) => toFetch.includes(d.blocker_action_id))
+          .map((d: DependencyRow) => d.blocked_action_id!)
       ),
     ].filter((id) => !actionMap.has(id));
     if (blockedIds.length === 0) break;
@@ -760,14 +783,14 @@ async function buildDelayCascade(
       )
       .in("id", blockedIds);
     for (const a of extraActions || []) {
-      actionMap.set((a as { id: string }).id, a);
+      actionMap.set((a as { id: string }).id, a as unknown as DashboardActionRow);
     }
 
     const { data: moreDeps } = await supabase
       .from("action_dependencies")
       .select("blocked_action_id, blocker_action_id")
       .in("blocker_action_id", blockedIds);
-    allDeps = [...allDeps, ...(moreDeps || [])];
+    allDeps = [...allDeps, ...((moreDeps || []) as DependencyRow[])];
     toFetch = blockedIds as string[];
   }
   const assigneeEmails: string[] = [
@@ -818,9 +841,9 @@ async function buildDelayCascade(
 }
 
 function buildCascadeNode(
-  action: any,
-  allDeps: any[],
-  actionMap: Map<string, any>,
+  action: DashboardActionRow,
+  allDeps: DependencyRow[],
+  actionMap: Map<string, DashboardActionRow>,
   profileByEmail: Record<string, { id: string; name: string }>,
   now: Date,
   isRoot: boolean,
@@ -844,10 +867,11 @@ function buildCascadeNode(
   visited.add(action.id);
 
   const blockedDeps = allDeps.filter(
-    (d: any) => d.blocker_action_id === action.id
+    (d) => d.blocker_action_id === action.id
   );
   const children: CascadeNode[] = [];
   for (const dep of blockedDeps) {
+    if (!dep.blocked_action_id) continue;
     const blockedAction = actionMap.get(dep.blocked_action_id);
     if (blockedAction) {
       children.push(
@@ -892,7 +916,7 @@ function buildCascadeNode(
 }
 
 async function getAllDescendantChartIds(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string
 ): Promise<string[]> {
   const result: string[] = [];

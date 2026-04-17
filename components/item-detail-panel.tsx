@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { X, Send, Clock, MessageSquare, Edit } from "lucide-react";
+import { X, Send, MessageSquare, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import {
   fetchActionComments,
   fetchRealityComments,
   fetchVisionComments,
-} from "@/app/charts/[id]/actions";
+} from "@/app/workspaces/[wsId]/charts/[id]/actions";
 
 interface ItemDetailPanelProps {
   isOpen: boolean;

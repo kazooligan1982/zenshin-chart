@@ -47,7 +47,8 @@ export function TensionGroup({
   onAddAction,
   isSubmittingAction,
   isOverlay = false,
-  onOpenFocus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOpenFocus: _onOpenFocus,
   sortByStatus,
   hideCompleted,
   expandedCompletedTensions = new Set(),

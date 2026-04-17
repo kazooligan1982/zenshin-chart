@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +53,70 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+interface SnapshotDataItem {
+  id: string;
+  content?: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
+interface SnapshotChartEntry {
+  chart_id: string;
+  title?: string;
+  visions?: SnapshotDataItem[];
+  realities?: SnapshotDataItem[];
+  tensions?: SnapshotDataItem[];
+  actions?: SnapshotDataItem[];
+  [key: string]: unknown;
+}
+
+interface SnapshotData {
+  tree_meta?: {
+    master_chart_id?: string;
+    captured_at?: string;
+    total_charts?: number;
+  };
+  summary?: {
+    total_visions?: number;
+    total_realities?: number;
+    total_tensions?: number;
+    total_actions?: number;
+  };
+  charts?: SnapshotChartEntry[];
+  visions?: SnapshotDataItem[];
+  realities?: SnapshotDataItem[];
+  tensions?: SnapshotDataItem[];
+  actions?: SnapshotDataItem[];
+  [key: string]: unknown;
+}
+
+interface DiffDetailItem {
+  type?: string;
+  changeType?: string;
+  status?: string;
+  diffType?: string;
+  change?: string;
+  category?: string;
+  targetType?: string;
+  [key: string]: unknown;
+}
+
+interface DiffSummary {
+  added?: DiffDetailItem[];
+  modified?: DiffDetailItem[];
+  removed?: DiffDetailItem[];
+  [key: string]: unknown;
+}
+
+interface DiffResult {
+  type: "added" | "modified" | "removed";
+  category: string;
+  item: SnapshotDataItem;
+  before?: SnapshotDataItem;
+  after?: SnapshotDataItem;
+  [key: string]: unknown;
+}
+
 interface Snapshot {
   id: string;
   chart_id: string;
@@ -62,7 +126,7 @@ interface Snapshot {
   scope?: string;
   description: string | null;
   is_pinned: boolean;
-  data: any;
+  data: SnapshotData;
 }
 
 interface Comparison {
@@ -71,8 +135,8 @@ interface Comparison {
   snapshot_after_id: string;
   title: string;
   description: string | null;
-  diff_summary: any;
-  diff_details?: any[];
+  diff_summary: DiffSummary | DiffDetailItem[] | null;
+  diff_details?: DiffResult[];
   ai_analysis?: string | null;
   created_at: string;
 }
@@ -80,7 +144,7 @@ interface Comparison {
 const INITIAL_DISPLAY_COUNT = 20;
 const LOAD_MORE_COUNT = 20;
 
-function getSnapshotStats(data: any, scope?: string) {
+function getSnapshotStats(data: SnapshotData | null | undefined, scope?: string) {
   if (!data) return { visions: 0, realities: 0, tensions: 0, actions: 0 };
   if (scope === "tree" && data.summary) {
     return {
@@ -110,7 +174,7 @@ function normalizeCategory(cat: string | undefined): string | null {
   return null;
 }
 
-function getChangeType(item: any): "added" | "modified" | "removed" | null {
+function getChangeType(item: DiffDetailItem): "added" | "modified" | "removed" | null {
   const t = String(
     item.type ?? item.changeType ?? item.status ?? item.diffType ?? item.change ?? ""
   ).toLowerCase();
@@ -120,7 +184,7 @@ function getChangeType(item: any): "added" | "modified" | "removed" | null {
   return null;
 }
 
-function calcCategoryCounts(diffDetails: any): Record<string, CategoryCount> {
+function calcCategoryCounts(diffDetails: DiffSummary | DiffDetailItem[] | DiffResult[] | null | undefined): Record<string, CategoryCount> {
   const counts: Record<string, CategoryCount> = {
     visions: { ...EMPTY_COUNT },
     realities: { ...EMPTY_COUNT },
@@ -136,17 +200,17 @@ function calcCategoryCounts(diffDetails: any): Record<string, CategoryCount> {
     !Array.isArray(diffDetails) &&
     ("added" in diffDetails || "modified" in diffDetails || "removed" in diffDetails)
   ) {
-    const addItems = (arr: any[], changeType: "added" | "modified" | "removed") => {
+    const addItems = (arr: DiffDetailItem[] | undefined, changeType: "added" | "modified" | "removed") => {
       for (const item of arr || []) {
         const cat = normalizeCategory(
-          item.category ?? item.type ?? item.targetType
+          String(item.category ?? item.type ?? item.targetType ?? "")
         );
         if (cat && counts[cat]) counts[cat][changeType]++;
       }
     };
-    addItems(diffDetails.added, "added");
-    addItems(diffDetails.modified, "modified");
-    addItems(diffDetails.removed, "removed");
+    addItems(diffDetails.added as DiffDetailItem[] | undefined, "added");
+    addItems(diffDetails.modified as DiffDetailItem[] | undefined, "modified");
+    addItems(diffDetails.removed as DiffDetailItem[] | undefined, "removed");
     return counts;
   }
 
@@ -154,11 +218,11 @@ function calcCategoryCounts(diffDetails: any): Record<string, CategoryCount> {
   const arr = Array.isArray(diffDetails) ? diffDetails : [];
   for (const item of arr) {
     const category = normalizeCategory(
-      item.category ?? item.type ?? item.targetType
+      String(item.category ?? item.type ?? (item as DiffDetailItem).targetType ?? "")
     );
     if (!category || !counts[category]) continue;
 
-    const changeType = getChangeType(item);
+    const changeType = getChangeType(item as DiffDetailItem);
     if (changeType === "added") counts[category].added++;
     else if (changeType === "modified") counts[category].modified++;
     else if (changeType === "removed") counts[category].removed++;
@@ -261,7 +325,8 @@ export default function SnapshotsPage() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [comparisons, setComparisons] = useState<Comparison[]>([]);
   const [displayCount, setDisplayCount] = useState(INITIAL_DISPLAY_COUNT);
-  const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_loading, setLoading] = useState(true);
   const [chartTitle, setChartTitle] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
@@ -270,7 +335,7 @@ export default function SnapshotsPage() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSnapshot1, setCompareSnapshot1] = useState<Snapshot | null>(null);
   const [compareSnapshot2, setCompareSnapshot2] = useState<Snapshot | null>(null);
-  const [diffs, setDiffs] = useState<any[]>([]);
+  const [diffs, setDiffs] = useState<DiffResult[]>([]);
   const [showDiffs, setShowDiffs] = useState(false);
   const [comparisonAnalysisResult, setComparisonAnalysisResult] = useState<string | null>(null);
   const [comparisonAnalyzing, setComparisonAnalyzing] = useState(false);
@@ -343,7 +408,8 @@ export default function SnapshotsPage() {
         console.error("[Snapshots] Failed to fetch chart title:", e);
       }
 
-      const { data: snapshotData, error: snapshotError, count } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { data: snapshotData, error: _snapshotError, count: _count } = await supabase
         .from("snapshots")
         .select("*", { count: "exact" })
         .eq("chart_id", projectId)
@@ -404,7 +470,7 @@ export default function SnapshotsPage() {
     }
   };
 
-  const analyzeSnapshot = async (snapshot: Snapshot & { data?: any }) => {
+  const analyzeSnapshot = async (snapshot: Snapshot) => {
     if (analyzingId) return;
     setAnalyzingId(snapshot.id);
     try {
@@ -425,7 +491,8 @@ export default function SnapshotsPage() {
         return;
       }
       setAnalysisResults((prev) => ({ ...prev, [snapshot.id]: data.response }));
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_e) {
       toast.error(t("errorOccurred"));
     } finally {
       setAnalyzingId(null);
@@ -518,13 +585,13 @@ export default function SnapshotsPage() {
     }
   };
 
-  const extractItemsByCategory = (data: any, category: string): any[] => {
+  const extractItemsByCategory = (data: SnapshotData | null | undefined, category: string): SnapshotDataItem[] => {
     if (!data) return [];
-    const direct = data[category];
-    if (Array.isArray(direct)) return direct;
+    const direct = (data as Record<string, unknown>)[category];
+    if (Array.isArray(direct)) return direct as SnapshotDataItem[];
     const charts = data.charts;
     if (Array.isArray(charts)) {
-      return charts.flatMap((c: any) => (c[category] || []).map((item: any) => ({ ...item, _chartId: c.chart_id })));
+      return charts.flatMap((c: SnapshotChartEntry) => ((c as Record<string, unknown>)[category] as SnapshotDataItem[] || []).map((item: SnapshotDataItem) => ({ ...item, _chartId: c.chart_id })));
     }
     return [];
   };
@@ -532,7 +599,7 @@ export default function SnapshotsPage() {
   const calculateDiffs = () => {
     if (!compareSnapshot1 || !compareSnapshot2) return;
 
-    const diffResults: any[] = [];
+    const diffResults: DiffResult[] = [];
     const [before, after] =
       new Date(compareSnapshot1.created_at) < new Date(compareSnapshot2.created_at)
         ? [compareSnapshot1, compareSnapshot2]
@@ -542,8 +609,8 @@ export default function SnapshotsPage() {
       const items1 = extractItemsByCategory(before.data, category);
       const items2 = extractItemsByCategory(after.data, category);
 
-      items2.forEach((item2: any) => {
-        const found = items1.find((item1: any) => item1.id === item2.id);
+      items2.forEach((item2: SnapshotDataItem) => {
+        const found = items1.find((item1: SnapshotDataItem) => item1.id === item2.id);
         if (!found) {
           diffResults.push({ type: "added", category, item: item2 });
         } else if (JSON.stringify(found) !== JSON.stringify(item2)) {
@@ -551,8 +618,8 @@ export default function SnapshotsPage() {
         }
       });
 
-      items1.forEach((item1: any) => {
-        if (!items2.find((item2: any) => item2.id === item1.id)) {
+      items1.forEach((item1: SnapshotDataItem) => {
+        if (!items2.find((item2: SnapshotDataItem) => item2.id === item1.id)) {
           diffResults.push({ type: "removed", category, item: item1 });
         }
       });
@@ -684,7 +751,8 @@ export default function SnapshotsPage() {
         return;
       }
       setComparisonAnalysisResult(data.analysis);
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_e) {
       toast.error(t("errorOccurred"));
     } finally {
       setComparisonAnalyzing(false);
@@ -1047,7 +1115,7 @@ export default function SnapshotsPage() {
                         {(() => {
                           const stats = getSnapshotStats(snapshot.data, snapshot.scope);
                           const isTree = snapshot.scope === "tree";
-                          const totalCharts = isTree && snapshot.data?.tree_meta?.total_charts;
+                          const totalCharts = isTree ? snapshot.data?.tree_meta?.total_charts : undefined;
                           return (
                             <div className="px-5 py-3">
                               <div className="grid grid-cols-4 gap-2">
@@ -1197,7 +1265,7 @@ export default function SnapshotsPage() {
                               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all disabled:opacity-50"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                analyzeSnapshot(snapshot as Snapshot & { data?: any });
+                                analyzeSnapshot(snapshot);
                               }}
                               disabled={!!analyzingId}
                             >

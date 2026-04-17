@@ -22,7 +22,7 @@ import {
   deleteVisionComment,
   updateRealityComment,
   deleteRealityComment,
-} from "@/app/charts/[id]/actions"
+} from "@/app/workspaces/[wsId]/charts/[id]/actions"
 import { linkifyUrls } from "@/lib/utils"
 import type { TimelineComment } from "@/types/database"
 
@@ -219,7 +219,8 @@ export function TimelineItem({
               if (mention) {
                 const mentionId = mention.getAttribute("data-id");
                 if (mentionId) {
-                  const [mentionType, targetChartId] = mentionId.split(":");
+                  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                  const [_mentionType, targetChartId] = mentionId.split(":");
                   if (targetChartId) {
                     const chartPath = workspaceId
                       ? `/workspaces/${workspaceId}/charts/${targetChartId}`

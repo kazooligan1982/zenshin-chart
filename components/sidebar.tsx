@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Plus,
   Check,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -107,12 +108,15 @@ export function Sidebar(props?: SidebarProps) {
   const allWorkspaces = props?.workspaces ?? fetchedAllWorkspaces;
   const wsId = props?.currentWsId ?? currentWorkspace?.id;
 
-  const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _router = useRouter();
   const [isCreatingWs, setIsCreatingWs] = useState(false);
+  const [isSavingWs, setIsSavingWs] = useState(false);
   const [newWsName, setNewWsName] = useState("");
 
   const handleCreateWorkspace = async () => {
-    if (!newWsName.trim()) return;
+    if (!newWsName.trim() || isSavingWs) return;
+    setIsSavingWs(true);
     try {
       const res = await fetch("/api/workspaces", {
         method: "POST",
@@ -121,12 +125,11 @@ export function Sidebar(props?: SidebarProps) {
       });
       if (!res.ok) throw new Error(tt("createFailed"));
       const workspace = await res.json();
-      setIsCreatingWs(false);
-      setNewWsName("");
-      router.push(`/workspaces/${workspace.id}/charts`);
-      router.refresh();
+      // Full page navigation to properly load the new workspace layout
+      window.location.href = `/workspaces/${workspace.id}/charts`;
     } catch (error) {
       console.error("Failed to create workspace:", error);
+      setIsSavingWs(false);
     }
   };
 
@@ -166,10 +169,14 @@ export function Sidebar(props?: SidebarProps) {
   useEffect(() => {
     if (props?.currentWorkspace && props?.workspaces) return;
     async function loadWorkspaces() {
-      const current = await getCurrentWorkspace();
-      const all = await getUserWorkspaces();
-      setFetchedWorkspace(current);
-      setFetchedAllWorkspaces(all);
+      try {
+        const current = await getCurrentWorkspace();
+        const all = await getUserWorkspaces();
+        setFetchedWorkspace(current);
+        setFetchedAllWorkspaces(all);
+      } catch (error) {
+        console.error("[Sidebar] Failed to load workspaces:", error);
+      }
     }
     loadWorkspaces();
   }, [props?.currentWorkspace, props?.workspaces]);
@@ -341,17 +348,19 @@ export function Sidebar(props?: SidebarProps) {
                 <div className="flex gap-1.5">
                   <button
                     onClick={handleCreateWorkspace}
-                    disabled={!newWsName.trim()}
-                    className="flex-1 px-2 py-1 text-xs font-medium text-white bg-zenshin-teal rounded-md hover:bg-zenshin-teal/90 disabled:opacity-40"
+                    disabled={!newWsName.trim() || isSavingWs}
+                    className="flex-1 px-2 py-1 text-xs font-medium text-white bg-zenshin-teal rounded-md hover:bg-zenshin-teal/90 disabled:opacity-40 flex items-center justify-center gap-1"
                   >
-                    {tc("create")}
+                    {isSavingWs && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {isSavingWs ? tc("creating") : tc("create")}
                   </button>
                   <button
                     onClick={() => {
                       setIsCreatingWs(false);
                       setNewWsName("");
                     }}
-                    className="flex-1 px-2 py-1 text-xs font-medium text-zenshin-navy/60 bg-zenshin-navy/5 rounded-md hover:bg-zenshin-navy/10"
+                    disabled={isSavingWs}
+                    className="flex-1 px-2 py-1 text-xs font-medium text-zenshin-navy/60 bg-zenshin-navy/5 rounded-md hover:bg-zenshin-navy/10 disabled:opacity-40"
                   >
                     {tc("cancel")}
                   </button>

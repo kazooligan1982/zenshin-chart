@@ -6,7 +6,7 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { restoreChart, deleteChart } from "@/app/charts/actions";
+import { restoreChart, deleteChart } from "@/lib/charts-actions";
 import { removeChartFromRecent } from "@/lib/recent-charts";
 import {
   AlertDialog,
@@ -28,7 +28,8 @@ type ArchivedChart = {
 
 export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
   const t = useTranslations("archive");
-  const tc = useTranslations("common");
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _tc = useTranslations("common");
   const tt = useTranslations("toast");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);

@@ -9,10 +9,10 @@ export interface TreeSnapshotChartData {
   depth: number;
   role: "master" | "child";
   parent_chart_id: string | null;
-  visions: any[];
-  realities: any[];
-  tensions: any[];
-  actions: any[];
+  visions: Record<string, unknown>[];
+  realities: Record<string, unknown>[];
+  tensions: Record<string, unknown>[];
+  actions: Record<string, unknown>[];
 }
 
 export interface TreeSnapshotData {
@@ -38,7 +38,7 @@ export interface TreeSnapshotData {
   };
 }
 
-type SupabaseClient = any;
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * childToParentChartMap を構築（getChartsHierarchy と同じロジック）
@@ -100,7 +100,7 @@ function getDescendantChartIds(
 async function fetchChartVrtaData(
   chartId: string,
   supabase: SupabaseClient
-): Promise<{ visions: any[]; realities: any[]; tensions: any[]; actions: any[] }> {
+): Promise<{ visions: Record<string, unknown>[]; realities: Record<string, unknown>[]; tensions: Record<string, unknown>[]; actions: Record<string, unknown>[] }> {
   try {
     const [visionsRes, realitiesRes, tensionsRes, actionsRes] = await Promise.all([
       supabase.from("visions").select("*").eq("chart_id", chartId),
@@ -279,16 +279,17 @@ export async function saveTreeSnapshot(
 /**
  * JSON をキーでソートして比較用の文字列を生成
  */
-function stableStringify(obj: any): string {
+function stableStringify(obj: unknown): string {
   if (obj === null || obj === undefined) return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return "[" + obj.map(stableStringify).join(",") + "]";
   }
   if (typeof obj === "object") {
-    const keys = Object.keys(obj).sort();
+    const record = obj as Record<string, unknown>;
+    const keys = Object.keys(record).sort();
     return (
       "{" +
-      keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") +
+      keys.map((k) => JSON.stringify(k) + ":" + stableStringify(record[k])).join(",") +
       "}"
     );
   }

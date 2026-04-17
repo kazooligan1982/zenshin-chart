@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { fetchChart } from "./actions";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceMembers } from "@/lib/workspace";
 import { ProjectEditor } from "./project-editor";
 

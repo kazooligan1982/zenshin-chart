@@ -33,7 +33,8 @@ export function SupabaseDebug() {
 
       try {
         // テーブル一覧を取得して接続確認
-        const { data: charts, error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { data: _charts, error } = await supabase
           .from("charts")
           .select("id, title")
           .limit(5);
@@ -95,10 +96,10 @@ export function SupabaseDebug() {
         )}
         <div className="mt-2 pt-2 border-t text-muted-foreground">
           <div>
-            URL: {typeof window !== "undefined" && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SUPABASE_URL ? "✓" : "✗"}
+            URL: {typeof window !== "undefined" && (window as unknown as Record<string, unknown> & { __NEXT_DATA__?: { env?: Record<string, string> } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_SUPABASE_URL ? "✓" : "✗"}
           </div>
           <div>
-            Key: {typeof window !== "undefined" && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✓" : "✗"}
+            Key: {typeof window !== "undefined" && (window as unknown as Record<string, unknown> & { __NEXT_DATA__?: { env?: Record<string, string> } }).__NEXT_DATA__?.env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "✓" : "✗"}
           </div>
           {!supabase && (
             <div className="mt-2 text-xs text-red-600">

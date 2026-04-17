@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { GripVerticalIcon, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react"
+import { GripVerticalIcon } from "lucide-react"
 import {
   Group,
   Panel,

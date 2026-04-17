@@ -1,0 +1,79 @@
+name: UI Vision Test
+
+on:
+  schedule:
+    # Every morning 6:00 JST (21:00 UTC)
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "Comma-separated page names (empty = all)"
+        required: false
+      autofix:
+        description: "Run autofix?"
+        type: boolean
+        default: false
+
+env:
+  TARGET_URL: ${{ secrets.STAGING_URL || 'https://zenshinchart.com' }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
+  E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+  GITHUB_REPO: ${{ github.repository }}
+  REPO_PATH: "."
+
+jobs:
+  vision-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: e2e-vision/package-lock.json
+
+      - name: Install dependencies
+        working-directory: e2e-vision
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+
+      - name: Crawl pages
+        working-directory: e2e-vision
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.pages }}" ]; then
+            ARGS="--pages ${{ inputs.pages }}"
+          fi
+          npx tsx crawl.ts $ARGS
+
+      - name: Analyze with Claude Vision
+        working-directory: e2e-vision
+        run: npx tsx analyze.ts
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots-${{ github.run_id }}
+          path: e2e-vision/screenshots/
+          retention-days: 7
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-reports-${{ github.run_id }}
+          path: e2e-vision/results/
+          retention-days: 30
+
+      - name: Autofix (if enabled)
+        if: inputs.autofix == true || github.event_name == 'schedule'
+        working-directory: e2e-vision
+        run: npx tsx autofix.ts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getPeriodRange } from "./utils";
 
 export type DashboardStats = {
@@ -115,7 +116,7 @@ export async function getDashboardData(
   if (periodRange) {
     const startTime = periodRange.start.getTime();
     const endTime = periodRange.end.getTime();
-    actionsForPeriodStats = allActions.filter((action: any) => {
+    actionsForPeriodStats = allActions.filter((action) => {
       const createdAt = action.created_at ? new Date(action.created_at).getTime() : 0;
       return createdAt >= startTime && createdAt <= endTime;
     });
@@ -144,7 +145,7 @@ export async function getDashboardData(
   if (periodRange) {
     const startTime = periodRange.start.getTime();
     const endTime = periodRange.end.getTime();
-    completedActions = allActions.filter((action: any) => {
+    completedActions = allActions.filter((action) => {
       const status = action.status || (action.is_completed ? "done" : "todo");
       if (status !== "done") return false;
       const updatedAt = action.updated_at ? new Date(action.updated_at).getTime() : 0;
@@ -181,16 +182,16 @@ export async function getDashboardData(
       const dueDate = new Date(action.due_date);
       return dueDate <= sevenDaysFromNow;
     })
-    .map((action: any) => {
-      const dueDate = new Date(action.due_date);
+    .map((action) => {
+      const dueDate = new Date(action.due_date!);
       const daysUntilDue = Math.ceil(
         (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
       );
-      const chartData = action.tensions?.charts;
+      const chartData = (action as { tensions?: { charts?: { id?: string; title?: string } } }).tensions?.charts;
       return {
         id: action.id,
         title: action.title || "(無題)",
-        due_date: action.due_date,
+        due_date: action.due_date!,
         status: action.status || "todo",
         chart_id: chartData?.id || "",
         chart_title: chartData?.title || "",
@@ -218,7 +219,7 @@ export async function getDashboardData(
 }
 
 async function getAllDescendantChartIds(
-  supabase: any,
+  supabase: SupabaseClient,
   chartId: string
 ): Promise<string[]> {
   const result: string[] = [];

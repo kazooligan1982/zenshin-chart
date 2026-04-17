@@ -9,7 +9,7 @@ import {
   addActionDependency,
   removeActionDependency,
   type ActionDependencyItem,
-} from "@/app/charts/[id]/actions";
+} from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import {
   Popover,
   PopoverContent,

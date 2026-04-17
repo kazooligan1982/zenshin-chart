@@ -1,4 +1,7 @@
-import type { VisionItem, Area } from "@/types/chart";
+import type { VisionItem, Area, RealityItem, ActionPlan, Tension } from "@/types/chart";
+import type { MutableRefObject } from "react";
+
+type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -16,6 +19,7 @@ export function useVisionHandlers({
   newVisionInput,
   chart,
   router,
+  optimisticOpsRef,
 }: {
   chartId: string;
   visions: VisionItem[];
@@ -23,11 +27,12 @@ export function useVisionHandlers({
   selectedAreaId: string;
   isSubmittingVision: boolean;
   setIsSubmittingVision: React.Dispatch<React.SetStateAction<boolean>>;
-  pendingDeletions: Record<string, { type: string; item: any; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
-  setPendingDeletions: React.Dispatch<React.SetStateAction<any>>;
+  pendingDeletions: PendingDeletionMap;
+  setPendingDeletions: React.Dispatch<React.SetStateAction<PendingDeletionMap>>;
   newVisionInput: { setValue: (val: string) => void };
   chart: { areas: Area[] };
   router: ReturnType<typeof useRouter>;
+  optimisticOpsRef?: MutableRefObject<number>;
 }) {
   const tt = useTranslations("toast");
   const tTags = useTranslations("tags");
@@ -54,6 +59,7 @@ export function useVisionHandlers({
     setVisions((prev) => [...prev, optimisticVision]);
     if (areaIdOverride === undefined) newVisionInput.setValue("");
 
+    if (optimisticOpsRef) optimisticOpsRef.current++;
     try {
       const newVision = await addVision(chartId, contentToAdd, areaId);
       if (newVision) {
@@ -72,6 +78,7 @@ export function useVisionHandlers({
       setVisions((prev) => prev.filter((v) => v.id !== tempId));
       newVisionInput.setValue(contentToAdd);
     } finally {
+      if (optimisticOpsRef) optimisticOpsRef.current--;
       setIsSubmittingVision(false);
     }
   };
@@ -91,26 +98,30 @@ export function useVisionHandlers({
     }
     if (field === "areaId") {
       const previousState = visions;
+      const areaName = value
+        ? chart.areas.find((area: Area) => area.id === value)?.name
+        : tTags("untagged");
+      // 楽観的に即座にタグ位置を変更（UIは即反映）
       setVisions((prev) =>
         prev.map((vision) =>
           vision.id === id ? { ...vision, area_id: value as string | null } : vision
         )
       );
+      toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
+      if (optimisticOpsRef) optimisticOpsRef.current++;
       try {
         const success = await updateVisionItem(id, chartId, field, value);
-        if (success) {
-          const areaName = value
-            ? chart.areas.find((area: Area) => area.id === value)?.name
-            : "未分類";
-          toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
-          router.refresh();
-        } else {
+        if (!success) {
           setVisions(previousState);
+          toast.error(tt("moveFailed"), { duration: 5000 });
           console.error("[handleUpdateVision] 更新失敗");
         }
       } catch (error) {
         console.error("[handleUpdateVision] エラー:", error);
         setVisions(previousState);
+        toast.error(tt("moveFailed"), { duration: 5000 });
+      } finally {
+        if (optimisticOpsRef) optimisticOpsRef.current--;
       }
       return;
     }
@@ -153,7 +164,7 @@ export function useVisionHandlers({
         setVisions(originalVisions);
         toast.error(tt("deleteFailed"), { duration: 5000 });
       }
-      setPendingDeletions((prev: Record<string, any>) => {
+      setPendingDeletions((prev: PendingDeletionMap) => {
         const next = { ...prev };
         delete next[existingKey];
         return next;
@@ -161,7 +172,7 @@ export function useVisionHandlers({
     }, 15000);
 
     // 削除予約を保存
-    setPendingDeletions((prev: Record<string, any>) => ({
+    setPendingDeletions((prev: PendingDeletionMap) => ({
       ...prev,
       [existingKey]: {
         type: "vision",
@@ -177,7 +188,7 @@ export function useVisionHandlers({
         onClick: () => {
           clearTimeout(timeoutId);
           setVisions(originalVisions);
-          setPendingDeletions((prev: Record<string, any>) => {
+          setPendingDeletions((prev: PendingDeletionMap) => {
             const next = { ...prev };
             delete next[existingKey];
             return next;

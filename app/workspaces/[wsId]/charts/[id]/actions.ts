@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { detectService, SERVICE_LABELS } from "@/lib/link-utils";
 
 async function revalidateChartPath(chartId: string) {
   const supabaseClient = await createClient();
@@ -9,9 +10,6 @@ async function revalidateChartPath(chartId: string) {
   if (data?.workspace_id) {
     revalidatePath(`/workspaces/${data.workspace_id}/charts/${chartId}`);
     revalidatePath(`/workspaces/${data.workspace_id}/charts`);
-  } else {
-    revalidatePath(`/charts/${chartId}`);
-    revalidatePath(`/charts`);
   }
 }
 
@@ -156,11 +154,11 @@ export async function updateRealityItem(
   field: "content" | "isLocked" | "areaId" | "dueDate" | "description",
   value: string | boolean | null
 ) {
-  const updates: any = {};
+  const updates: Partial<Pick<RealityItem, "content" | "isLocked" | "area_id" | "dueDate" | "description">> = {};
   if (field === "content") updates.content = value as string;
   if (field === "isLocked") updates.isLocked = value as boolean;
   if (field === "areaId") updates.area_id = value as string | null;
-  if (field === "dueDate") updates.dueDate = value as string | null;
+  if (field === "dueDate") updates.dueDate = (value as string | null) ?? undefined;
   if (field === "description") updates.description = value as string;
   const result = await updateReality(realityId, chartId, updates);
   if (result) {
@@ -504,22 +502,19 @@ export async function updateVisionArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseVisionQuery = supabase
       .from("visions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .is("due_date", null)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredVisionQuery = areaId === null
+      ? baseVisionQuery.is("area_id", null)
+      : baseVisionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredVisionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -567,21 +562,18 @@ export async function updateRealityArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseRealityQuery = supabase
       .from("realities")
       .select("sort_order")
       .eq("chart_id", projectId)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredRealityQuery = areaId === null
+      ? baseRealityQuery.is("area_id", null)
+      : baseRealityQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredRealityQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -628,21 +620,18 @@ export async function updateTensionArea(
       .single();
     const oldAreaId = existing?.area_id ?? null;
 
-    let maxOrderQuery: any = supabase
+    const baseTensionQuery = supabase
       .from("tensions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredTensionQuery = areaId === null
+      ? baseTensionQuery.is("area_id", null)
+      : baseTensionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredTensionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -736,22 +725,19 @@ export async function updateActionArea(
       console.warn("[DEBUG] Failed to fetch action child_chart_id:", actionMetaError);
     } else {
     }
-    let maxOrderQuery: any = supabase
+    const baseActionQuery = supabase
       .from("actions")
       .select("sort_order")
       .eq("chart_id", projectId)
       .is("due_date", null)
       .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
 
-    if (areaId === null) {
-      maxOrderQuery = maxOrderQuery.is("area_id", null);
-    } else {
-      maxOrderQuery = maxOrderQuery.eq("area_id", areaId);
-    }
+    const filteredActionQuery = areaId === null
+      ? baseActionQuery.is("area_id", null)
+      : baseActionQuery.eq("area_id", areaId);
 
-    const { data: maxOrderItem, error: maxOrderError } = await maxOrderQuery;
+    const { data: maxOrderItem, error: maxOrderError } = await filteredActionQuery.maybeSingle();
 
     if (maxOrderError) throw maxOrderError;
 
@@ -1035,7 +1021,7 @@ export async function checkIncompleteTelescopeActions(actionId: string): Promise
 }
 
 async function getIncompleteActionsRecursive(
-  supabase: any,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   chartId: string
 ): Promise<{ id: string; title: string; status: string }[]> {
   const result: { id: string; title: string; status: string }[] = [];
@@ -1490,12 +1476,35 @@ export async function getActionProgress(childChartId: string) {
   return await getChildChartProgress(childChartId);
 }
 
+interface RecursiveChartData {
+  chart: Record<string, unknown>;
+  areas: Record<string, unknown>[];
+  visions: Record<string, unknown>[];
+  realities: Record<string, unknown>[];
+  tensions: Record<string, unknown>[];
+  tension_visions: Record<string, unknown>[];
+  tension_realities: Record<string, unknown>[];
+  actions: Record<string, unknown>[];
+  comments: {
+    visions: Record<string, unknown>[];
+    realities: Record<string, unknown>[];
+    actions: Record<string, unknown>[];
+  };
+  children: RecursiveChartData[];
+  metadata: {
+    snapshot_at: string;
+    total_visions: number;
+    total_actions: number;
+    child_charts_count: number;
+  };
+}
+
 // スナップショット作成
 async function getChartDataRecursive(
   chartId: string,
   supabase: Awaited<ReturnType<typeof createClient>>,
   visited: Set<string>
-): Promise<any> {
+): Promise<RecursiveChartData | null> {
   if (visited.has(chartId)) {
     return null;
   }
@@ -1524,7 +1533,7 @@ async function getChartDataRecursive(
   const tensions = tensionsResult.data || [];
   const actions = actionsResult.data || [];
 
-  const tensionIds = tensions.map((t: any) => t.id);
+  const tensionIds = tensions.map((t: { id: string }) => t.id);
   const [tensionVisionsResult, tensionRealitiesResult] = await Promise.all([
     tensionIds.length > 0
       ? supabase.from("tension_visions").select("*").in("tension_id", tensionIds)
@@ -1534,9 +1543,9 @@ async function getChartDataRecursive(
       : Promise.resolve({ data: [] }),
   ]);
 
-  const visionIds = visions.map((v: any) => v.id);
-  const realityIds = realities.map((r: any) => r.id);
-  const actionIds = actions.map((a: any) => a.id);
+  const visionIds = visions.map((v: { id: string }) => v.id);
+  const realityIds = realities.map((r: { id: string }) => r.id);
+  const actionIds = actions.map((a: { id: string }) => a.id);
 
   const [visionCommentsResult, realityCommentsResult, actionCommentsResult] =
     await Promise.all([
@@ -1552,12 +1561,12 @@ async function getChartDataRecursive(
     ]);
 
   const childChartIds = [
-    ...new Set(actions.map((a: any) => a.child_chart_id).filter(Boolean)),
+    ...new Set(actions.map((a: { child_chart_id: string | null }) => a.child_chart_id).filter(Boolean)),
   ] as string[];
 
-  const children = [];
+  const children: RecursiveChartData[] = [];
   for (const childId of childChartIds) {
-    const childData: any = await getChartDataRecursive(childId, supabase, visited);
+    const childData = await getChartDataRecursive(childId, supabase, visited);
     if (childData) children.push(childData);
   }
 
@@ -1732,7 +1741,7 @@ export async function updateActionStatus(
     const supabase = await createClient();
 
     // statusを更新し、doneの場合はis_completedもtrueに、それ以外はfalseに
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       status: newStatus,
       is_completed: newStatus === "done",
     };
@@ -1778,32 +1787,176 @@ export async function addItemHistoryEntry(
   return result;
 }
 
-// Linked Resources, Item Relations, Action Dependencies (wrapper - charts actions handles both paths revalidation)
-import {
-  getItemLinks as _getItemLinks,
-  addItemLink as _addItemLink,
-  deleteItemLink as _deleteItemLink,
-  getItemRelations as _getItemRelations,
-  getActionDependencies as _getActionDependencies,
-  searchChartActions as _searchChartActions,
-  addActionDependency as _addActionDependency,
-  removeActionDependency as _removeActionDependency,
-} from "@/app/charts/[id]/actions";
-
-export async function getItemLinks(itemType: string, itemId: string) {
-  return _getItemLinks(itemType, itemId);
+// Linked Resources
+export interface ItemLink {
+  id: string;
+  chart_id: string;
+  item_type: string;
+  item_id: string;
+  url: string;
+  title: string | null;
+  service: string | null;
+  created_at: string;
 }
 
-export async function getItemRelations(chartId: string, itemType: string, itemId: string) {
-  return _getItemRelations(chartId, itemType, itemId);
+export type ItemRelation = { type: string; id: string; title: string };
+
+async function resolveItemTitles(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  items: { type: string; id: string }[]
+): Promise<ItemRelation[]> {
+  if (items.length === 0) return [];
+  const byType = { vision: [] as string[], reality: [] as string[], tension: [] as string[], action: [] as string[] };
+  for (const { type, id } of items) {
+    if (type in byType) (byType as Record<string, string[]>)[type].push(id);
+  }
+  const titleMap = new Map<string, string>();
+  const tables: { type: string; table: string; titleCol: string }[] = [
+    { type: "vision", table: "visions", titleCol: "content" },
+    { type: "reality", table: "realities", titleCol: "content" },
+    { type: "tension", table: "tensions", titleCol: "title" },
+    { type: "action", table: "actions", titleCol: "title" },
+  ];
+  await Promise.all(
+    tables.map(async ({ type, table, titleCol }) => {
+      const ids = (byType as Record<string, string[]>)[type];
+      if (!ids?.length) return;
+      const { data } = await supabase.from(table).select("id, " + titleCol).in("id", ids);
+      for (const r of data ?? []) {
+        const row = r as unknown as Record<string, string>;
+        titleMap.set(`${type}:${row.id}`, (row[titleCol] || "").slice(0, 200));
+      }
+    })
+  );
+  return items.map(({ type, id }) => ({
+    type,
+    id,
+    title: titleMap.get(`${type}:${id}`) ?? "(無題)",
+  }));
 }
 
-export async function getActionDependencies(chartId: string, actionId: string) {
-  return _getActionDependencies(chartId, actionId);
+export async function getItemRelations(
+  chartId: string,
+  itemType: string,
+  itemId: string
+): Promise<{ references: ItemRelation[]; referencedBy: ItemRelation[] }> {
+  try {
+    const supabase = await createClient();
+    const { data: refs } = await supabase
+      .from("item_relations")
+      .select("target_item_type, target_item_id")
+      .eq("chart_id", chartId)
+      .eq("source_item_type", itemType)
+      .eq("source_item_id", itemId);
+    const { data: refBy } = await supabase
+      .from("item_relations")
+      .select("source_item_type, source_item_id")
+      .eq("chart_id", chartId)
+      .eq("target_item_type", itemType)
+      .eq("target_item_id", itemId);
+    const refItems = (refs ?? []).map((r) => ({ type: (r as { target_item_type: string }).target_item_type, id: (r as { target_item_id: string }).target_item_id }));
+    const refByItems = (refBy ?? []).map((r) => ({ type: (r as { source_item_type: string }).source_item_type, id: (r as { source_item_id: string }).source_item_id }));
+    const [references, referencedBy] = await Promise.all([
+      resolveItemTitles(supabase, refItems),
+      resolveItemTitles(supabase, refByItems),
+    ]);
+    return { references, referencedBy };
+  } catch (error) {
+    console.error("[getItemRelations] Error:", error);
+    return { references: [], referencedBy: [] };
+  }
 }
 
-export async function searchChartActions(chartId: string, query: string) {
-  return _searchChartActions(chartId, query);
+// Action Dependencies (blocking/blocked by)
+export type ActionDependencyItem = {
+  id: string;
+  actionId: string;
+  title: string;
+  status: string | null;
+  isCompleted: boolean | null;
+};
+
+export async function getActionDependencies(
+  chartId: string,
+  actionId: string
+): Promise<{ blockedBy: ActionDependencyItem[]; blocking: ActionDependencyItem[] }> {
+  try {
+    const supabase = await createClient();
+    const { data: blockedByRows } = await supabase
+      .from("action_dependencies")
+      .select("id, blocker_action_id")
+      .eq("chart_id", chartId)
+      .eq("blocked_action_id", actionId);
+    const { data: blockingRows } = await supabase
+      .from("action_dependencies")
+      .select("id, blocked_action_id")
+      .eq("chart_id", chartId)
+      .eq("blocker_action_id", actionId);
+
+    const blockerIds = (blockedByRows ?? []).map((r) => (r as { blocker_action_id: string }).blocker_action_id);
+    const blockedIds = (blockingRows ?? []).map((r) => (r as { blocked_action_id: string }).blocked_action_id);
+
+    const fetchActions = async (ids: string[]) => {
+      if (ids.length === 0) return [];
+      const { data } = await supabase
+        .from("actions")
+        .select("id, title, status, is_completed")
+        .in("id", ids);
+      return (data ?? []).map((a) => ({
+        id: (a as { id: string }).id,
+        title: ((a as { title: string }).title || "").slice(0, 200),
+        status: (a as { status: string | null }).status,
+        isCompleted: (a as { is_completed: boolean | null }).is_completed,
+      }));
+    };
+
+    const [blockedByActions, blockingActions] = await Promise.all([
+      fetchActions(blockerIds),
+      fetchActions(blockedIds),
+    ]);
+
+    const blockedBy = blockedByActions.map((a, i) => ({
+      ...a,
+      depId: (blockedByRows ?? [])[i]?.id ?? "",
+      actionId: a.id,
+    }));
+    const blocking = blockingActions.map((a, i) => ({
+      ...a,
+      depId: (blockingRows ?? [])[i]?.id ?? "",
+      actionId: a.id,
+    }));
+
+    return {
+      blockedBy: blockedBy.map(({ depId: d, ...rest }) => ({ ...rest, id: d })),
+      blocking: blocking.map(({ depId: d, ...rest }) => ({ ...rest, id: d })),
+    };
+  } catch (error) {
+    console.error("[getActionDependencies] Error:", error);
+    return { blockedBy: [], blocking: [] };
+  }
+}
+
+export async function searchChartActions(chartId: string, query: string): Promise<{ id: string; title: string; status: string | null }[]> {
+  try {
+    const supabase = await createClient();
+    let q = supabase
+      .from("actions")
+      .select("id, title, status")
+      .eq("chart_id", chartId)
+      .order("title");
+    if (query.trim()) {
+      q = q.ilike("title", `%${query.trim()}%`);
+    }
+    const { data } = await q.limit(20);
+    return (data ?? []).map((a) => ({
+      id: (a as { id: string }).id,
+      title: ((a as { title: string }).title || "").slice(0, 200),
+      status: (a as { status: string | null }).status,
+    }));
+  } catch (error) {
+    console.error("[searchChartActions] Error:", error);
+    return [];
+  }
 }
 
 export async function addActionDependency(
@@ -1812,11 +1965,99 @@ export async function addActionDependency(
   relatedActionId: string,
   relationType: "blocked_by" | "blocking"
 ) {
-  return _addActionDependency(chartId, actionId, relatedActionId, relationType);
+  try {
+    const supabase = await createClient();
+    const blocked = relationType === "blocked_by" ? actionId : relatedActionId;
+    const blocker = relationType === "blocked_by" ? relatedActionId : actionId;
+    if (blocked === blocker) throw new Error("Cannot add self-dependency");
+
+    const { error } = await supabase.from("action_dependencies").insert({
+      chart_id: chartId,
+      blocked_action_id: blocked,
+      blocker_action_id: blocker,
+    });
+
+    if (error) throw new Error(error.message);
+
+    const { data: relatedAction } = await supabase
+      .from("actions")
+      .select("title")
+      .eq("id", relatedActionId)
+      .single();
+    const relatedTitle = (relatedAction as { title?: string } | null)?.title?.trim() || "(無題)";
+    const displayValue =
+      relationType === "blocked_by"
+        ? `Blocked by: ${relatedTitle}`
+        : `Blocking: ${relatedTitle}`;
+    await recordChartHistory(chartId, "action", actionId, "updated", "dependency", null, displayValue);
+
+    await revalidateChartPath(chartId);
+    return { success: true };
+  } catch (error) {
+    console.error("[addActionDependency] Error:", error);
+    throw error;
+  }
 }
 
 export async function removeActionDependency(dependencyId: string, actionId: string) {
-  return _removeActionDependency(dependencyId, actionId);
+  try {
+    const supabase = await createClient();
+    const { data: dep } = await supabase
+      .from("action_dependencies")
+      .select("chart_id, blocked_action_id, blocker_action_id")
+      .eq("id", dependencyId)
+      .single();
+
+    let displayValue: string | null = null;
+    if (dep?.chart_id) {
+      const blockedId = (dep as { blocked_action_id?: string }).blocked_action_id;
+      const blockerId = (dep as { blocker_action_id?: string }).blocker_action_id;
+      const otherId = actionId === blockedId ? blockerId : blockedId;
+      const { data: otherAction } = await supabase
+        .from("actions")
+        .select("title")
+        .eq("id", otherId)
+        .single();
+      const otherTitle = (otherAction as { title?: string } | null)?.title?.trim() || "(無題)";
+      displayValue = actionId === blockedId ? `Blocked by: ${otherTitle}` : `Blocking: ${otherTitle}`;
+      await recordChartHistory(dep.chart_id, "action", actionId, "updated", "dependency", displayValue, null);
+    }
+
+    const { error } = await supabase.from("action_dependencies").delete().eq("id", dependencyId);
+    if (error) throw new Error(error.message);
+
+    if (dep?.chart_id) {
+      await revalidateChartPath(dep.chart_id);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("[removeActionDependency] Error:", error);
+    throw error;
+  }
+}
+
+export async function getItemLinks(
+  itemType: string,
+  itemId: string
+): Promise<ItemLink[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("item_links")
+      .select("id, chart_id, item_type, item_id, url, title, service, created_at")
+      .eq("item_type", itemType)
+      .eq("item_id", itemId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getItemLinks] Error:", error);
+      return [];
+    }
+    return data ?? [];
+  } catch (error) {
+    console.error("[getItemLinks] Exception:", error);
+    return [];
+  }
 }
 
 export async function addItemLink(
@@ -1826,10 +2067,87 @@ export async function addItemLink(
   url: string,
   title?: string
 ) {
-  return _addItemLink(chartId, itemType, itemId, url, title);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const service = detectService(url);
+
+    const { data, error } = await supabase
+      .from("item_links")
+      .insert({
+        chart_id: chartId,
+        item_type: itemType,
+        item_id: itemId,
+        url: url.trim(),
+        title: title?.trim() || null,
+        service,
+        created_by: user.id,
+      })
+      .select("id, chart_id, item_type, item_id, url, title, service, created_at")
+      .single();
+
+    if (error) {
+      console.error("[addItemLink] Error:", error);
+      throw new Error(error.message);
+    }
+
+    const entityType = itemType as "vision" | "reality" | "tension" | "action";
+    const linkDisplayValue = `${SERVICE_LABELS[service]} ${url.trim()}`;
+    await recordChartHistory(chartId, entityType, itemId, "updated", "link", null, linkDisplayValue);
+
+    await revalidateChartPath(chartId);
+    return data;
+  } catch (error) {
+    console.error("[addItemLink] Exception:", error);
+    throw error;
+  }
 }
 
 export async function deleteItemLink(linkId: string) {
-  return _deleteItemLink(linkId);
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const { data: link } = await supabase
+      .from("item_links")
+      .select("chart_id, item_type, item_id, url, service")
+      .eq("id", linkId)
+      .single();
+
+    const { error } = await supabase
+      .from("item_links")
+      .delete()
+      .eq("id", linkId)
+      .eq("created_by", user.id);
+
+    if (error) {
+      console.error("[deleteItemLink] Error:", error);
+      throw new Error(error.message);
+    }
+
+    if (link?.chart_id) {
+      const entityType = (link as { item_type?: string }).item_type as "vision" | "reality" | "tension" | "action";
+      const url = (link as { url?: string }).url ?? "";
+      const service = (link as { service?: string }).service ?? "other";
+      const linkDisplayValue = `${SERVICE_LABELS[service as keyof typeof SERVICE_LABELS]} ${url}`;
+      await recordChartHistory(
+        link.chart_id,
+        entityType,
+        (link as { item_id?: string }).item_id ?? "",
+        "updated",
+        "link",
+        linkDisplayValue,
+        null
+      );
+      await revalidateChartPath(link.chart_id);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("[deleteItemLink] Exception:", error);
+    throw error;
+  }
 }
 

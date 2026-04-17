@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { useEffect } from "react";
 export default function GlobalError({
   error,
   reset,
@@ -9,43 +8,36 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const [incidentId, setIncidentId] = useState<string | null>(null);
-
   useEffect(() => {
-    const id = String(Date.now());
-    queueMicrotask(() => {
-      setIncidentId(id);
-    });
-  }, []);
-
-  useEffect(() => {
-    console.error(error);
+    console.error("[global-error]", error);
   }, [error]);
 
   return (
     <html lang="ja">
-      <body className="min-h-screen bg-background font-sans antialiased flex flex-col items-center justify-center p-6 text-foreground">
-        <div className="max-w-md w-full space-y-4 text-center">
-          <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-            予期しないエラーが発生しました
+      <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#F3F0E3", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ maxWidth: 400, textAlign: "center", padding: 24 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: "#154665", marginBottom: 8 }}>
+            Something went wrong
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {incidentId !== null && (
-              <>
-                ID: <span className="font-mono">{incidentId}</span>
-              </>
-            )}
-            {error.digest ? (
-              <span className="block mt-2">Digest: {error.digest}</span>
-            ) : null}
+          <p style={{ fontSize: 14, color: "#154665", opacity: 0.5, marginBottom: 24 }}>
+            An unexpected error occurred.
+            {error.digest ? ` (${error.digest})` : ""}
           </p>
-          <button
-            type="button"
-            onClick={() => reset()}
-            className="inline-flex items-center justify-center rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-          >
-            再試行
-          </button>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button
+              onClick={() => reset()}
+              style={{ padding: "8px 16px", fontSize: 14, fontWeight: 500, borderRadius: 6, border: "none", background: "#154665", color: "white", cursor: "pointer" }}
+            >
+              Try again
+            </button>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a
+              href="/"
+              style={{ padding: "8px 16px", fontSize: 14, fontWeight: 500, borderRadius: 6, border: "1px solid #15466533", color: "#154665", textDecoration: "none", cursor: "pointer" }}
+            >
+              Go home
+            </a>
+          </div>
         </div>
       </body>
     </html>

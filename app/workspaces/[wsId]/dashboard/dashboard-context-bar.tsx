@@ -35,7 +35,8 @@ function formatDateShort(dateStr: string): string {
   return format(new Date(dateStr), "M/d", { locale: ja });
 }
 
-function formatDateRange(fromStr: string, toStr: string): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _formatDateRange(fromStr: string, toStr: string): string {
   const from = new Date(fromStr);
   const to = new Date(toStr);
   const sameYear = from.getFullYear() === to.getFullYear();

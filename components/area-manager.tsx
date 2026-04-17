@@ -52,7 +52,8 @@ interface AreaManagerProps {
 
 export function AreaManager({
   areas,
-  chartId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  chartId: _chartId,
   onUpdateArea,
   onDeleteArea,
   onCreateArea,

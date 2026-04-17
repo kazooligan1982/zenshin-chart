@@ -1,4 +1,6 @@
 import type { Tension, TensionStatus, ActionPlan, VisionItem, RealityItem, Area } from "@/types/chart";
+
+type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -14,10 +16,14 @@ export function useTensionHandlers({
   chartId,
   tensions,
   setTensions,
-  visions,
-  realities,
-  looseActions,
-  setLooseActions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  visions: _visions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  realities: _realities,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  looseActions: _looseActions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setLooseActions: _setLooseActions,
   pendingDeletions,
   setPendingDeletions,
   areas,
@@ -30,8 +36,8 @@ export function useTensionHandlers({
   realities: RealityItem[];
   looseActions: ActionPlan[];
   setLooseActions: React.Dispatch<React.SetStateAction<ActionPlan[]>>;
-  pendingDeletions: Record<string, { type: string; item: any; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
-  setPendingDeletions: React.Dispatch<React.SetStateAction<any>>;
+  pendingDeletions: PendingDeletionMap;
+  setPendingDeletions: React.Dispatch<React.SetStateAction<PendingDeletionMap>>;
   areas: Area[];
   router: ReturnType<typeof useRouter>;
 }) {
@@ -100,7 +106,6 @@ export function useTensionHandlers({
                 onClick: async () => {
                   setTensions(previousState);
                   await updateTensionItem(tensionId, chartId, "status", prevStatus);
-                  router.refresh();
                 },
               },
             });
@@ -112,13 +117,12 @@ export function useTensionHandlers({
                 onClick: async () => {
                   setTensions(previousState);
                   await updateTensionItem(tensionId, chartId, "status", prevStatus);
-                  router.refresh();
                 },
               },
             });
           }
         }
-        router.refresh();
+        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } else {
         setTensions(previousState);
         console.error("[handleUpdateTension] 更新失敗");
@@ -152,11 +156,10 @@ export function useTensionHandlers({
             onClick: async () => {
               setTensions(previousState);
               await updateTensionArea(tensionId, prevAreaId ?? null, chartId, true);
-              router.refresh();
             },
           },
         });
-        router.refresh();
+        // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } else {
         setTensions(previousState);
         toast.error(tt("moveFailed"), { duration: 5000 });
@@ -192,7 +195,7 @@ export function useTensionHandlers({
         setTensions(originalTensions);
         toast.error(tt("deleteFailed"), { duration: 5000 });
       }
-      setPendingDeletions((prev: Record<string, any>) => {
+      setPendingDeletions((prev: PendingDeletionMap) => {
         const next = { ...prev };
         delete next[existingKey];
         return next;
@@ -200,7 +203,7 @@ export function useTensionHandlers({
     }, 15000);
 
     // 削除予約を保存
-    setPendingDeletions((prev: Record<string, any>) => ({
+    setPendingDeletions((prev: PendingDeletionMap) => ({
       ...prev,
       [existingKey]: {
         type: "tension",
@@ -216,7 +219,7 @@ export function useTensionHandlers({
         onClick: () => {
           clearTimeout(timeoutId);
           setTensions(originalTensions);
-          setPendingDeletions((prev: Record<string, any>) => {
+          setPendingDeletions((prev: PendingDeletionMap) => {
             const next = { ...prev };
             delete next[existingKey];
             return next;

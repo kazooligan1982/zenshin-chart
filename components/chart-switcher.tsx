@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
-import { getChartsHierarchy, type ProjectGroup } from "@/app/charts/actions";
+import { getChartsHierarchy, type ProjectGroup } from "@/lib/charts-actions";
 import { ChevronDown, BarChart3, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -64,7 +63,7 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
             .in("chart_id", allChartIds);
           if (snapshots) {
             const counts: Record<string, number> = {};
-            snapshots.forEach((s: any) => {
+            snapshots.forEach((s: { chart_id: string }) => {
               counts[s.chart_id] = (counts[s.chart_id] || 0) + 1;
             });
             setSnapshotCounts(counts);

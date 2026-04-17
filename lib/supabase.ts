@@ -21,5 +21,5 @@ if (typeof window === "undefined") {
 export const supabase =
   supabaseUrl && supabaseAnonKey
     ? createClient(supabaseUrl, supabaseAnonKey)
-    : (null as any); // 型安全性のため、実際の使用時には環境変数チェックが必要
+    : (null as unknown as ReturnType<typeof createClient>); // 型安全性のため、実際の使用時には環境変数チェックが必要
 

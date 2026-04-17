@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Popover,
@@ -18,7 +17,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Area } from "@/types/chart";
 
@@ -48,7 +47,8 @@ interface AreaTagEditorProps {
 export function AreaTagEditor({
   currentAreaId,
   areas,
-  chartId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  chartId: _chartId,
   onAreaChange,
   onCreateArea,
   size = "sm",
@@ -58,7 +58,8 @@ export function AreaTagEditor({
   const [newAreaName, setNewAreaName] = useState("");
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0].value);
   const [isCreating, setIsCreating] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_showColorPicker, setShowColorPicker] = useState(false);
 
   const currentArea = currentAreaId
     ? areas.find((a) => a.id === currentAreaId)

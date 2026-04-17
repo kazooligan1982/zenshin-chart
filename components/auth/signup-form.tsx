@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
 
-export function SignupForm() {
+export function SignupForm({ redirectTo = "/charts" }: { redirectTo?: string }) {
   const t = useTranslations("auth");
   const tt = useTranslations("toast");
   const [email, setEmail] = useState("");
@@ -39,7 +39,7 @@ export function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
       },
     });
 

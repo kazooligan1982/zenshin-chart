@@ -123,13 +123,16 @@ function InlineTagCreator({
 export function SortableVisionItem({
   vision,
   index,
-  chartId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  chartId: _chartId,
   onUpdate,
   onDelete,
   areas,
   onOpenDetail,
-  onOpenFocus,
-  onOpenAreaSettings,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOpenFocus: _onOpenFocus,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOpenAreaSettings: _onOpenAreaSettings,
   onCreateArea,
   currentUser,
   workspaceMembers = [],
@@ -161,7 +164,8 @@ export function SortableVisionItem({
   const tTags = useTranslations("tags");
   const tAction = useTranslations("action");
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
-  const area = areas.find((a) => a.id === vision.area_id);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _area = areas.find((a) => a.id === vision.area_id);
   const assigneeMember = workspaceMembers.find((m) => m.email === vision.assignee);
   const visionInput = useItemInput({
     initialValue: vision.content || "",

@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { isPersonalWorkspace } from "@/lib/workspace-utils";
 
 export async function updateWorkspaceName(wsId: string, name: string) {
   const trimmed = name.trim();
@@ -15,11 +16,14 @@ export async function updateWorkspaceName(wsId: string, name: string) {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("owner_id")
+    .select("owner_id, is_personal, name")
     .eq("id", wsId)
     .single();
   if (!workspace || workspace.owner_id !== user.id) {
     throw new Error("Forbidden");
+  }
+  if (isPersonalWorkspace(workspace)) {
+    throw new Error("Default workspace cannot be renamed");
   }
 
   const { error } = await supabase
@@ -39,40 +43,40 @@ export async function deleteWorkspace(wsId: string) {
 
   const { data: workspace } = await supabase
     .from("workspaces")
-    .select("owner_id")
+    .select("owner_id, is_personal, name")
     .eq("id", wsId)
     .single();
   if (!workspace || workspace.owner_id !== user.id) {
     throw new Error("Forbidden");
   }
+  if (isPersonalWorkspace(workspace)) {
+    throw new Error("Default workspace cannot be deleted");
+  }
 
-  const serviceClient = createServiceRoleClient();
+  // Use authenticated client — RLS allows owner to delete their own workspace.
+  // Cascade rules handle cleanup:
+  //   CASCADE: workspace_members, workspace_invitation_requests,
+  //            workspace_slack_settings, chart_proposals
+  //   SET NULL: charts.workspace_id — must delete charts explicitly first
 
-  // Delete related data in order
-  await serviceClient
-    .from("workspace_slack_settings")
+  // 1. Delete charts (SET NULL FK — won't cascade, so delete explicitly)
+  const { error: chartsError } = await supabase
+    .from("charts")
     .delete()
     .eq("workspace_id", wsId);
+  if (chartsError) {
+    console.error("[deleteWorkspace] charts:", chartsError);
+    throw new Error(`Failed to delete charts: ${chartsError.message}`);
+  }
 
-  await serviceClient
-    .from("workspace_invitations")
-    .delete()
-    .eq("workspace_id", wsId);
-
-  // Delete all charts in the workspace
-  await serviceClient.from("charts").delete().eq("workspace_id", wsId);
-
-  // Delete members
-  await serviceClient
-    .from("workspace_members")
-    .delete()
-    .eq("workspace_id", wsId);
-
-  // Delete the workspace itself
-  const { error } = await serviceClient
+  // 2. Delete workspace — cascades to members, invitations, slack settings, proposals
+  const { error } = await supabase
     .from("workspaces")
     .delete()
     .eq("id", wsId);
 
-  if (error) throw new Error("Failed to delete workspace");
+  if (error) {
+    console.error("[deleteWorkspace] workspace:", error);
+    throw new Error(`Failed to delete workspace: ${error.message}`);
+  }
 }

@@ -1,4 +1,7 @@
-import type { RealityItem, Area } from "@/types/chart";
+import type { RealityItem, Area, VisionItem, ActionPlan, Tension } from "@/types/chart";
+import type { MutableRefObject } from "react";
+
+type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -16,6 +19,7 @@ export function useRealityHandlers({
   newRealityInput,
   chart,
   router,
+  optimisticOpsRef,
 }: {
   chartId: string;
   realities: RealityItem[];
@@ -23,11 +27,12 @@ export function useRealityHandlers({
   selectedAreaId: string;
   isSubmittingReality: boolean;
   setIsSubmittingReality: React.Dispatch<React.SetStateAction<boolean>>;
-  pendingDeletions: Record<string, { type: string; item: any; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
-  setPendingDeletions: React.Dispatch<React.SetStateAction<any>>;
+  pendingDeletions: PendingDeletionMap;
+  setPendingDeletions: React.Dispatch<React.SetStateAction<PendingDeletionMap>>;
   newRealityInput: { setValue: (val: string) => void };
   chart: { areas: Area[] };
   router: ReturnType<typeof useRouter>;
+  optimisticOpsRef?: MutableRefObject<number>;
 }) {
   const tt = useTranslations("toast");
   const tTags = useTranslations("tags");
@@ -54,6 +59,7 @@ export function useRealityHandlers({
     setRealities((prev) => [...prev, optimisticReality]);
     if (areaIdOverride === undefined) newRealityInput.setValue("");
 
+    if (optimisticOpsRef) optimisticOpsRef.current++;
     try {
       const newReality = await addReality(chartId, contentToAdd, areaId);
       if (newReality) {
@@ -72,6 +78,7 @@ export function useRealityHandlers({
       setRealities((prev) => prev.filter((r) => r.id !== tempId));
       newRealityInput.setValue(contentToAdd);
     } finally {
+      if (optimisticOpsRef) optimisticOpsRef.current--;
       setIsSubmittingReality(false);
     }
   };
@@ -101,11 +108,21 @@ export function useRealityHandlers({
       toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
     }
 
-    const success = await updateRealityItem(id, chartId, field, value);
-    if (!success) {
-      // 失敗: ロールバック
+    if (field === "areaId" && optimisticOpsRef) optimisticOpsRef.current++;
+    try {
+      const success = await updateRealityItem(id, chartId, field, value);
+      if (!success) {
+        // 失敗: ロールバック
+        setRealities(originalRealities);
+        if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
+        console.error("[handleUpdateReality] 更新失敗 - ロールバック");
+      }
+    } catch (error) {
       setRealities(originalRealities);
-      console.error("[handleUpdateReality] 更新失敗 - ロールバック");
+      if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
+      console.error("[handleUpdateReality] エラー:", error);
+    } finally {
+      if (field === "areaId" && optimisticOpsRef) optimisticOpsRef.current--;
     }
   };
 
@@ -133,7 +150,7 @@ export function useRealityHandlers({
         setRealities(originalRealities);
         toast.error(tt("deleteFailed"), { duration: 5000 });
       }
-      setPendingDeletions((prev: Record<string, any>) => {
+      setPendingDeletions((prev: PendingDeletionMap) => {
         const next = { ...prev };
         delete next[existingKey];
         return next;
@@ -141,7 +158,7 @@ export function useRealityHandlers({
     }, 15000);
 
     // 削除予約を保存
-    setPendingDeletions((prev: Record<string, any>) => ({
+    setPendingDeletions((prev: PendingDeletionMap) => ({
       ...prev,
       [existingKey]: {
         type: "reality",
@@ -157,7 +174,7 @@ export function useRealityHandlers({
         onClick: () => {
           clearTimeout(timeoutId);
           setRealities(originalRealities);
-          setPendingDeletions((prev: Record<string, any>) => {
+          setPendingDeletions((prev: PendingDeletionMap) => {
             const next = { ...prev };
             delete next[existingKey];
             return next;

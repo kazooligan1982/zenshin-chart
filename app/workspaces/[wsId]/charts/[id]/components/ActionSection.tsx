@@ -30,14 +30,19 @@ export function ActionSection({
   areas,
   chartId,
   onOpenDetailPanel,
-  getSortedAndNumberedActions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getSortedAndNumberedActions: _getSortedAndNumberedActions,
   isSubmittingAction,
   onAddAction,
   onAddTension,
-  visions,
-  realities,
-  toggleVisionRealityLink,
-  setHighlightedItemId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  visions: _visions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  realities: _realities,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  toggleVisionRealityLink: _toggleVisionRealityLink,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setHighlightedItemId: _setHighlightedItemId,
   handleUpdateTension,
   handleDeleteTension,
   onMoveTensionArea,

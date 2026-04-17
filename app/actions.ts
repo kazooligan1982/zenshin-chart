@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
@@ -33,13 +33,13 @@ export async function getDashboardData() {
     }
 
     // エリア情報を整形
-    const formattedCharts = (charts || []).map((chart: any) => ({
+    const formattedCharts = (charts || []).map((chart: { id: string; title: string; due_date: string | null; created_at: string; updated_at: string; areas: { id: string; name: string; color: string; sort_order: number }[] }) => ({
       id: chart.id,
       title: chart.title || "無題のチャート",
       due_date: chart.due_date,
       created_at: chart.created_at,
       updated_at: chart.updated_at,
-      areas: (chart.areas || []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+      areas: (chart.areas || []).sort((a, b) => a.sort_order - b.sort_order),
     }));
 
     return formattedCharts;

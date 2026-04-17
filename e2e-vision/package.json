@@ -1,0 +1,31 @@
+{
+  "name": "e2e-vision",
+  "version": "0.1.0",
+  "description": "Autonomous UI testing: Playwright crawl + Claude Vision API + auto-fix PR",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "crawl": "tsx crawl.ts",
+    "crawl:headed": "tsx crawl.ts --headed true",
+    "crawl:desktop": "tsx crawl.ts --viewports desktop",
+    "analyze": "tsx analyze.ts",
+    "autofix": "tsx autofix.ts",
+    "autofix:dry": "tsx autofix.ts --dry-run",
+    "crawl:op": "op run --env-file=.env.tpl.example -- tsx crawl.ts",
+    "analyze:op": "op run --env-file=.env.tpl.example -- tsx analyze.ts",
+    "test:vision": "tsx crawl.ts && tsx analyze.ts",
+    "test:vision:fix": "tsx crawl.ts && tsx analyze.ts && tsx autofix.ts",
+    "test:vision:op": "op run --env-file=.env.tpl.example -- bash -c 'tsx crawl.ts && tsx analyze.ts'",
+    "setup": "playwright install chromium"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.4.0",
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}

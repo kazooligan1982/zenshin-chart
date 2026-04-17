@@ -18,18 +18,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { updateWorkspaceName, deleteWorkspace } from "./actions";
+import { updateWorkspaceName } from "./actions";
 
 type Props = {
   wsId: string;
   workspaceName: string;
   isOwner: boolean;
+  isDefaultWorkspace?: boolean;
 };
 
 export function WorkspaceGeneralSettings({
   wsId,
   workspaceName,
   isOwner,
+  isDefaultWorkspace = false,
 }: Props) {
   const t = useTranslations("workspaceSettings");
   const router = useRouter();
@@ -58,10 +60,23 @@ export function WorkspaceGeneralSettings({
   async function handleDelete() {
     setIsDeleting(true);
     try {
-      await deleteWorkspace(wsId);
-      router.push("/");
-    } catch {
-      toast.error(t("deleteFailed"));
+      // Use fetch instead of server action to avoid automatic route revalidation
+      // which would cause the workspace layout to redirect mid-deletion
+      const res = await fetch("/api/workspaces", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wsId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete workspace");
+      }
+      // Full page navigation to avoid re-rendering deleted workspace's layout
+      window.location.href = "/";
+      return;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(`${t("deleteFailed")}${msg ? `: ${msg}` : ""}`, { duration: 10000 });
       setIsDeleting(false);
     }
   }
@@ -101,26 +116,34 @@ export function WorkspaceGeneralSettings({
           {t("workspaceName")}
         </h2>
         <p className="text-xs text-zenshin-navy/40 mb-3">
-          {t("workspaceNameDescription")}
+          {isDefaultWorkspace ? t("defaultWorkspaceNote") : t("workspaceNameDescription")}
         </p>
-        <div className="flex gap-3 max-w-md">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="flex-1"
-            maxLength={100}
-          />
-          <Button
-            onClick={handleRename}
-            disabled={!nameChanged || isRenaming || !name.trim()}
-            size="sm"
-          >
-            {isRenaming ? t("renaming") : t("rename")}
-          </Button>
-        </div>
+        {!isDefaultWorkspace && (
+          <div className="flex gap-3 max-w-md">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1"
+              maxLength={100}
+            />
+            <Button
+              onClick={handleRename}
+              disabled={!nameChanged || isRenaming || !name.trim()}
+              size="sm"
+            >
+              {isRenaming ? t("renaming") : t("rename")}
+            </Button>
+          </div>
+        )}
+        {isDefaultWorkspace && (
+          <div className="text-sm text-zenshin-navy/50 bg-zenshin-navy/[0.03] rounded-md px-4 py-3 max-w-md">
+            {workspaceName}
+          </div>
+        )}
       </div>
 
       {/* Danger Zone */}
+      {isDefaultWorkspace ? null : (
       <div className="border border-red-200 rounded-lg p-6">
         <h2 className="text-sm font-medium text-red-600 flex items-center gap-2 mb-4">
           <AlertTriangle className="w-4 h-4" />
@@ -177,6 +200,7 @@ export function WorkspaceGeneralSettings({
           </AlertDialog>
         </div>
       </div>
+      )}
     </div>
   );
 }

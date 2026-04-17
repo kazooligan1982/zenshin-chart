@@ -4,10 +4,10 @@ import {
   FolderOpen,
   Sparkles,
 } from "lucide-react";
-import { NewChartButton } from "@/app/charts/new-chart-button";
-import { ChartCard } from "@/app/charts/chart-card";
-import { CompletedChartsSection } from "@/app/charts/completed-charts-section";
-import { getChartsHierarchy, type ChartWithMeta, type ProjectGroup } from "@/app/charts/actions";
+import { NewChartButton } from "@/components/charts/new-chart-button";
+import { ChartCard } from "@/components/charts/chart-card";
+import { CompletedChartsSection } from "@/components/charts/completed-charts-section";
+import { getChartsHierarchy, type ProjectGroup } from "@/lib/charts-actions";
 import { createClient } from "@/lib/supabase/server";
 import { canCreateChart } from "@/lib/permissions";
 

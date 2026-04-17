@@ -18,6 +18,14 @@ export default async function WorkspaceLayout({
 
   if (!user) redirect("/login");
 
+  // Check workspace exists first (may have been deleted)
+  const { data: wsExists } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("id", wsId)
+    .single();
+  if (!wsExists) redirect("/charts");
+
   const { data: membership } = await supabase
     .from("workspace_members")
     .select("role, workspaces(id, name)")
@@ -25,7 +33,7 @@ export default async function WorkspaceLayout({
     .eq("user_id", user.id)
     .single();
 
-  if (!membership) redirect("/");
+  if (!membership) redirect("/charts");
 
   await updateLastWorkspace(wsId);
 
