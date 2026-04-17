@@ -183,6 +183,7 @@ interface ProjectEditorProps {
     avatar_url?: string | null;
   } | null;
   workspaceMembers?: WorkspaceMember[];
+  currentUserRole?: string;
 }
 
 export function ProjectEditor({
@@ -192,6 +193,7 @@ export function ProjectEditor({
   currentUserId,
   currentUser: initialCurrentUser,
   workspaceMembers = [],
+  currentUserRole = "viewer",
 }: ProjectEditorProps) {
   const t = useTranslations("editor");
   const tc = useTranslations("common");
@@ -2808,7 +2810,7 @@ export function ProjectEditor({
         isOpen={isProposalsPanelOpen}
         onClose={() => setIsProposalsPanelOpen(false)}
         canApprove={canApproveProposal(
-          (workspaceMembers.find((m) => m.id === (currentUserId || currentUser?.id))?.role as "owner" | "consultant" | "editor" | "viewer") || "viewer"
+          currentUserRole as "owner" | "consultant" | "editor" | "viewer"
         )}
         onApproved={() => {
           router.refresh();

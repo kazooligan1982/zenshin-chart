@@ -98,7 +98,7 @@ export function useDndHandlers({
             const areaName =
               targetAreaId !== null
                 ? chart.areas.find((a) => a.id === targetAreaId)?.name
-                : "未分類";
+                : tTags("untagged");
             toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
           } else {
             throw new Error("Update failed");
@@ -177,7 +177,7 @@ export function useDndHandlers({
           const areaName =
             targetAreaId !== null
               ? chart.areas.find((a) => a.id === targetAreaId)?.name
-              : "未分類";
+              : tTags("untagged");
           toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
         } else {
           setRealities(previousState);
@@ -299,7 +299,7 @@ export function useDndHandlers({
         );
         if (result.success) {
           const areaName =
-            targetAreaId !== null ? chart.areas.find((a) => a.id === targetAreaId)?.name : "未分類";
+            targetAreaId !== null ? chart.areas.find((a) => a.id === targetAreaId)?.name : tTags("untagged");
           toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
         } else {
           setTensions(previousState);
@@ -410,7 +410,7 @@ export function useDndHandlers({
       const result = await updateActionArea(activeId, targetAreaId ?? null, chartId, false);
       if (result.success) {
         const areaName =
-          targetAreaId !== null ? chart.areas.find((a) => a.id === targetAreaId)?.name : "未分類";
+          targetAreaId !== null ? chart.areas.find((a) => a.id === targetAreaId)?.name : tTags("untagged");
         toast.success(tt("movedToArea", { areaName: areaName ?? tTags("untagged") }), { duration: 3000 });
       } else {
         setTensions(previousTensions);
