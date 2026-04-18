@@ -561,7 +561,9 @@
     "applying": "Applying...",
     "cancel": "Cancel",
     "analysisError": "AI analysis failed. Please try again.",
-    "applyError": "Failed to apply to chart."
+    "applyError": "Failed to apply to chart.",
+    "appliedSuccess": "Applied to chart",
+    "proposedSuccess": "Proposal created. Check the Proposals tab."
   },
   "snapshot": {
     "title": "Snapshots",

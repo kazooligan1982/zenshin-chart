@@ -14,6 +14,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 interface StructurizeResult {
   visions: { title: string; enabled: boolean }[];
@@ -22,13 +23,15 @@ interface StructurizeResult {
   actions: { title: string; tensionIndex: number; enabled: boolean }[];
 }
 
+type ApplyResultMode = "applied" | "proposed";
+
 interface AiStructurizeModalProps {
   chartId: string;
   language: string;
   initialText?: string;
   onTextChange?: (text: string) => void;
   onClose: () => void;
-  onStructurized: () => void;
+  onStructurized: (result?: { mode: ApplyResultMode }) => void;
 }
 
 export function AiStructurizeModal({
@@ -116,9 +119,13 @@ export function AiStructurizeModal({
         }),
       });
       if (!res.ok) throw new Error("Apply failed");
-      onStructurized();
+      const data = await res.json().catch(() => ({} as { mode?: string }));
+      const mode: ApplyResultMode = data?.mode === "applied" ? "applied" : "proposed";
+      toast.success(mode === "applied" ? t("appliedSuccess") : t("proposedSuccess"));
+      onStructurized({ mode });
     } catch {
       setError(t("applyError"));
+      toast.error(t("applyError"));
     } finally {
       setApplying(false);
     }

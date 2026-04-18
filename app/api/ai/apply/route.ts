@@ -43,8 +43,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Chart not found" }, { status: 404 });
   }
 
+  // Owner auto-direct-apply (#86exAi01): The chart's workspace owner should not
+  // have to "propose to themselves and approve". We query workspace_members
+  // directly here inside the route handler so the auth cookies stay attached
+  // (unlike the "use server" lib/workspace helpers that have bitten us before:
+  // see #86ex89687 / #86ex9hd1n). If the caller is the workspace owner and
+  // asked for propose mode, we transparently upgrade to direct insert.
+  let effectiveMode = mode;
+  if (effectiveMode === "propose" && chart.workspace_id) {
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("workspace_id", chart.workspace_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (membership?.role === "owner") {
+      effectiveMode = "direct";
+    }
+  }
+
   // --- Propose mode: save to chart_proposals ---
-  if (mode === "propose") {
+  if (effectiveMode === "propose") {
     // Enforce the Fritz structural_diagnosis contract on AI-sourced proposals.
     // `unclear` with a reasoning string is still a valid diagnosis, so we
     // only block when the shape is actively malformed or absent.
@@ -136,12 +155,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      mode: "propose",
+      mode: "proposed",
       proposalId: proposal?.id,
     });
   }
 
-  // --- Direct mode: insert directly into V/R/T/A tables (legacy) ---
+  // --- Direct mode: insert directly into V/R/T/A tables (legacy + owner fast-path) ---
   const visionInserts = (visions || []).map(
     (v: { title: string }, i: number) => ({
       chart_id: chartId,
@@ -219,5 +238,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, mode: "direct" });
+  return NextResponse.json({ success: true, mode: "applied" });
 }

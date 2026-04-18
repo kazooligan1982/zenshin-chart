@@ -7,7 +7,7 @@ import { AiStructurizeModal } from "./AiStructurizeModal";
 
 interface WelcomeCardProps {
   chartId: string;
-  onStructurized: () => void;
+  onStructurized: (result?: { mode: "applied" | "proposed" }) => void;
 }
 
 export function WelcomeCard({ chartId, onStructurized }: WelcomeCardProps) {
@@ -66,10 +66,10 @@ export function WelcomeCard({ chartId, onStructurized }: WelcomeCardProps) {
           initialText={savedInputText}
           onTextChange={setSavedInputText}
           onClose={() => setShowModal(false)}
-          onStructurized={() => {
+          onStructurized={(result) => {
             setShowModal(false);
             setDismissed(true);
-            onStructurized();
+            onStructurized(result);
           }}
         />
       )}

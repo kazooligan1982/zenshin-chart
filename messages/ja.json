@@ -561,7 +561,9 @@
     "applying": "反映中...",
     "cancel": "キャンセル",
     "analysisError": "AI分析に失敗しました。もう一度お試しください。",
-    "applyError": "チャートへの反映に失敗しました。"
+    "applyError": "チャートへの反映に失敗しました。",
+    "appliedSuccess": "チャートに反映しました",
+    "proposedSuccess": "提案を作成しました。Proposals タブで確認してください"
   },
   "snapshot": {
     "title": "スナップショット",

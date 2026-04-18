@@ -74,11 +74,16 @@ interface AICoachButtonProps {
   chartData: ChartDataForAI;
   chartId?: string;
   onAddItems?: (items: StructurizeResult) => Promise<void>;
+  /**
+   * When true, the floating action button is hidden. Used to avoid visual
+   * collision with the Proposals panel (and similar right-side overlays).
+   */
+  hiddenFab?: boolean;
 }
 
 type ViewMode = "select" | "analyze" | "brainstorm" | "add" | "create";
 
-export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonProps) {
+export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = false }: AICoachButtonProps) {
   const t = useTranslations("aiCoach");
   const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
@@ -404,9 +409,24 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
         }),
       });
       if (!res.ok) throw new Error("Apply failed");
+      const data = await res.json().catch(() => ({} as { mode?: string }));
+      const appliedDirectly = data?.mode === "applied";
       setCreateText("");
       setCreateResult(null);
       setViewMode("select");
+      toast.success(
+        appliedDirectly
+          ? locale === "ja"
+            ? "チャートに反映しました"
+            : "Applied to chart"
+          : locale === "ja"
+            ? "提案を作成しました。Proposals タブで確認してください"
+            : "Proposal created. Check the Proposals tab."
+      );
+      handleClose();
+      // Owner path inserts directly; non-owner path creates a proposal.
+      // Either way, re-render the chart page so VRTA and the proposal badge
+      // both reflect the latest server state.
       window.location.reload();
     } catch {
       setCreateError(locale === "en" ? "Failed to apply. Please try again." : "適用に失敗しました。もう一度お試しください。");
@@ -1088,7 +1108,7 @@ export function AICoachButton({ chartData, chartId, onAddItems }: AICoachButtonP
 
   return (
     <>
-      {!isOpen && (
+      {!isOpen && !hiddenFab && (
         <button
           onClick={handleOpen}
           className="fixed bottom-6 right-6 z-[100000] w-14 h-14 bg-gradient-to-br from-violet-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center group"
