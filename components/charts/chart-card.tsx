@@ -9,12 +9,14 @@ import { useTranslations } from "next-intl";
 import { Calendar, RefreshCcw, CheckCircle2, Link2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { DeleteChartButton } from "@/components/charts/delete-chart-button";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 import type { ChartWithMeta } from "@/lib/charts-actions";
 
 export function ChartCard({ chart, isMaster = false, wsId }: { chart: ChartWithMeta; isMaster?: boolean; wsId?: string }) {
   const locale = useLocale();
   const [copied, setCopied] = useState(false);
   const t = useTranslations("home");
+  const tc = useTranslations("common");
   const dateLocale = locale === "ja" ? ja : enUS;
   const chartHref = wsId ? `/workspaces/${wsId}/charts/${chart.id}` : `/charts/${chart.id}`;
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -63,7 +65,7 @@ export function ChartCard({ chart, isMaster = false, wsId }: { chart: ChartWithM
 
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <h4 className={`font-bold text-zenshin-navy leading-snug line-clamp-2 group-hover:text-zenshin-orange transition-colors flex-1 min-w-0 ${isMaster ? "text-base" : "text-sm"}`}>
-            {chart.title}
+            {getChartDisplayTitle(chart, tc)}
           </h4>
           {chart.status === "completed" && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-full shrink-0">

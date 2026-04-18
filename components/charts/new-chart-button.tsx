@@ -19,7 +19,7 @@ export function NewChartButton({ workspaceId }: { workspaceId?: string }) {
     setIsCreating(true);
 
     try {
-      const chart = await createChart("無題のチャート", workspaceId);
+      const chart = await createChart("", workspaceId);
       toast.success(tt("chartCreated"), { duration: 3000 });
       router.push(workspaceId ? `/workspaces/${workspaceId}/charts/${chart.id}` : `/charts/${chart.id}`);
     } catch (error) {

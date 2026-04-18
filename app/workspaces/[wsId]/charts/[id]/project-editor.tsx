@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -131,6 +131,7 @@ import { AICoachButton, type StructuredItems } from "@/components/ai-coach-butto
 import { collectChartDataForAI } from "@/lib/ai/collect-chart-data";
 import ProposalsPanel from "@/components/proposals-panel";
 import { canApproveProposal } from "@/lib/permissions";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 
 const CalendarComponent = dynamic(
   () => import("@/components/ui/calendar").then((mod) => mod.Calendar),
@@ -1330,18 +1331,18 @@ export function ProjectEditor({
   }, [snapshotDropdownOpen]);
 
   // Fetch pending proposals count
-  useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const res = await fetch(`/api/proposals/list?chartId=${chartId}&status=pending`);
-        const data = await res.json();
-        setPendingProposalsCount(data.proposals?.length ?? 0);
-      } catch {
-        // silently ignore
-      }
-    };
-    fetchPendingCount();
+  const refreshPendingProposalsCount = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/proposals/list?chartId=${chartId}&status=pending`);
+      const data = await res.json();
+      setPendingProposalsCount(data.proposals?.length ?? 0);
+    } catch {
+      // silently ignore
+    }
   }, [chartId]);
+  useEffect(() => {
+    refreshPendingProposalsCount();
+  }, [refreshPendingProposalsCount]);
 
   const handleArchiveChart = async () => {
     if (!chart?.id) return;
@@ -1495,7 +1496,7 @@ export function ProjectEditor({
               if (breadcrumbItems.length === 0) {
                 return (
                   <span className="text-zenshin-navy font-medium truncate max-w-[200px]">
-                    {chart.title}
+                    {getChartDisplayTitle(chart, tc)}
                   </span>
                 );
               }
@@ -1779,7 +1780,12 @@ export function ProjectEditor({
             <div className="px-6 pt-6">
               <WelcomeCard
                 chartId={chartId}
-                onStructurized={() => router.refresh()}
+                onStructurized={(result) => {
+                  router.refresh();
+                  if (!result || result.mode === "proposed") {
+                    refreshPendingProposalsCount();
+                  }
+                }}
               />
             </div>
           )}
@@ -2814,10 +2820,7 @@ export function ProjectEditor({
         )}
         onApproved={() => {
           router.refresh();
-          fetch(`/api/proposals/list?chartId=${chart.id}&status=pending`)
-            .then((r) => r.json())
-            .then((d) => setPendingProposalsCount(d.proposals?.length ?? 0))
-            .catch(() => {});
+          refreshPendingProposalsCount();
         }}
       />
       <AICoachButton
@@ -2830,6 +2833,7 @@ export function ProjectEditor({
             workspaceMembers
           )}
           chartId={chart.id}
+          hiddenFab={isProposalsPanelOpen}
           onAddItems={async (items: StructuredItems) => {
             // 1. Vision追加
             for (const v of items.visions) {

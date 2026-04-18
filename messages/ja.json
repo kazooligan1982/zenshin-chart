@@ -1,4 +1,8 @@
 {
+  "metadata": {
+    "title": "ZENSHIN - 緊張構造チャート",
+    "description": "理想と現実のギャップを埋め、前に進むためのツール"
+  },
   "common": {
     "save": "保存",
     "cancel": "キャンセル",
@@ -10,7 +14,8 @@
     "confirm": "確認",
     "loading": "読み込み中...",
     "noDate": "期限なし",
-    "unassigned": "未割り当て"
+    "unassigned": "未割り当て",
+    "untitled_chart": "無題のチャート"
   },
   "sidebar": {
     "currentWorkspace": "現在のワークスペース",
@@ -201,7 +206,8 @@
     "generating": "生成中...",
     "revoke": "取り消す",
     "memberList": "メンバー一覧",
-    "memberCount": "{count}人"
+    "memberCount": "{count}名",
+    "you": "あなた"
   },
   "settings": {
     "title": "設定",
@@ -541,9 +547,9 @@
   },
   "ai": {
     "welcomeTitle": "AIアシスタントで始めませんか？",
-    "welcomeDescription": "創り出したい状態、その状態に対しての現時点での状態を自由に書いてください。AIがVision・Reality・Tension・Actionの構造化をお手伝いします。",
+    "welcomeDescription": "創り出したい結果と、その結果から見た現在の現実を話してください。AIがあなたの言葉を Vision / Current Reality / Structural Tension / Action に構造化します。",
     "startWithAi": "AIで始める",
-    "startBlank": "自分で書く",
+    "startBlank": "何もない状態から始める",
     "inputTitle": "AIアシスタント",
     "inputDescription": "創り出したい状態、その状態に対しての現時点での状態、課題を自由に書いてください。どんな形式でも構いません。",
     "inputPlaceholder": "例:\n事業を3本の柱で安定させたい。コンサルは既に3社契約があるが、SaaSプロダクトはβ版でユーザー10人。教育事業はまだ構想段階で...\n売上の8割がコンサルに依存している。SaaSの開発は自分一人でやっていて、時間が足りない。教育コンテンツは頭の中にあるが形になっていない",
@@ -555,7 +561,9 @@
     "applying": "反映中...",
     "cancel": "キャンセル",
     "analysisError": "AI分析に失敗しました。もう一度お試しください。",
-    "applyError": "チャートへの反映に失敗しました。"
+    "applyError": "チャートへの反映に失敗しました。",
+    "appliedSuccess": "チャートに反映しました",
+    "proposedSuccess": "提案を作成しました。Proposals タブで確認してください"
   },
   "snapshot": {
     "title": "スナップショット",

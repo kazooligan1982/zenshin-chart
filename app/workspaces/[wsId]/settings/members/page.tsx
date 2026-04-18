@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { getWorkspaceMembers } from "@/lib/workspace";
 import { getPendingInvitations } from "./actions";
 import { MembersPageContent } from "./members-page-content";
 
@@ -27,10 +26,25 @@ export default async function MembersPage({
 
   if (!membership) redirect("/");
 
-  const [members, pendingInvitations] = await Promise.all([
-    getWorkspaceMembers(wsId),
-    getPendingInvitations(wsId),
-  ]);
+  // Query workspace members directly instead of calling getWorkspaceMembers()
+  // which is in a "use server" file and may lose auth context.
+  const { data: memberRows } = await supabase
+    .from("workspace_members")
+    .select(`user_id, role, profiles(email, name, avatar_url)`)
+    .eq("workspace_id", wsId);
+
+  const members = (memberRows || []).map((m) => {
+    const profile = m.profiles as unknown as { email?: string; name?: string; avatar_url?: string } | null;
+    return {
+      id: m.user_id,
+      email: profile?.email || "",
+      name: profile?.name,
+      role: m.role,
+      avatar_url: profile?.avatar_url,
+    };
+  });
+
+  const pendingInvitations = await getPendingInvitations(wsId);
 
   return (
     <MembersPageContent

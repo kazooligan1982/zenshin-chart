@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { getChartsHierarchy, type ProjectGroup } from "@/lib/charts-actions";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 import { ChevronDown, BarChart3, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -36,6 +38,7 @@ function DepthBadge({ depth }: { depth: number }) {
 
 export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps) {
   const params = useParams();
+  const tc = useTranslations("common");
   const wsId = params?.wsId as string | undefined;
   const currentChartId = params?.id as string;
   const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
@@ -154,7 +157,7 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
                           <span className={`text-sm leading-snug flex-1 truncate ${
                             chart.id === currentChartId ? "text-blue-700 font-medium" : ""
                           }`}>
-                            {chart.title}
+                            {getChartDisplayTitle(chart, tc)}
                           </span>
                           {snapshotCounts[chart.id] > 0 && (
                             <span className="text-[10px] text-gray-400 shrink-0">

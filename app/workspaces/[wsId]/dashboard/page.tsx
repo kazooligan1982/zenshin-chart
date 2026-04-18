@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 import {
   FolderOpen,
   Target,
@@ -40,6 +41,7 @@ export default async function DashboardPage({
   const momentumData = await getMomentumData(wsId, selectedChartId);
   const momentumTrend = await getMomentumTrend(wsId, selectedChartId);
   const t = await getTranslations("dashboard");
+  const tc = await getTranslations("common");
   const tKanban = await getTranslations("kanban");
 
   return (
@@ -164,7 +166,7 @@ export default async function DashboardPage({
                 </span>
 
                 <span className="text-xs text-zenshin-navy/30 truncate max-w-[150px] hidden lg:block">
-                  {alert.chartTitle}
+                  {alert.chartTitle?.trim() || tc("untitled_chart")}
                 </span>
 
                 <span className={cn(
@@ -205,7 +207,7 @@ export default async function DashboardPage({
                 )} />
 
                 <span className="text-sm text-zenshin-navy truncate flex-1 min-w-0 group-hover:text-zenshin-navy/80">
-                  {chart.title}
+                  {getChartDisplayTitle(chart, tc)}
                 </span>
 
                 <span className={cn(

@@ -10,6 +10,8 @@ export function SettingsNav({ wsId }: { wsId: string }) {
   const t = useTranslations("settings");
   const pathname = usePathname();
 
+  const slackEnabled = !!process.env.NEXT_PUBLIC_SLACK_CLIENT_ID;
+
   const tabs = [
     {
       label: t("generalTab"),
@@ -25,12 +27,16 @@ export function SettingsNav({ wsId }: { wsId: string }) {
       icon: Archive,
       active: pathname === `/workspaces/${wsId}/settings/archive`,
     },
-    {
-      label: t("slackTab"),
-      href: `/workspaces/${wsId}/settings/slack`,
-      icon: MessageSquare,
-      active: pathname === `/workspaces/${wsId}/settings/slack`,
-    },
+    ...(slackEnabled
+      ? [
+          {
+            label: t("slackTab"),
+            href: `/workspaces/${wsId}/settings/slack`,
+            icon: MessageSquare,
+            active: pathname === `/workspaces/${wsId}/settings/slack`,
+          },
+        ]
+      : []),
   ];
 
   return (

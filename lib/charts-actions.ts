@@ -43,7 +43,7 @@ export type ProjectGroup = {
 };
 
 export async function createChart(
-  title: string = "無題のチャート",
+  title: string = "",
   workspaceId?: string
 ): Promise<{ id: string; title: string }> {
   const supabase = await createClient();
