@@ -27,6 +27,11 @@ export default async function SlackSettingsPage({
     .single();
   if (!workspace) redirect("/");
 
+  // Hide Slack integration when NEXT_PUBLIC_SLACK_CLIENT_ID is not configured
+  if (!process.env.NEXT_PUBLIC_SLACK_CLIENT_ID) {
+    redirect(`/workspaces/${wsId}/settings/general`);
+  }
+
   const isOwner = workspace.owner_id === user.id;
 
   const { data: slackSettings } = await supabase
