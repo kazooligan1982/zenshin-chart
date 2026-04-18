@@ -1,4 +1,8 @@
 {
+  "metadata": {
+    "title": "ZENSHIN - Structural Tension Chart",
+    "description": "A tool for closing the gap between your vision and current reality, and moving forward."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -10,7 +14,8 @@
     "confirm": "Confirm",
     "loading": "Loading...",
     "noDate": "No due date",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "untitled_chart": "Untitled chart"
   },
   "sidebar": {
     "currentWorkspace": "Current Workspace",
@@ -541,9 +546,9 @@
   },
   "ai": {
     "welcomeTitle": "Start with AI Assistant?",
-    "welcomeDescription": "Describe the state you want to create and your current state. AI will help structure it into Vision, Reality, Tension, and Action.",
+    "welcomeDescription": "Describe the result you want to create and the current reality in relation to that result. The AI will help structure it into Vision, Current Reality, Structural Tension, and Action.",
     "startWithAi": "Start with AI",
-    "startBlank": "Start blank",
+    "startBlank": "Start with nothing",
     "inputTitle": "AI Assistant",
     "inputDescription": "Describe the state you want to create, your current state, and challenges. Any format is fine.",
     "inputPlaceholder": "Example:\nWe want to establish three revenue streams. Consulting already has 3 clients, but the SaaS product is in beta with only 10 users. The education business is still just an idea...\n80% of revenue depends on consulting. I'm the only developer for the SaaS, and there's not enough time. The training content exists in my head but hasn't been formalized",
