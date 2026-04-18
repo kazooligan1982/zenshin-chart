@@ -307,6 +307,11 @@ export function MembersPageContent({
                   <div className="min-w-0">
                     <p className="font-medium text-zenshin-navy truncate">
                       {member.name || member.email}
+                      {isSelf && (
+                        <span className="ml-2 text-xs text-zenshin-navy/40 font-normal">
+                          ({tMembers("you")})
+                        </span>
+                      )}
                     </p>
                     {member.name && (
                       <p className="text-sm text-zenshin-navy/40 truncate">

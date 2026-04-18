@@ -206,7 +206,8 @@
     "generating": "Generating...",
     "revoke": "Revoke",
     "memberList": "Members",
-    "memberCount": "{count} members"
+    "memberCount": "{count, plural, one {# member} other {# members}}",
+    "you": "You"
   },
   "settings": {
     "title": "Settings",

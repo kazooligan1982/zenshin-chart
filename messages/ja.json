@@ -206,7 +206,8 @@
     "generating": "生成中...",
     "revoke": "取り消す",
     "memberList": "メンバー一覧",
-    "memberCount": "{count}人"
+    "memberCount": "{count}名",
+    "you": "あなた"
   },
   "settings": {
     "title": "設定",
