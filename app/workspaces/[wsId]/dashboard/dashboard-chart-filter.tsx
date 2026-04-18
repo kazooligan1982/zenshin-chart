@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Select,
@@ -23,6 +24,7 @@ export function DashboardChartFilter({
   selectedChartId,
 }: DashboardChartFilterProps) {
   const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,7 +59,7 @@ export function DashboardChartFilter({
         <SelectItem value="all">{t("all")}</SelectItem>
         {charts.map((chart) => (
           <SelectItem key={chart.id} value={chart.id}>
-            {chart.title}
+            {getChartDisplayTitle(chart, tc)}
           </SelectItem>
         ))}
       </SelectContent>

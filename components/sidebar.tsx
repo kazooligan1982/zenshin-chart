@@ -31,6 +31,7 @@ import {
 import { UserMenu } from "@/components/user-menu";
 import { getCurrentWorkspace, getUserWorkspaces } from "@/lib/workspace";
 import { createClient } from "@/lib/supabase/client";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 
 const RECENT_CHARTS_KEY = "zenshin_recent_charts";
 const QUICK_ACCESS_COLLAPSED_KEY = "zenshin_quickaccess_collapsed";
@@ -501,7 +502,7 @@ export function Sidebar(props?: SidebarProps) {
                       )}
                     >
                       <FolderOpen className="w-4 h-4 shrink-0" />
-                      <span className="truncate">{chart.title}</span>
+                      <span className="truncate">{getChartDisplayTitle(chart, tc)}</span>
                     </Link>
                   ))}
               </>

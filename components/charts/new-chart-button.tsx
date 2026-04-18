@@ -12,7 +12,6 @@ export function NewChartButton({ workspaceId }: { workspaceId?: string }) {
   const router = useRouter();
   const t = useTranslations("home");
   const tt = useTranslations("toast");
-  const tc = useTranslations("common");
   const [isCreating, setIsCreating] = useState(false);
 
   const handleCreateChart = async () => {
@@ -20,7 +19,7 @@ export function NewChartButton({ workspaceId }: { workspaceId?: string }) {
     setIsCreating(true);
 
     try {
-      const chart = await createChart(tc("untitled_chart"), workspaceId);
+      const chart = await createChart("", workspaceId);
       toast.success(tt("chartCreated"), { duration: 3000 });
       router.push(workspaceId ? `/workspaces/${workspaceId}/charts/${chart.id}` : `/charts/${chart.id}`);
     } catch (error) {

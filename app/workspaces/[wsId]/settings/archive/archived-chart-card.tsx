@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { restoreChart, deleteChart } from "@/lib/charts-actions";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 import { removeChartFromRecent } from "@/lib/recent-charts";
 import {
   AlertDialog,
@@ -29,7 +30,7 @@ type ArchivedChart = {
 export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
   const t = useTranslations("archive");
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _tc = useTranslations("common");
+  const tc = useTranslations("common");
   const tt = useTranslations("toast");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -68,7 +69,7 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
   return (
     <div className="bg-white rounded-2xl border border-zenshin-navy/8 p-4 flex items-center justify-between gap-4">
       <div>
-        <h3 className="font-medium text-zenshin-navy">{chart.title}</h3>
+        <h3 className="font-medium text-zenshin-navy">{getChartDisplayTitle(chart, tc)}</h3>
         <p className="text-sm text-zenshin-navy/40">
           {t("archivedAt", { date: chart.archived_at })}
         </p>

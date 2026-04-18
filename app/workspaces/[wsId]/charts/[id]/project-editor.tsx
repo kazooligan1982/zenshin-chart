@@ -131,6 +131,7 @@ import { AICoachButton, type StructuredItems } from "@/components/ai-coach-butto
 import { collectChartDataForAI } from "@/lib/ai/collect-chart-data";
 import ProposalsPanel from "@/components/proposals-panel";
 import { canApproveProposal } from "@/lib/permissions";
+import { getChartDisplayTitle } from "@/lib/chart-display";
 
 const CalendarComponent = dynamic(
   () => import("@/components/ui/calendar").then((mod) => mod.Calendar),
@@ -1495,7 +1496,7 @@ export function ProjectEditor({
               if (breadcrumbItems.length === 0) {
                 return (
                   <span className="text-zenshin-navy font-medium truncate max-w-[200px]">
-                    {chart.title}
+                    {getChartDisplayTitle(chart, tc)}
                   </span>
                 );
               }
