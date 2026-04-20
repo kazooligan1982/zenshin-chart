@@ -237,6 +237,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         }),
       });
 
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) {
         throw new Error("API request failed");
       }
@@ -289,6 +294,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         }),
       });
 
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) {
         throw new Error("API request failed");
       }
@@ -333,6 +343,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         }),
       });
 
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) {
         throw new Error("API request failed");
       }
@@ -376,6 +391,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: createText, language: locale }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) throw new Error("AI analysis failed");
       const data = await res.json();
       setCreateResult({
@@ -408,6 +428,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
           source: "manual", // TODO: ai_structurize + structural_diagnosis 対応時に元に戻す (ClickUp: 86ex9e5xn)
         }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) throw new Error("Apply failed");
       const data = await res.json().catch(() => ({} as { mode?: string }));
       const appliedDirectly = data?.mode === "applied";
@@ -457,6 +482,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
           chartId,
         }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       if (!res.ok) throw new Error("API request failed");
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -499,6 +529,11 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
           },
         }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || (locale === "en" ? "Rate limit reached. Please wait." : "利用上限に達しました。しばらくお待ちください。"));
+        return;
+      }
       const data = await res.json();
       if (data.success) {
         toast.success(

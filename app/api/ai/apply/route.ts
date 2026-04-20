@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { isValidStructuralDiagnosis } from "@/lib/ai/fritz-prompt";
+import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
 
 // AI-generated proposal sources MUST include metadata.structural_diagnosis
 // per #86ex7fyrx. Manual / legacy sources may omit it.
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const body = await req.json();
   const {
     chartId,
     visions,
@@ -31,7 +33,14 @@ export async function POST(req: NextRequest) {
     source = "ai_structurize",
     title,
     metadata,
-  } = await req.json();
+  } = body;
+
+  // Rate limiting
+  const wsId = body.workspace_id ?? null;
+  const { allowed, reason } = await checkRateLimit(user.id, wsId, "apply");
+  if (!allowed) {
+    return NextResponse.json({ error: reason }, { status: 429 });
+  }
 
   const { data: chart } = await supabase
     .from("charts")
@@ -153,6 +162,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    logAiUsage(user.id, wsId, "apply/propose");
     return NextResponse.json({
       success: true,
       mode: "proposed",
@@ -238,5 +248,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  logAiUsage(user.id, wsId, "apply/direct");
   return NextResponse.json({ success: true, mode: "applied" });
 }

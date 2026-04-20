@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
+import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -16,8 +17,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { chartData, messages, language, locale, mode = "analyze", text, initialContext, comparisonData } =
-    await req.json();
+  const body = await req.json();
+  const { chartData, messages, language, locale, mode = "analyze", text, initialContext, comparisonData } = body;
+
+  // Rate limiting
+  const wsId = body.workspace_id ?? null;
+  const { allowed, reason } = await checkRateLimit(user.id, wsId, `coach/${mode}`);
+  if (!allowed) {
+    return NextResponse.json({ error: reason }, { status: 429 });
+  }
   const isStructurize = mode === "structurize";
   const isSnapshotAnalyze = mode === "snapshot_analyze";
   const isComparisonAnalyze = mode === "comparison_analyze";
@@ -111,6 +119,7 @@ export async function POST(req: NextRequest) {
         if (!result.visions || !result.realities || !result.tensions || !result.actions) {
           return NextResponse.json({ error: "Invalid AI response structure" }, { status: 500 });
         }
+        logAiUsage(user.id, wsId, "coach/structurize", message.usage?.input_tokens, message.usage?.output_tokens);
         return NextResponse.json(result);
       } catch (parseError) {
         if (parseError instanceof SyntaxError) {
@@ -153,6 +162,7 @@ export async function POST(req: NextRequest) {
         if (content.type !== "text") {
           return NextResponse.json({ error: "Unexpected response type" }, { status: 500 });
         }
+        logAiUsage(user.id, wsId, "coach/comparison_analyze", message.usage?.input_tokens, message.usage?.output_tokens);
         return NextResponse.json({ analysis: content.text });
       } catch (error) {
         const err = error as { status?: number; message?: string };
@@ -213,6 +223,7 @@ export async function POST(req: NextRequest) {
         }
         jsonStr = jsonStr.trim();
         const result = JSON.parse(jsonStr);
+        logAiUsage(user.id, wsId, "coach/extract_vrta", message.usage?.input_tokens, message.usage?.output_tokens);
         return NextResponse.json(result);
       } catch (parseError) {
         if (parseError instanceof SyntaxError) {
@@ -289,6 +300,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      logAiUsage(user.id, wsId, `coach/${mode}`, message.usage?.input_tokens, message.usage?.output_tokens);
       return NextResponse.json({ response: content.text });
     } catch (error) {
       const err = error as { status?: number; message?: string };

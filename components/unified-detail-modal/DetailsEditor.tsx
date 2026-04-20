@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { FileText, Wand2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { marked } from "marked";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -155,6 +156,11 @@ export function DetailsEditor({
           language: locale,
         }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || "Rate limit reached. Please wait.");
+        return;
+      }
       if (!res.ok) throw new Error("AI assist failed");
       const data = await res.json();
       if (data.response && editor) {

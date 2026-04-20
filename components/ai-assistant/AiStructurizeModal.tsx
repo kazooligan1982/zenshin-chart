@@ -64,6 +64,11 @@ export function AiStructurizeModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: inputText, language }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || t("rateLimitReached"));
+        return;
+      }
       if (!res.ok) throw new Error("AI analysis failed");
       const data = await res.json();
       setResult({
@@ -118,6 +123,11 @@ export function AiStructurizeModal({
           source: "manual", // TODO: ai_structurize + structural_diagnosis 対応時に元に戻す (ClickUp: 86ex9e5xn)
         }),
       });
+      if (res.status === 429) {
+        const errData = await res.json();
+        toast.error(errData.error || t("rateLimitReached"));
+        return;
+      }
       if (!res.ok) throw new Error("Apply failed");
       const data = await res.json().catch(() => ({} as { mode?: string }));
       const mode: ApplyResultMode = data?.mode === "applied" ? "applied" : "proposed";

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 import { buildFritzProposalPreamble } from "@/lib/ai/fritz-prompt";
+import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -17,9 +18,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { text, language } = await req.json();
+  const body = await req.json();
+  const { text, language } = body;
   if (!text || text.trim().length === 0) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
+  }
+
+  // Rate limiting
+  const wsId = body.workspace_id ?? null;
+  const { allowed, reason } = await checkRateLimit(user.id, wsId, "structurize");
+  if (!allowed) {
+    return NextResponse.json({ error: reason }, { status: 429 });
   }
 
   // Prepend the shared Fritz terminology + proposal-validation preamble so
@@ -76,6 +85,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      logAiUsage(user.id, wsId, "structurize", message.usage?.input_tokens, message.usage?.output_tokens);
       return NextResponse.json(result);
     } catch (parseError) {
       if (parseError instanceof SyntaxError) {
