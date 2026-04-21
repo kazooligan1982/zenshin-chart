@@ -4,10 +4,10 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { FileText, Wand2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { marked } from "marked";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Markdown } from "@tiptap/markdown";
 
 interface DetailsEditorProps {
   value: string;
@@ -26,9 +26,6 @@ export function DetailsEditor({
   itemContext,
   chartId,
 }: DetailsEditorProps) {
-  // marked設定: 同期的にHTMLを返す
-  marked.setOptions({ async: false, breaks: true });
-
   const t = useTranslations("modal");
   const locale = useLocale();
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -43,15 +40,22 @@ export function DetailsEditor({
     latestValueRef.current = value;
   }, [value]);
 
-  const debouncedSave = useCallback((html: string) => {
-    const trimmed = html === "<p></p>" ? "" : html;
-    if (trimmed === latestValueRef.current) return;
+  const debouncedSave = useCallback((md: string) => {
+    if (md === latestValueRef.current) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      latestValueRef.current = trimmed;
-      onSave(trimmed);
+      latestValueRef.current = md;
+      onSave(md);
     }, 500);
   }, [onSave]);
+
+  const handleEditorKeyDown = useCallback((_view: unknown, event: KeyboardEvent) => {
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.stopPropagation();
+      return false;
+    }
+    return false;
+  }, []);
 
   const editor = useEditor(
     {
@@ -64,23 +68,19 @@ export function DetailsEditor({
           orderedList: { keepMarks: true, keepAttributes: false },
         }),
         Placeholder.configure({ placeholder: placeholderText }),
+        Markdown,
       ],
-      content: value || "<p></p>",
+      content: value || "",
+      contentType: "markdown",
       editorProps: {
         attributes: {
           class:
             "prose prose-sm max-w-none focus:outline-none min-h-[80px] p-3 text-sm",
         },
-        handleKeyDown: (_view, event) => {
-          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-            event.stopPropagation();
-            return false;
-          }
-          return false;
-        },
+        handleKeyDown: handleEditorKeyDown,
       },
       onUpdate: ({ editor: e }) => {
-        debouncedSave(e.getHTML());
+        debouncedSave(e.getMarkdown());
       },
       onBlur: ({ editor: e }) => {
         // blur時は即保存（デバウンスをキャンセルして即実行）
@@ -88,11 +88,10 @@ export function DetailsEditor({
           clearTimeout(saveTimeoutRef.current);
           saveTimeoutRef.current = null;
         }
-        const html = e.getHTML();
-        const trimmed = html === "<p></p>" ? "" : html;
-        if (trimmed !== latestValueRef.current) {
-          latestValueRef.current = trimmed;
-          onSave(trimmed);
+        const md = e.getMarkdown();
+        if (md !== latestValueRef.current) {
+          latestValueRef.current = md;
+          onSave(md);
         }
       },
       immediatelyRender: false,
@@ -106,7 +105,10 @@ export function DetailsEditor({
 
   useEffect(() => {
     if (editor && value !== undefined) {
-      editor.commands.setContent(value || "<p></p>", { emitUpdate: false });
+      editor.commands.setContent(value || "", {
+        contentType: "markdown",
+        emitUpdate: false,
+      });
     }
   }, [editor, value]);
 
@@ -125,10 +127,9 @@ export function DetailsEditor({
       // アンマウント時にeditorの現在値を保存
       const e = editorRef.current;
       if (e) {
-        const html = e.getHTML();
-        const trimmed = html === "<p></p>" ? "" : html;
-        if (trimmed !== latestValueRef.current) {
-          onSaveRef.current(trimmed);
+        const md = e.getMarkdown();
+        if (md !== latestValueRef.current) {
+          onSaveRef.current(md);
         }
       }
     };
@@ -164,17 +165,14 @@ export function DetailsEditor({
       if (!res.ok) throw new Error("AI assist failed");
       const data = await res.json();
       if (data.response && editor) {
-        // MarkdownをHTMLに変換
-        const htmlFromMarkdown = marked.parse(data.response) as string;
-        const currentContent = editor.getHTML();
-        const newContent = currentContent === "<p></p>" || !currentContent
-          ? htmlFromMarkdown
-          : `${currentContent}${htmlFromMarkdown}`;
-        editor.commands.setContent(newContent);
-        const finalHtml = editor.getHTML();
-        const trimmed = finalHtml === "<p></p>" ? "" : finalHtml;
-        latestValueRef.current = trimmed;
-        onSave(trimmed);
+        const currentMd = editor.getMarkdown();
+        const newMd = currentMd.trim() === ""
+          ? data.response
+          : `${currentMd}\n\n${data.response}`;
+        editor.commands.setContent(newMd, { contentType: "markdown" });
+        const finalMd = editor.getMarkdown();
+        latestValueRef.current = finalMd;
+        onSave(finalMd);
       }
     } catch (error) {
       console.error("[DetailsEditor] AI assist error:", error);
