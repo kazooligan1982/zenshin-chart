@@ -31,6 +31,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, message: "No workspaces found" });
     }
 
+    const { data: actions } = await supabase
+      .from("actions")
+      .select("id, chart_id, child_chart_id");
+    const childToParent = new Map<string, string>();
+    for (const a of actions || []) {
+      if (a.child_chart_id && a.chart_id) childToParent.set(a.child_chart_id, a.chart_id);
+    }
+
     const blocks: Record<string, unknown>[] = [
       {
         type: "header",
@@ -52,7 +60,14 @@ export async function GET(request: NextRequest) {
         .is("archived_at", null)
         .order("title");
 
-      if (!charts || charts.length === 0) {
+      const masterCharts = (charts || []).filter(
+        (c: { id: string }) => !childToParent.has(c.id)
+      );
+      console.log(
+        `[Slack Summary] workspace=${ws.id} charts_before=${charts?.length ?? 0} charts_after=${masterCharts.length}`
+      );
+
+      if (masterCharts.length === 0) {
         blocks.push({
           type: "context",
           elements: [{ type: "mrkdwn", text: "_チャートがありません_" }],
@@ -60,7 +75,7 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      for (const chart of charts) {
+      for (const chart of masterCharts) {
         const [visionsRes, realitiesRes, tensionsRes, tensionsDataRes] = await Promise.all([
           supabase.from("visions").select("id", { count: "exact", head: true }).eq("chart_id", chart.id),
           supabase.from("realities").select("id", { count: "exact", head: true }).eq("chart_id", chart.id),
