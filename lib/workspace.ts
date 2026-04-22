@@ -238,27 +238,40 @@ export async function getWorkspaceMembers(workspaceId: string): Promise<
 > {
   const supabase = await createClient();
 
-  const { data: members } = await supabase
+  const { data: memberRows, error: memberError } = await supabase
     .from("workspace_members")
-    .select(
-      `
-      user_id,
-      role,
-      profiles(email, name, avatar_url)
-    `
-    )
+    .select("user_id, role")
     .eq("workspace_id", workspaceId);
 
-  if (!members) return [];
+  if (memberError) {
+    console.error("[getWorkspaceMembers] workspace_members error:", memberError);
+  }
 
-  return members.map((m) => {
-    const profile = m.profiles as unknown as { email?: string; name?: string; avatar_url?: string } | null;
+  if (!memberRows || memberRows.length === 0) return [];
+
+  const userIds = memberRows.map((m) => m.user_id);
+
+  const { data: profileRows, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, name, avatar_url")
+    .in("id", userIds);
+
+  if (profileError) {
+    console.error("[getWorkspaceMembers] profiles error:", profileError);
+  }
+
+  const profileMap = new Map(
+    (profileRows ?? []).map((p) => [p.id, p])
+  );
+
+  return memberRows.map((m) => {
+    const p = profileMap.get(m.user_id);
     return {
       id: m.user_id,
-      email: profile?.email || "",
-      name: profile?.name,
+      email: p?.email || "",
+      name: p?.name || undefined,
       role: m.role,
-      avatar_url: profile?.avatar_url,
+      avatar_url: p?.avatar_url || undefined,
     };
   });
 }
