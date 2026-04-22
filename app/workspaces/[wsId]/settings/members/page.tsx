@@ -26,21 +26,43 @@ export default async function MembersPage({
 
   if (!membership) redirect("/");
 
-  // Query workspace members directly instead of calling getWorkspaceMembers()
-  // which is in a "use server" file and may lose auth context.
-  const { data: memberRows } = await supabase
+  // Step 1: workspace_members を取得
+  const { data: memberRows, error: memberError } = await supabase
     .from("workspace_members")
-    .select(`user_id, role, profiles(email, name, avatar_url)`)
+    .select("user_id, role")
     .eq("workspace_id", wsId);
 
-  const members = (memberRows || []).map((m) => {
-    const profile = m.profiles as unknown as { email?: string; name?: string; avatar_url?: string } | null;
+  if (memberError) {
+    console.error("[MembersPage] workspace_members error:", memberError);
+  }
+
+  // Step 2: profiles を別クエリで取得
+  const userIds = (memberRows ?? []).map((m) => m.user_id);
+
+  const { data: profileRows, error: profileError } = userIds.length > 0
+    ? await supabase
+        .from("profiles")
+        .select("id, email, name, avatar_url")
+        .in("id", userIds)
+    : { data: [] as { id: string; email: string | null; name: string | null; avatar_url: string | null }[], error: null };
+
+  if (profileError) {
+    console.error("[MembersPage] profiles error:", profileError);
+  }
+
+  // Step 3: コード側で merge
+  const profileMap = new Map(
+    (profileRows ?? []).map((p) => [p.id, p])
+  );
+
+  const members = (memberRows ?? []).map((m) => {
+    const p = profileMap.get(m.user_id);
     return {
       id: m.user_id,
-      email: profile?.email || "",
-      name: profile?.name,
+      email: p?.email || "",
+      name: p?.name || undefined,
       role: m.role,
-      avatar_url: profile?.avatar_url,
+      avatar_url: p?.avatar_url || undefined,
     };
   });
 
