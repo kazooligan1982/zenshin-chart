@@ -90,7 +90,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     } catch (parseError) {
       if (parseError instanceof SyntaxError) {
-        logger.error("JSON parse error:", parseError);
+        logger.error("[ai/structurize] JSON parse error", parseError, {
+          userId: logger.hashId(user.id),
+        });
         return NextResponse.json(
           { error: "Failed to parse AI response" },
           { status: 500 }
@@ -100,12 +102,19 @@ export async function POST(req: NextRequest) {
       const status = err?.status || 500;
 
       if (status === 529 && attempt < MAX_RETRIES - 1) {
-        logger.info(`AI structurize: retrying (attempt ${attempt + 2}/${MAX_RETRIES}) after ${RETRY_DELAYS[attempt]}ms...`);
+        logger.info("[ai/structurize] retrying after 529", {
+          attempt: attempt + 2,
+          maxRetries: MAX_RETRIES,
+          delayMs: RETRY_DELAYS[attempt],
+        });
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
         continue;
       }
 
-      logger.error("AI structurize error:", err?.message || err);
+      logger.error("[ai/structurize] error", err, {
+        userId: logger.hashId(user.id),
+        status,
+      });
       const errorMessage =
         err?.message?.includes("credit")
           ? "API credits insufficient"

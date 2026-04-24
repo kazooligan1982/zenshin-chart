@@ -29,13 +29,11 @@ export async function checkRateLimit(
     .gte("created_at", oneMinAgo);
 
   if (userMinuteError) {
-    logger.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed", userMinuteError, {
       scope: "user_minute",
       endpoint,
-      userId,
-      workspaceId,
-      error: userMinuteError.message,
-      code: userMinuteError.code,
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
     // fail-open: エラー時は制限をスキップして処理を継続
     // （本番安定後に fail-closed への切り替えを検討）
@@ -56,13 +54,11 @@ export async function checkRateLimit(
     .gte("created_at", oneDayAgo);
 
   if (userDailyError) {
-    logger.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed", userDailyError, {
       scope: "user_daily",
       endpoint,
-      userId,
-      workspaceId,
-      error: userDailyError.message,
-      code: userDailyError.code,
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
     // fail-open: 同上
   }
@@ -83,13 +79,11 @@ export async function checkRateLimit(
       .gte("created_at", oneDayAgo);
 
     if (wsDailyError) {
-      logger.error("[checkRateLimit] count query failed:", {
+      logger.error("[checkRateLimit] count query failed", wsDailyError, {
         scope: "workspace_daily",
         endpoint,
-        userId,
-        workspaceId,
-        error: wsDailyError.message,
-        code: wsDailyError.code,
+        userId: logger.hashId(userId),
+        workspaceId: logger.hashId(workspaceId),
       });
       // fail-open: 同上
     }
@@ -122,20 +116,17 @@ export async function logAiUsage(
       tokens_output: tokensOutput ?? null,
     });
     if (error) {
-      logger.error("[logAiUsage] insert failed:", {
+      logger.error("[logAiUsage] insert failed", error, {
         endpoint,
-        userId,
-        workspaceId,
-        error: error.message,
-        code: error.code,
+        userId: logger.hashId(userId),
+        workspaceId: logger.hashId(workspaceId),
       });
     }
   } catch (err) {
-    logger.error("[logAiUsage] unexpected error:", {
+    logger.error("[logAiUsage] unexpected error", err, {
       endpoint,
-      userId,
-      workspaceId,
-      error: err instanceof Error ? err.message : String(err),
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
   }
 }
