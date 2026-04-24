@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { logger } from "@/lib/logger";
 
 type ArchivedChart = {
   id: string;
@@ -39,7 +40,7 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
       toast.success(tt("chartRestored"), { duration: 3000 });
       router.refresh();
     } catch (error) {
-      console.error("Failed to restore chart:", error);
+      logger.error("Failed to restore chart:", error);
       toast.error(tt("restoreFailed"), { duration: 5000 });
     } finally {
       setIsLoading(false);
@@ -55,7 +56,7 @@ export function ArchivedChartCard({ chart }: { chart: ArchivedChart }) {
       toast.success(tt("chartDeleted"), { duration: 3000 });
       router.refresh();
     } catch (error) {
-      console.error("Failed to delete chart:", error);
+      logger.error("Failed to delete chart:", error);
       toast.error(tt("deleteFailed"), { duration: 5000 });
     } finally {
       setIsLoading(false);

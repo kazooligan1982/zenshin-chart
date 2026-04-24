@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 export default function WorkspacesError({
   error,
@@ -10,7 +11,7 @@ export default function WorkspacesError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[workspaces/error]", error);
+    logger.error("[workspaces/error]", error);
   }, [error]);
 
   return (

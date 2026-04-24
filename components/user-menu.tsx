@@ -23,6 +23,7 @@ import {
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 type UserMenuProps = {
   expanded: boolean;
@@ -44,7 +45,7 @@ export function UserMenu({ expanded, onOpenChange }: UserMenuProps) {
         } = await supabase.auth.getUser();
         setUser(currentUser);
       } catch (error) {
-        console.error("Failed to fetch user:", error);
+        logger.error("Failed to fetch user:", error);
         setUser(null);
       } finally {
         setIsLoading(false);

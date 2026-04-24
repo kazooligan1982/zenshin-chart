@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 type LoginFormProps = {
   redirectTo?: string;
@@ -30,7 +31,7 @@ export function LoginForm({ redirectTo = "/charts" }: LoginFormProps) {
       password,
     });
     if (error) {
-      console.error("Login error:", error);
+      logger.error("Login error:", error);
       toast.error(tt("loginFailed") + ": " + error.message, { duration: 5000 });
       setIsLoading(false);
       return;

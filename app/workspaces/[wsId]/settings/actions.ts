@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 export async function updateSlackNotify(wsId: string, enabled: boolean) {
   const supabase = await createClient();
@@ -27,7 +28,7 @@ export async function updateSlackNotify(wsId: string, enabled: boolean) {
     .eq("id", wsId);
 
   if (error) {
-    console.error("[updateSlackNotify] error:", error);
+    logger.error("[updateSlackNotify] error:", error);
     throw new Error("設定の更新に失敗しました");
   }
 

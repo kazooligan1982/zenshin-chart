@@ -20,6 +20,7 @@ import {
 import { Plus, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Area } from "@/types/chart";
+import { logger } from "@/lib/logger";
 
 // プリセットカラー
 const PRESET_COLORS = [
@@ -79,7 +80,7 @@ export function AreaTagEditor({
         setOpen(false);
       }
     } catch (error) {
-      console.error("[AreaTagEditor] エリア作成エラー:", error);
+      logger.error("[AreaTagEditor] エリア作成エラー:", error);
     } finally {
       setIsCreating(false);
     }

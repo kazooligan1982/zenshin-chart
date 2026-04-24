@@ -54,6 +54,7 @@ import {
   getActionStatusIcon,
 } from "../editor-utils";
 import { moveActionToTension, checkIncompleteTelescopeActions } from "../actions";
+import { logger } from "@/lib/logger";
 
 const DatePicker = dynamic(
   () => import("@/components/ui/date-picker").then((mod) => mod.DatePicker),
@@ -243,7 +244,7 @@ export function SortableActionItem({
           return;
         }
       } catch (error) {
-        console.error("Failed to check incomplete actions:", error);
+        logger.error("Failed to check incomplete actions:", error);
       }
     }
 

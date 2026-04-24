@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
       });
 
       if (resetError) {
-        console.error("Password reset error:", resetError);
+        logger.error("Password reset error:", resetError);
         toast.error(tt("emailSendFailed") + ": " + resetError.message, { duration: 5000 });
         setError(resetError.message);
         return;
@@ -50,7 +51,7 @@ export default function ForgotPasswordPage() {
       setIsSent(true);
       toast.success(tt("passwordResetEmailSent"), { duration: 3000 });
     } catch (err) {
-      console.error("Password reset error:", err);
+      logger.error("Password reset error:", err);
       const message = err instanceof Error ? err.message : tt("emailSendFailed");
       toast.error(message, { duration: 5000 });
       setError(message);

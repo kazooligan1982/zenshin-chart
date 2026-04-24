@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * Tree Snapshot: マスターチャートと配下全チャートのデータを一括収集・保存するロジック
  * Cronジョブ等から service_role クライアントで使用する
@@ -116,7 +117,7 @@ async function fetchChartVrtaData(
       actions: actionsRes.data || [],
     };
   } catch (err) {
-    console.error(`[collectTreeSnapshotData] Error fetching chart ${chartId}:`, err);
+    logger.error(`[collectTreeSnapshotData] Error fetching chart ${chartId}:`, err);
     return { visions: [], realities: [], tensions: [], actions: [] };
   }
 }
@@ -269,7 +270,7 @@ export async function saveTreeSnapshot(
     .single();
 
   if (error) {
-    console.error("[saveTreeSnapshot] Insert error:", error);
+    logger.error("[saveTreeSnapshot] Insert error:", error);
     return null;
   }
 
@@ -314,7 +315,7 @@ export async function hasChangedSinceLastTreeSnapshot(
     .maybeSingle();
 
   if (error) {
-    console.error("[hasChangedSinceLastTreeSnapshot] Fetch error:", error);
+    logger.error("[hasChangedSinceLastTreeSnapshot] Fetch error:", error);
     return true; // エラー時は保存する
   }
 

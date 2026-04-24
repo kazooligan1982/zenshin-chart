@@ -27,6 +27,7 @@ import {
 import { Settings, Trash2, Edit2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Area } from "@/types/chart";
+import { logger } from "@/lib/logger";
 
 // プリセットカラー
 const PRESET_COLORS = [
@@ -90,7 +91,7 @@ export function AreaManager({
       });
       handleCancelEdit();
     } catch (error) {
-      console.error("[AreaManager] 更新エラー:", error);
+      logger.error("[AreaManager] 更新エラー:", error);
     } finally {
       setIsSaving(false);
     }
@@ -107,7 +108,7 @@ export function AreaManager({
         setNewAreaColor(PRESET_COLORS[0].value);
       }
     } catch (error) {
-      console.error("[AreaManager] 作成エラー:", error);
+      logger.error("[AreaManager] 作成エラー:", error);
     } finally {
       setIsSaving(false);
     }

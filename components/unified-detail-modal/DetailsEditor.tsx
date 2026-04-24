@@ -8,6 +8,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
+import { logger } from "@/lib/logger";
 
 interface DetailsEditorProps {
   value: string;
@@ -175,7 +176,7 @@ export function DetailsEditor({
         onSave(finalMd);
       }
     } catch (error) {
-      console.error("[DetailsEditor] AI assist error:", error);
+      logger.error("[DetailsEditor] AI assist error:", error);
     } finally {
       setIsAiGenerating(false);
     }

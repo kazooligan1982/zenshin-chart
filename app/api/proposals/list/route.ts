@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
   const { data: proposals, error } = await query;
 
   if (error) {
-    console.error("[proposals/list] error:", error);
+    logger.error("[proposals/list] error:", error);
     return NextResponse.json(
       { error: "Failed to fetch proposals" },
       { status: 500 }

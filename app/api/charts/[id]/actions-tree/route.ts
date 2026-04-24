@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ async function getTensionsWithActions(
   );
 
   if (tensionError) {
-    console.error(`[getTensionsWithActions] Tension error:`, tensionError);
+    logger.error(`[getTensionsWithActions] Tension error:`, tensionError);
   }
 
   if (!activeTensions || activeTensions.length === 0) {
@@ -85,7 +86,7 @@ async function getTensionsWithActions(
       .order("created_at", { ascending: true });
 
     if (actionError) {
-      console.error(`[getTensionsWithActions] Actions error:`, actionError);
+      logger.error(`[getTensionsWithActions] Actions error:`, actionError);
     }
 
     return (actions || []).map((action: { id: string; title: string; description: string | null; due_date: string | null; assignee: string | null; status: string | null; is_completed: boolean | null; child_chart_id: string | null; tension_id: string | null }) => ({
@@ -115,7 +116,7 @@ async function getTensionsWithActions(
       .order("created_at", { ascending: true });
 
     if (actionError) {
-      console.error(`[getTensionsWithActions] Actions error:`, actionError);
+      logger.error(`[getTensionsWithActions] Actions error:`, actionError);
     }
 
     const actionNodes: TreeNode[] = [];
@@ -189,7 +190,7 @@ export async function GET(
       tree,
     });
   } catch (error) {
-    console.error("[actions-tree] Error:", error);
+    logger.error("[actions-tree] Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

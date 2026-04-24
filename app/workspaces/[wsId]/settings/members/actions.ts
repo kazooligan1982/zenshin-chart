@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { sendInvitationEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -69,7 +70,7 @@ export async function inviteMember(wsId: string, email: string, role: string) {
     .single();
 
   if (error) {
-    console.error("Invitation insert error:", error);
+    logger.error("Invitation insert error:", error);
     throw new Error("招待の作成に失敗しました: " + error.message);
   }
 
@@ -96,7 +97,7 @@ export async function inviteMember(wsId: string, email: string, role: string) {
       inviteUrl,
     });
   } catch (emailError) {
-    console.error("Email send failed:", emailError);
+    logger.error("Email send failed:", emailError);
   }
 
   revalidatePath(`/workspaces/${wsId}/settings/members`);

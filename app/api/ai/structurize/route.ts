@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 import { buildFritzProposalPreamble } from "@/lib/ai/fritz-prompt";
 import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
+import { logger } from "@/lib/logger";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(result);
     } catch (parseError) {
       if (parseError instanceof SyntaxError) {
-        console.error("JSON parse error:", parseError);
+        logger.error("JSON parse error:", parseError);
         return NextResponse.json(
           { error: "Failed to parse AI response" },
           { status: 500 }
@@ -99,12 +100,12 @@ export async function POST(req: NextRequest) {
       const status = err?.status || 500;
 
       if (status === 529 && attempt < MAX_RETRIES - 1) {
-        console.log(`AI structurize: retrying (attempt ${attempt + 2}/${MAX_RETRIES}) after ${RETRY_DELAYS[attempt]}ms...`);
+        logger.info(`AI structurize: retrying (attempt ${attempt + 2}/${MAX_RETRIES}) after ${RETRY_DELAYS[attempt]}ms...`);
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
         continue;
       }
 
-      console.error("AI structurize error:", err?.message || err);
+      logger.error("AI structurize error:", err?.message || err);
       const errorMessage =
         err?.message?.includes("credit")
           ? "API credits insufficient"

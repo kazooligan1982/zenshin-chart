@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -52,7 +53,7 @@ export async function sendInvitationEmail({
   });
 
   if (error) {
-    console.error("Failed to send invitation email:", error);
+    logger.error("Failed to send invitation email:", error);
     throw new Error("メールの送信に失敗しました");
   }
 

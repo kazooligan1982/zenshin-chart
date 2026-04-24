@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -38,7 +39,7 @@ export default function ResetPasswordPage() {
             type: "recovery",
           });
           if (verifyError) {
-            console.error("verifyOtp error:", verifyError);
+            logger.error("verifyOtp error:", verifyError);
             setAuthStatus("invalid_link");
             return;
           }
@@ -86,7 +87,7 @@ export default function ResetPasswordPage() {
       const { error: updateError } = await supabase.auth.updateUser({ password });
 
       if (updateError) {
-        console.error("Password update error:", updateError);
+        logger.error("Password update error:", updateError);
         toast.error(tt("passwordChangeFailed") + ": " + updateError.message, { duration: 5000 });
         setError(updateError.message);
         return;
@@ -96,7 +97,7 @@ export default function ResetPasswordPage() {
       router.push("/login");
       router.refresh();
     } catch (err) {
-      console.error("Password update error:", err);
+      logger.error("Password update error:", err);
       const message = err instanceof Error ? err.message : tt("passwordChangeFailed");
       toast.error(message, { duration: 5000 });
       setError(message);

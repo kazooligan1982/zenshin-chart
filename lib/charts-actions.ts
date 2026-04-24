@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateWorkspace } from "@/lib/workspace";
 import { canCreateChart } from "@/lib/permissions";
+import { logger } from "@/lib/logger";
 
 export type ActionStatusCounts = {
   total: number;
@@ -80,7 +81,7 @@ export async function createChart(
     .single();
 
   if (error) {
-    console.error("[createChart] Error:", error);
+    logger.error("[createChart] Error:", error);
     throw error;
   }
 
@@ -106,7 +107,7 @@ export async function getChartsHierarchy(workspaceId?: string): Promise<{
     .order("updated_at", { ascending: false });
 
   if (error) {
-    console.error("[getChartsHierarchy] error:", error);
+    logger.error("[getChartsHierarchy] error:", error);
     throw error;
   }
 
@@ -209,7 +210,7 @@ export async function deleteChart(chartId: string) {
     .delete()
     .eq("id", chartId);
   if (deleteError) {
-    console.error("[deleteChart] error:", deleteError);
+    logger.error("[deleteChart] error:", deleteError);
     throw deleteError;
   }
   const { revalidatePath } = await import("next/cache");
@@ -235,7 +236,7 @@ export async function archiveChart(chartId: string) {
     .in("id", allChartIds);
 
   if (error) {
-    console.error("[archiveChart] error:", error);
+    logger.error("[archiveChart] error:", error);
     throw error;
   }
 
@@ -267,7 +268,7 @@ export async function restoreChart(chartId: string) {
     .in("id", allChartIds);
 
   if (error) {
-    console.error("[restoreChart] error:", error);
+    logger.error("[restoreChart] error:", error);
     throw error;
   }
 
@@ -457,7 +458,7 @@ export async function getArchivedCharts(workspaceId?: string) {
     .order("archived_at", { ascending: false });
 
   if (error) {
-    console.error("[getArchivedCharts] error:", error);
+    logger.error("[getArchivedCharts] error:", error);
     throw error;
   }
 

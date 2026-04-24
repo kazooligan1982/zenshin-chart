@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Chrome } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type OAuthButtonsProps = {
   redirectTo?: string;
@@ -34,7 +35,7 @@ function OAuthButtonsInner({ redirectTo: propRedirectTo }: OAuthButtonsProps) {
       },
     });
     if (error) {
-      console.error("Google login error:", error);
+      logger.error("Google login error:", error);
       setIsLoading(false);
     }
   };

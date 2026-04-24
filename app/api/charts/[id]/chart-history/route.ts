@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export interface ChartHistoryEntry {
   id: string;
@@ -47,7 +48,7 @@ export async function GET(
       .limit(Math.min(limit, 100));
 
     if (error) {
-      console.error("[chart_history] fetch error:", error);
+      logger.error("[chart_history] fetch error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -100,7 +101,7 @@ export async function GET(
 
     return NextResponse.json(data as ChartHistoryEntry[]);
   } catch (e) {
-    console.error("[chart_history] Exception:", e);
+    logger.error("[chart_history] Exception:", e);
     return NextResponse.json(
       { error: "Failed to fetch history" },
       { status: 500 }

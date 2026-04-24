@@ -1,5 +1,6 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 const LIMITS = {
   USER_DAILY: 100,
@@ -28,7 +29,7 @@ export async function checkRateLimit(
     .gte("created_at", oneMinAgo);
 
   if (userMinuteError) {
-    console.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed:", {
       scope: "user_minute",
       endpoint,
       userId,
@@ -55,7 +56,7 @@ export async function checkRateLimit(
     .gte("created_at", oneDayAgo);
 
   if (userDailyError) {
-    console.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed:", {
       scope: "user_daily",
       endpoint,
       userId,
@@ -82,7 +83,7 @@ export async function checkRateLimit(
       .gte("created_at", oneDayAgo);
 
     if (wsDailyError) {
-      console.error("[checkRateLimit] count query failed:", {
+      logger.error("[checkRateLimit] count query failed:", {
         scope: "workspace_daily",
         endpoint,
         userId,
@@ -121,7 +122,7 @@ export async function logAiUsage(
       tokens_output: tokensOutput ?? null,
     });
     if (error) {
-      console.error("[logAiUsage] insert failed:", {
+      logger.error("[logAiUsage] insert failed:", {
         endpoint,
         userId,
         workspaceId,
@@ -130,7 +131,7 @@ export async function logAiUsage(
       });
     }
   } catch (err) {
-    console.error("[logAiUsage] unexpected error:", {
+    logger.error("[logAiUsage] unexpected error:", {
       endpoint,
       userId,
       workspaceId,

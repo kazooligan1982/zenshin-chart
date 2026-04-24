@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Proposal items support two shapes:
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
       .eq("id", proposal_id);
 
     if (updateError) {
-      console.error("[proposals/approve] reject error:", updateError);
+      logger.error("[proposals/approve] reject error", updateError);
       return NextResponse.json(
         { error: "Failed to reject proposal" },
         { status: 500 }
@@ -187,7 +188,7 @@ export async function POST(req: NextRequest) {
       }))
     );
     if (error) {
-      console.error("[proposals/approve] visions insert error:", error);
+      logger.error("[proposals/approve] visions insert error", error);
     }
   }
 
@@ -204,7 +205,7 @@ export async function POST(req: NextRequest) {
       }))
     );
     if (error) {
-      console.error("[proposals/approve] realities insert error:", error);
+      logger.error("[proposals/approve] realities insert error", error);
     }
   }
 
@@ -224,7 +225,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (error) {
-      console.error("[proposals/approve] tension insert error:", error);
+      logger.error("[proposals/approve] tension insert error", error);
       continue;
     }
     if (inserted) {
@@ -248,7 +249,7 @@ export async function POST(req: NextRequest) {
       }))
     );
     if (error) {
-      console.error("[proposals/approve] actions insert error:", error);
+      logger.error("[proposals/approve] actions insert error", error);
     }
   }
 
@@ -270,7 +271,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (error || !inserted) {
-      console.error("[proposals/approve] create_tension insert error:", error);
+      logger.error("[proposals/approve] create_tension insert error", error);
       continue;
     }
     const newTensionId = inserted.id;
@@ -283,8 +284,8 @@ export async function POST(req: NextRequest) {
         }))
       );
       if (linkError) {
-        console.error(
-          "[proposals/approve] tension_visions insert error:",
+        logger.error(
+          "[proposals/approve] tension_visions insert error",
           linkError
         );
       }
@@ -297,8 +298,8 @@ export async function POST(req: NextRequest) {
         }))
       );
       if (linkError) {
-        console.error(
-          "[proposals/approve] tension_realities insert error:",
+        logger.error(
+          "[proposals/approve] tension_realities insert error",
           linkError
         );
       }
@@ -323,7 +324,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (error || !inserted) {
-      console.error("[proposals/approve] create_action insert error:", error);
+      logger.error("[proposals/approve] create_action insert error", error);
       continue;
     }
 
@@ -337,8 +338,8 @@ export async function POST(req: NextRequest) {
         created_by: user.id,
       });
       if (linkError) {
-        console.error(
-          "[proposals/approve] item_links insert error:",
+        logger.error(
+          "[proposals/approve] item_links insert error",
           linkError
         );
       }
@@ -360,8 +361,8 @@ export async function POST(req: NextRequest) {
       .update(patch)
       .eq("id", u.action_id);
     if (error) {
-      console.error(
-        "[proposals/approve] update_action_status error:",
+      logger.error(
+        "[proposals/approve] update_action_status error",
         error
       );
     }
@@ -379,7 +380,7 @@ export async function POST(req: NextRequest) {
     .eq("id", proposal_id);
 
   if (updateError) {
-    console.error("[proposals/approve] status update error:", updateError);
+    logger.error("[proposals/approve] status update error", updateError);
   }
 
   return NextResponse.json({

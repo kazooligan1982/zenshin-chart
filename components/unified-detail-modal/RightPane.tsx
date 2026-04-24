@@ -17,6 +17,7 @@ import { linkifyUrls } from "@/lib/utils";
 import type { ItemType } from "./ModalHeader";
 import type { TimelineComment } from "@/types/database";
 import type { Tension, Area } from "@/types/chart";
+import { logger } from "@/lib/logger";
 
 interface ChartHistoryEntry {
   id: string;
@@ -168,7 +169,7 @@ export function RightPane({
           return [];
       }
     } catch (e) {
-      console.error("[RightPane] fetchComments error:", e);
+      logger.error("[RightPane] fetchComments error:", e);
       return [];
     }
   }, [itemType, itemId]);
@@ -181,7 +182,7 @@ export function RightPane({
       if (!res.ok) return [];
       return (await res.json()) as ChartHistoryEntry[];
     } catch (e) {
-      console.error("[RightPane] fetch chart-history error:", e);
+      logger.error("[RightPane] fetch chart-history error:", e);
       return [];
     }
   }, [chartId, itemType, itemId]);

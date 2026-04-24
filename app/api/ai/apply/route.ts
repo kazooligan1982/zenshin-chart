@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { isValidStructuralDiagnosis } from "@/lib/ai/fritz-prompt";
 import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
+import { logger } from "@/lib/logger";
 
 // AI-generated proposal sources MUST include metadata.structural_diagnosis
 // per #86ex7fyrx. Manual / legacy sources may omit it.
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      console.error("[ai/apply] proposal insert error:", error);
+      logger.error("[ai/apply] proposal insert error", error);
       return NextResponse.json(
         { error: "Failed to create proposal" },
         { status: 500 }
@@ -181,7 +182,7 @@ export async function POST(req: NextRequest) {
   if (visionInserts.length > 0) {
     const { error } = await supabase.from("visions").insert(visionInserts);
     if (error) {
-      console.error("[ai/apply] visions insert error:", error);
+      logger.error("[ai/apply] visions insert error", error);
       return NextResponse.json(
         { error: "Failed to insert visions" },
         { status: 500 }
@@ -199,7 +200,7 @@ export async function POST(req: NextRequest) {
   if (realityInserts.length > 0) {
     const { error } = await supabase.from("realities").insert(realityInserts);
     if (error) {
-      console.error("[ai/apply] realities insert error:", error);
+      logger.error("[ai/apply] realities insert error", error);
       return NextResponse.json(
         { error: "Failed to insert realities" },
         { status: 500 }
@@ -219,7 +220,7 @@ export async function POST(req: NextRequest) {
       .select("id")
       .single();
     if (error) {
-      console.error("[ai/apply] tension insert error:", error);
+      logger.error("[ai/apply] tension insert error", error);
       continue;
     }
     if (inserted) {
@@ -240,7 +241,7 @@ export async function POST(req: NextRequest) {
   if (actionInserts.length > 0) {
     const { error } = await supabase.from("actions").insert(actionInserts);
     if (error) {
-      console.error("[ai/apply] actions insert error:", error);
+      logger.error("[ai/apply] actions insert error", error);
       return NextResponse.json(
         { error: "Failed to insert actions" },
         { status: 500 }

@@ -2,6 +2,7 @@ import { createNewWorkspace } from "@/lib/workspace";
 import { createClient } from "@/lib/supabase/server";
 import { isPersonalWorkspace } from "@/lib/workspace-utils";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(request: Request) {
   try {
@@ -57,7 +58,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in DELETE /api/workspaces:", error);
+    logger.error("Error in DELETE /api/workspaces:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(workspace);
   } catch (error) {
-    console.error("Error in POST /api/workspaces:", error);
+    logger.error("Error in POST /api/workspaces:", error);
     return NextResponse.json(
       { error: "内部エラーが発生しました" },
       { status: 500 }

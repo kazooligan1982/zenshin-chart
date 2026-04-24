@@ -1,5 +1,6 @@
 import type { RealityItem, Area, VisionItem, ActionPlan, Tension } from "@/types/chart";
 import type { MutableRefObject } from "react";
+import { logger } from "@/lib/logger";
 
 type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
@@ -71,10 +72,10 @@ export function useRealityHandlers({
         // 失敗: 楽観的に追加したものを削除
         setRealities((prev) => prev.filter((r) => r.id !== tempId));
         newRealityInput.setValue(contentToAdd);
-        console.error("[handleAddReality] 保存失敗 - ロールバック");
+        logger.error("[handleAddReality] 保存失敗 - ロールバック");
       }
     } catch (error) {
-      console.error("[handleAddReality] エラー:", error);
+      logger.error("[handleAddReality] エラー:", error);
       setRealities((prev) => prev.filter((r) => r.id !== tempId));
       newRealityInput.setValue(contentToAdd);
     } finally {
@@ -115,12 +116,12 @@ export function useRealityHandlers({
         // 失敗: ロールバック
         setRealities(originalRealities);
         if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
-        console.error("[handleUpdateReality] 更新失敗 - ロールバック");
+        logger.error("[handleUpdateReality] 更新失敗 - ロールバック");
       }
     } catch (error) {
       setRealities(originalRealities);
       if (field === "areaId") toast.error(tt("moveFailed"), { duration: 5000 });
-      console.error("[handleUpdateReality] エラー:", error);
+      logger.error("[handleUpdateReality] エラー:", error);
     } finally {
       if (field === "areaId" && optimisticOpsRef) optimisticOpsRef.current--;
     }

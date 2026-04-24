@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ja, enUS } from "date-fns/locale";
+import { logger } from "@/lib/logger";
 
 interface Snapshot {
   id: string;
@@ -402,14 +403,14 @@ export function SnapshotViewer({ snapshot, autoOpen = false }: SnapshotViewerPro
         .single();
 
       if (error) {
-        console.error("[SnapshotViewer] Error fetching detail:", error);
+        logger.error("[SnapshotViewer] Error fetching detail:", error);
         setError(error.message);
         return;
       }
 
       setDetailData(data as SnapshotDetail);
     } catch (err) {
-      console.error("[SnapshotViewer] Error fetching detail:", err);
+      logger.error("[SnapshotViewer] Error fetching detail:", err);
       setError(err instanceof Error ? err.message : t("fetchDataFailed"));
     } finally {
       setIsLoading(false);

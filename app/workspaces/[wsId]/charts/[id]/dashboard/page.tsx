@@ -52,6 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { logger } from "@/lib/logger";
 
 interface SnapshotDataItem {
   id: string;
@@ -405,7 +406,7 @@ export default function SnapshotsPage() {
         const chartData = await fetchChart(projectId);
         if (chartData) setChartTitle(chartData.title || "");
       } catch (e) {
-        console.error("[Snapshots] Failed to fetch chart title:", e);
+        logger.error("[Snapshots] Failed to fetch chart title:", e);
       }
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -521,7 +522,7 @@ export default function SnapshotsPage() {
 
   const saveComparison = async () => {
     if (!compareBefore || !compareAfter) {
-      console.error("[saveComparison] Missing snapshots");
+      logger.error("[saveComparison] Missing snapshots");
       toast.warning(t("saveComparisonSelectSnapshots"));
       return;
     }
@@ -562,7 +563,7 @@ export default function SnapshotsPage() {
 
 
       if (error) {
-        console.error("[saveComparison] Error:", error);
+        logger.error("[saveComparison] Error:", error);
         toast.error(t("saveComparisonFailed") + ": " + error.message);
         return;
       }
@@ -580,7 +581,7 @@ export default function SnapshotsPage() {
         }, 800);
       }
     } catch (err) {
-      console.error("[saveComparison] Exception:", err);
+      logger.error("[saveComparison] Exception:", err);
       toast.error(t("errorOccurred"));
     }
   };
@@ -693,7 +694,7 @@ export default function SnapshotsPage() {
         toast.error(t("fetchDataFailed"));
       }
     } catch (err) {
-      console.error("[viewComparisonDetail] Error:", err);
+      logger.error("[viewComparisonDetail] Error:", err);
       toast.error(t("fetchDataFailed"));
     }
   };

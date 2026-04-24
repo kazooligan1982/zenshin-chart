@@ -59,6 +59,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { logger } from "@/lib/logger";
 
 interface Action {
   id: string;
@@ -254,7 +255,7 @@ export function ActionEditModal({
       const comments = await fetchActionComments(action.id);
       setActionComments(comments);
     } catch (error) {
-      console.error("コメントの取得に失敗しました:", error);
+      logger.error("コメントの取得に失敗しました:", error);
       setActionComments([]);
     } finally {
       setIsLoadingComments(false);
@@ -289,7 +290,7 @@ export function ActionEditModal({
           throw new Error(data.error || "Update failed");
         }
       } catch (error) {
-        console.error("Error updating action:", error);
+        logger.error("Error updating action:", error);
         toast.error(tt("updateFailed"), { duration: 5000 });
       }
     },
@@ -342,7 +343,7 @@ export function ActionEditModal({
       }
       setStatus(nextStatus);
     } catch (error) {
-      console.error("Error updating action status:", error);
+      logger.error("Error updating action status:", error);
       toast.error(tt("updateFailed"), { duration: 5000 });
     }
   };

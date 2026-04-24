@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { fetchChart } from "./actions";
@@ -96,7 +97,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
       />
     );
   } catch (error) {
-    console.error("Error loading chart:", error);
+    logger.error("Error loading chart:", error);
     return (
       <div className="flex items-center justify-center h-screen bg-zenshin-cream">
         <div className="bg-white p-8 rounded-2xl border border-zenshin-navy/8 max-w-md">

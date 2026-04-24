@@ -17,6 +17,7 @@ import { ClickUpIcon, NotionIcon, JiraIcon, LinearIcon, AsanaIcon } from "@/comp
 import { toast } from "sonner";
 import { getItemLinks, addItemLink, deleteItemLink, type ItemLink } from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import type { ItemType } from "./ModalHeader";
+import { logger } from "@/lib/logger";
 
 interface LinkedResourcesProps {
   chartId: string;
@@ -88,7 +89,7 @@ export function LinkedResources({
         setIsExpanded(true);
       }
     } catch (error) {
-      console.error("[LinkedResources] load error:", error);
+      logger.error("[LinkedResources] load error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +117,7 @@ export function LinkedResources({
       toast.success(t("linkAdded"));
       onActivityChange?.();
     } catch (error) {
-      console.error("[LinkedResources] add error:", error);
+      logger.error("[LinkedResources] add error:", error);
       toast.error(tToast("error") || "エラーが発生しました");
       setInputValue(url);
     } finally {
@@ -138,7 +139,7 @@ export function LinkedResources({
       toast.success(t("linkRemoved"));
       onActivityChange?.();
     } catch (error) {
-      console.error("[LinkedResources] delete error:", error);
+      logger.error("[LinkedResources] delete error:", error);
       toast.error(tToast("error") || "エラーが発生しました");
     }
   };
