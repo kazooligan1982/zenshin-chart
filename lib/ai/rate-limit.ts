@@ -8,7 +8,7 @@ const LIMITS = {
   USER_PER_MINUTE: 10,
 };
 
-// 失敗時の設計方針: fail-open + console.error
+// 失敗時の設計方針: fail-open + logger.error
 // ベータ段階ではユーザー体験優先、Anthropic Console のハードリミットが最終防衛線。
 // 詳細は CLAUDE.md の「レート制限の設計思想」セクション参照。
 
