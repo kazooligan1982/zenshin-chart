@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 export function SignupForm({ redirectTo = "/charts" }: { redirectTo?: string }) {
   const t = useTranslations("auth");
@@ -44,7 +45,7 @@ export function SignupForm({ redirectTo = "/charts" }: { redirectTo?: string }) 
     });
 
     if (error) {
-      console.error("Signup error:", error);
+      logger.error("Signup error:", error);
       toast.error(tt("signupFailed") + ": " + error.message, { duration: 5000 });
       setIsLoading(false);
       return;

@@ -5,6 +5,7 @@ import {
   hasChangedSinceLastTreeSnapshot,
 } from "@/lib/tree-snapshot";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
           );
 
           if (!hasChanged) {
-            console.log(`[Tree Snapshot] Skipped (no changes): ${master.title}`);
+            logger.info(`[Tree Snapshot] Skipped (no changes): ${master.title}`);
             skippedCount++;
             continue;
           }
@@ -85,13 +86,13 @@ export async function GET(request: NextRequest) {
           );
 
           if (snapshotId) {
-            console.log(`[Tree Snapshot] Saved: ${master.title} (${snapshotId})`);
+            logger.info(`[Tree Snapshot] Saved: ${master.title} (${snapshotId})`);
             savedCount++;
           } else {
             errors.push(`Failed to save: ${master.title}`);
           }
         } catch (err) {
-          console.error(`[Tree Snapshot] Error for ${master.title}:`, err);
+          logger.error(`[Tree Snapshot] Error for ${master.title}:`, err);
           errors.push(`Error: ${master.title}`);
           // 1つのチャートのエラーで全体を止めない
           continue;
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[Tree Snapshot Cron] Fatal error:", error);
+    logger.error("[Tree Snapshot Cron] Fatal error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

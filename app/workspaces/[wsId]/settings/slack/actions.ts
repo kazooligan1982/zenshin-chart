@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function disconnectSlack(wsId: string) {
   const supabase = await createClient();
@@ -35,7 +36,7 @@ export async function disconnectSlack(wsId: string) {
         },
       });
     } catch (e) {
-      console.error("Failed to revoke Slack token:", e);
+      logger.error("Failed to revoke Slack token:", e);
     }
   }
 

@@ -12,6 +12,7 @@ import {
   updateTensionArea,
   updateAreaOrder,
 } from "../actions";
+import { logger } from "@/lib/logger";
 
 export function useDndHandlers({
   chartId,
@@ -104,7 +105,7 @@ export function useDndHandlers({
             throw new Error("Update failed");
           }
         } catch (error) {
-          console.error("❌ Server update failed:", error);
+          logger.error("❌ Server update failed:", error);
           setVisions(previousState);
           toast.error(tt("moveFailed"), { duration: 5000 });
         }
@@ -138,7 +139,7 @@ export function useDndHandlers({
       try {
         await updateListOrder(items, "visions", chartId);
       } catch (error) {
-        console.error("Sort order update failed:", error);
+        logger.error("Sort order update failed:", error);
         setVisions(previousState);
         toast.error(tt("orderUpdateFailed"), { duration: 5000 });
       }
@@ -204,7 +205,7 @@ export function useDndHandlers({
       try {
         await updateListOrder(items, "realities", chartId);
       } catch (error) {
-        console.error("Sort order update failed:", error);
+        logger.error("Sort order update failed:", error);
         setRealities(previousState);
         toast.error(tt("orderUpdateFailed"), { duration: 5000 });
       }
@@ -243,7 +244,7 @@ export function useDndHandlers({
       try {
         await updateListOrder(items, "actions", chartId, tensionId);
       } catch (error) {
-        console.error("Sort order update failed:", error);
+        logger.error("Sort order update failed:", error);
         setTensions(previousState);
         toast.error(tt("orderUpdateFailed"), { duration: 5000 });
       }
@@ -342,7 +343,7 @@ export function useDndHandlers({
       try {
         await updateListOrder(items, "tensions", chartId);
       } catch (error) {
-        console.error("Sort order update failed:", error);
+        logger.error("Sort order update failed:", error);
         setTensions(previousState);
         toast.error(tt("orderUpdateFailed"), { duration: 5000 });
       }
@@ -447,7 +448,7 @@ export function useDndHandlers({
         try {
           await updateListOrder(items, "actions", chartId);
         } catch (error) {
-          console.error("Sort order update failed:", error);
+          logger.error("Sort order update failed:", error);
           setLooseActions(previousState);
           toast.error(tt("orderUpdateFailed"), { duration: 5000 });
         }
@@ -498,7 +499,7 @@ export function useDndHandlers({
         toast.error(tt("orderUpdateFailed"), { duration: 5000 });
       }
     } catch (error) {
-      console.error("Area order update failed:", error);
+      logger.error("Area order update failed:", error);
       setChart((prev) => ({ ...prev, areas: previousAreas }));
       toast.error(tt("orderUpdateFailed"), { duration: 5000 });
     }

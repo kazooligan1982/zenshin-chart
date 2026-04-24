@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { VisionItem, RealityItem, Tension, ActionPlan, HistoryItem } from "@/types/chart";
 import { useRouter } from "next/navigation";
 import { fetchItemHistory, addItemHistoryEntry } from "../actions";
+import { logger } from "@/lib/logger";
 
 export function useDetailPanel({
   chartId,
@@ -45,7 +46,7 @@ export function useDetailPanel({
         const history = await fetchItemHistory(itemType, itemId);
         setItemHistory(history);
       } catch (error) {
-        console.error("履歴の取得に失敗しました:", error);
+        logger.error("履歴の取得に失敗しました:", error);
         setItemHistory([]);
       } finally {
         setIsLoadingHistory(false);

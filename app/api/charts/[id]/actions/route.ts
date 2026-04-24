@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -273,7 +274,7 @@ export async function GET(
 
     return NextResponse.json(actions);
   } catch (error) {
-    console.error("Error in GET /api/charts/[id]/actions:", error);
+    logger.error("Error in GET /api/charts/[id]/actions:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -350,7 +351,7 @@ export async function PATCH(
         user_id: user.id,
       });
       if (histError) {
-        console.error("[chart_history] insert error:", histError);
+        logger.error("[chart_history] insert error:", histError);
       }
     };
 
@@ -372,7 +373,7 @@ export async function PATCH(
         .eq("id", actionId);
 
       if (error) {
-        console.error("[PATCH actions] status update error:", error);
+        logger.error("[PATCH actions] status update error:", error);
         return NextResponse.json(
           { error: error.message },
           { status: 500 }
@@ -410,7 +411,7 @@ export async function PATCH(
       .update(updates)
       .eq("id", actionId);
     if (error) {
-      console.error("[PATCH actions] update error:", error);
+      logger.error("[PATCH actions] update error:", error);
       return NextResponse.json(
         { error: error.message },
         { status: 500 }
@@ -436,7 +437,7 @@ export async function PATCH(
     await recordHistory("updated", dbField, getOldValue(field), value ?? null);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in PATCH /api/charts/[id]/actions:", error);
+    logger.error("Error in PATCH /api/charts/[id]/actions:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

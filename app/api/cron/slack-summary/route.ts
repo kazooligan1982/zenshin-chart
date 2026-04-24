@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://zenshin-web-alpha.vercel.app";
 
   if (!webhookUrl) {
-    console.error("[Slack Summary] SLACK_WEBHOOK_URL is not set");
+    logger.error("[Slack Summary] SLACK_WEBHOOK_URL is not set");
     return NextResponse.json({ error: "SLACK_WEBHOOK_URL not configured" }, { status: 500 });
   }
 
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
       const masterCharts = (charts || []).filter(
         (c: { id: string }) => !childToParent.has(c.id)
       );
-      console.log(
+      logger.info(
         `[Slack Summary] workspace=${ws.id} charts_before=${charts?.length ?? 0} charts_after=${masterCharts.length}`
       );
 
@@ -199,7 +200,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[Slack Summary] Slack API error:", res.status, errText);
+      logger.error("[Slack Summary] Slack API error", undefined, { status: res.status, body: errText });
       return NextResponse.json(
         { error: "Slack API error", status: res.status, body: errText },
         { status: 502 }
@@ -212,7 +213,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[Slack Summary] Fatal error:", error);
+    logger.error("[Slack Summary] Fatal error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

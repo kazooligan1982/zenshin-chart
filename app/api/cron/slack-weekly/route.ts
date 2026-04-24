@@ -4,6 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 import { calculateMomentumScore } from "@/lib/momentum-score";
 import { collectTreeSnapshotData } from "@/lib/tree-snapshot";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
       .eq("slack_notify", true);
 
     if (workspacesError) {
-      console.error("[Slack Weekly] Supabase workspaces error:", workspacesError);
+      logger.error("[Slack Weekly] Supabase workspaces error:", workspacesError);
       return NextResponse.json({ error: "Failed to fetch workspaces" }, { status: 500 });
     }
     if (!workspaces || workspaces.length === 0) {
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       .from("actions")
       .select("id, chart_id, child_chart_id");
     if (actionsError) {
-      console.error("[Slack Weekly] Supabase actions error:", actionsError);
+      logger.error("[Slack Weekly] Supabase actions error:", actionsError);
     }
     const childToParent = new Map<string, string>();
     for (const a of actions || []) {
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
         .is("archived_at", null);
 
       if (chartsError) {
-        console.error("[Slack Weekly] Supabase charts error for workspace", ws.id, chartsError);
+        logger.error("[Slack Weekly] Supabase charts error for workspace", chartsError, { workspaceId: logger.hashId(ws.id) });
         continue;
       }
       if (!charts || charts.length === 0) continue;
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
 
           if (lastWeekError) {
-            console.error("[Slack Weekly] Supabase momentum_scores error:", lastWeekError);
+            logger.error("[Slack Weekly] Supabase momentum_scores error:", lastWeekError);
           }
           const prevScore = lastWeekScore?.score ?? null;
           const diffStr = prevScore !== null ? (momentum.score - prevScore >= 0 ? `+${momentum.score - prevScore}` : `${momentum.score - prevScore}`) : "—";
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
             .limit(2);
 
           if (snapshotsError) {
-            console.error("[Slack Weekly] Supabase snapshots error:", snapshotsError);
+            logger.error("[Slack Weekly] Supabase snapshots error:", snapshotsError);
           }
 
           let aiInsight = "（スナップショットが不足しているためAI分析はスキップしました）";
@@ -197,7 +198,7 @@ export async function GET(request: NextRequest) {
                 if (!aiInsight) aiInsight = AI_INSIGHT_FALLBACK;
               }
             } catch (aiErr) {
-              console.error("[Slack Weekly] AI insight generation failed:", aiErr);
+              logger.error("[Slack Weekly] AI insight generation failed:", aiErr);
               aiInsight = AI_INSIGHT_FALLBACK;
             }
           }
@@ -271,7 +272,7 @@ export async function GET(request: NextRequest) {
           });
           blocks.push({ type: "divider" });
         } catch (err) {
-          console.error(`[Slack Weekly] Error for chart ${master.title}:`, err);
+          logger.error(`[Slack Weekly] Error for chart ${master.title}:`, err);
         }
       }
     }
@@ -287,7 +288,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[Slack Weekly] Slack API error:", res.status, errText);
+      logger.error("[Slack Weekly] Slack API error", undefined, { status: res.status, body: errText });
       return NextResponse.json({ error: "Slack API error", status: res.status }, { status: 502 });
     }
 
@@ -297,7 +298,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("[Slack Weekly] Fatal error:", error);
+    logger.error("[Slack Weekly] Fatal error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

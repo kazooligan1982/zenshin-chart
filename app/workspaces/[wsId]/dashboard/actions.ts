@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateMomentumScore, type MomentumScoreResult } from "@/lib/momentum-score";
 import { getPeriodRange } from "./utils";
+import { logger } from "@/lib/logger";
 
 /** Action row returned from the joined Supabase query (runtime shape after !inner join) */
 interface DashboardActionRow {
@@ -71,7 +72,7 @@ export async function getMomentumData(
   try {
     momentum = await calculateMomentumScore(targetChartId, supabase, chartIds);
   } catch (err) {
-    console.error("[getMomentumData] calculateMomentumScore error:", err);
+    logger.error("[getMomentumData] calculateMomentumScore error:", err);
     return null;
   }
 
@@ -355,7 +356,7 @@ export async function getDashboardData(
   const { data: charts, error: chartsError } = await chartsQuery;
 
   if (chartsError) {
-    console.error("[getDashboardData] charts error:", chartsError);
+    logger.error("[getDashboardData] charts error:", chartsError);
     throw chartsError;
   }
 
@@ -385,7 +386,7 @@ export async function getDashboardData(
   const { data: actions, error: actionsError } = await actionsQuery;
 
   if (actionsError) {
-    console.error("[getDashboardData] actions error:", actionsError);
+    logger.error("[getDashboardData] actions error:", actionsError);
   }
 
   const allActions = (actions || []) as unknown as DashboardActionRow[];

@@ -93,6 +93,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 import { format } from "date-fns";
 import {
   AlertDialog,
@@ -895,8 +896,6 @@ export function ProjectEditor({
   }, [chart.areas, tensions, looseActions]);
 
   useEffect(() => {
-    console.group("📊 ZENSHIN Structured Data");
-
     const totalOrphans =
       structuredData.categorized.reduce(
         (sum, group) => sum + group.orphanedActions.length,
@@ -904,10 +903,10 @@ export function ProjectEditor({
       ) + structuredData.uncategorized.orphanedActions.length;
 
     if (totalOrphans > 0) {
-      console.warn(t("orphanActionsNote"));
+      logger.info("[project-editor] orphan actions detected", {
+        totalOrphans,
+      });
     }
-
-    console.groupEnd();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structuredData]);
 
@@ -1291,7 +1290,7 @@ export function ProjectEditor({
         toast.error(tt("snapshotSaveFailed", { error: tt(result.error ?? "unknownError") }), { duration: 5000 });
       }
     } catch (error) {
-      console.error("[handleCreateSnapshot] エラー:", error);
+      logger.error("[handleCreateSnapshot] error", error);
       toast.error(tt("snapshotError"), { duration: 5000 });
     } finally {
       setIsSavingSnapshot(false);
@@ -1311,7 +1310,7 @@ export function ProjectEditor({
         toast.error(tt("snapshotSaveFailed", { error: tt(result.error ?? "unknownError") }), { duration: 5000 });
       }
     } catch (error) {
-      console.error("[handleTreeSnapshot] エラー:", error);
+      logger.error("[handleTreeSnapshot] error", error);
       toast.error(tt("treeSnapshotError"), { duration: 5000 });
     } finally {
       setIsSavingSnapshot(false);
@@ -1369,7 +1368,7 @@ export function ProjectEditor({
         router.push(basePath);
       }
     } catch (error) {
-      console.error("Failed to archive:", error);
+      logger.error("Failed to archive", error);
       toast.error(tt("archiveFailed"), { duration: 5000 });
     } finally {
       setIsChartMenuLoading(false);
@@ -1391,7 +1390,7 @@ export function ProjectEditor({
         router.push(basePath);
       }
     } catch (error) {
-      console.error("Failed to delete:", error);
+      logger.error("Failed to delete", error);
       toast.error(tt("deleteFailed"), { duration: 5000 });
     } finally {
       setIsChartMenuLoading(false);
@@ -1402,7 +1401,7 @@ export function ProjectEditor({
     try {
       const success = await updateChartData(chartId, { due_date: dueDate });
       if (!success) {
-        console.error("[handleUpdateChartDueDate] Update failed");
+        logger.error("[handleUpdateChartDueDate] Update failed");
         return;
       }
 
@@ -1419,11 +1418,11 @@ export function ProjectEditor({
           })
           .eq("id", chart.parentActionId);
         if (parentError) {
-          console.error("[handleUpdateChartDueDate] parent action sync error:", parentError);
+          logger.error("[handleUpdateChartDueDate] parent action sync error", parentError);
         }
       }
     } catch (err) {
-      console.error("[handleUpdateChartDueDate] Exception:", err);
+      logger.error("[handleUpdateChartDueDate] Exception", err);
     }
   };
 

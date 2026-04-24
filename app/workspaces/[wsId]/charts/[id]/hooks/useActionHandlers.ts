@@ -4,6 +4,7 @@ type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action"
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import {
   addActionPlan,
   updateActionPlanItem,
@@ -78,10 +79,10 @@ export function useActionHandlers({
           setLooseActions((prev) => [...prev, newAction]);
         }
       } else {
-        console.error("[handleAddActionPlan] 保存失敗");
+        logger.error("[handleAddActionPlan] 保存失敗");
       }
     } catch (error) {
-      console.error("[handleAddActionPlan] エラー:", error);
+      logger.error("[handleAddActionPlan] エラー", error);
     } finally {
       setIsSubmittingAction({ ...isSubmittingAction, [submitKey]: false });
     }
@@ -133,7 +134,7 @@ export function useActionHandlers({
         chartId
       );
       if (!success) {
-        console.error("[handleUpdateActionPlan] 更新失敗");
+        logger.error("[handleUpdateActionPlan] 更新失敗");
       }
       return;
     }
@@ -232,7 +233,7 @@ export function useActionHandlers({
 
     const success = await updateActionPlanItem(actionId, tensionId, field, value, chartId);
     if (!success) {
-      console.error("[handleUpdateActionPlan] 更新失敗");
+      logger.error("[handleUpdateActionPlan] 更新失敗");
       // 失敗時はロールバック
       if (field === "dueDate" || field === "status" || field === "isCompleted" || field === "description") {
         router.refresh();
@@ -342,13 +343,11 @@ export function useActionHandlers({
       } else {
         // エラー: ローディング状態を解除
         setTelescopingActionId(null);
-        console.error("4. Failed - result:", newChartId);
-        console.error("Failed to create child chart");
+        logger.error("Failed to create child chart", { newChartId: logger.hashId(newChartId) });
       }
     } catch (error) {
       setTelescopingActionId(null);
-      console.error("5. Exception caught:", error);
-      console.error("Error in telescope:", error);
+      logger.error("Error in telescope", error);
     }
   };
 

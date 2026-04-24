@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { logger } from "@/lib/logger";
 
 export function DeleteChartButton({ chartId }: { chartId: string }) {
   const tt = useTranslations("toast");
@@ -34,7 +35,7 @@ export function DeleteChartButton({ chartId }: { chartId: string }) {
       toast.success(tt("chartDeleted"), { duration: 3000 });
       router.refresh();
     } catch (error) {
-      console.error("Failed to delete chart:", error);
+      logger.error("Failed to delete chart:", error);
       toast.error(tt("deleteFailed"), { duration: 5000 });
     } finally {
       setIsDeleting(false);

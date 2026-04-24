@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "@/lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -9,10 +10,10 @@ if (typeof window === "undefined") {
   
   // 環境変数の形式チェック
   if (supabaseUrl && !supabaseUrl.startsWith("http")) {
-    console.warn("[Supabase] ⚠️ URLが正しい形式ではありません。https://で始まる必要があります。");
+    logger.warn("[Supabase] ⚠️ URLが正しい形式ではありません。https://で始まる必要があります。");
   }
   if (supabaseAnonKey && !supabaseAnonKey.startsWith("eyJ")) {
-    console.warn("[Supabase] ⚠️ APIキーが正しい形式ではありません。eyJで始まる必要があります。");
+    logger.warn("[Supabase] ⚠️ APIキーが正しい形式ではありません。eyJで始まる必要があります。");
   }
 }
 

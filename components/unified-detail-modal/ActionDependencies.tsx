@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 interface ActionDependenciesProps {
   chartId: string;
@@ -115,7 +116,7 @@ export function ActionDependencies({
         setIsExpanded(true);
       }
     } catch (error) {
-      console.error("[ActionDependencies] load error:", error);
+      logger.error("[ActionDependencies] load error:", error);
       setData({ blockedBy: [], blocking: [] });
     } finally {
       setIsLoading(false);
@@ -150,7 +151,7 @@ export function ActionDependencies({
       load();
       onActivityChange?.();
     } catch (error) {
-      console.error("[ActionDependencies] add error:", error);
+      logger.error("[ActionDependencies] add error:", error);
       toast.error(tToast("error") || "エラーが発生しました");
     } finally {
       setIsAdding(false);
@@ -164,7 +165,7 @@ export function ActionDependencies({
       load();
       onActivityChange?.();
     } catch (error) {
-      console.error("[ActionDependencies] remove error:", error);
+      logger.error("[ActionDependencies] remove error:", error);
       toast.error(tToast("error") || "エラーが発生しました");
     }
   };

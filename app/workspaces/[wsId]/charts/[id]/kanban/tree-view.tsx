@@ -43,6 +43,7 @@ import {
   checkIncompleteTelescopeActions,
   updateActionStatus,
 } from "@/app/workspaces/[wsId]/charts/[id]/actions";
+import { logger } from "@/lib/logger";
 
 interface TreeNode {
   id: string;
@@ -135,10 +136,10 @@ export function TreeView({
           setExpandedNodes(new Set(allIds));
         }
       } else {
-        console.error("[TreeView] API error:", response.status);
+        logger.error("[TreeView] API error:", response.status);
       }
     } catch (error) {
-      console.error("[TreeView] Fetch error:", error);
+      logger.error("[TreeView] Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -225,7 +226,7 @@ export function TreeView({
       .then((response) => response.json())
       .then((data) => setTreeData(data))
       .catch((error) =>
-        console.error("Failed to refresh tree data:", error)
+        logger.error("Failed to refresh tree data:", error)
       );
   };
 
@@ -237,7 +238,7 @@ export function TreeView({
       );
       await fetchTreeData(false);
     } catch (error) {
-      console.error("Failed to update status:", error);
+      logger.error("Failed to update status:", error);
     }
   };
 
@@ -262,7 +263,7 @@ export function TreeView({
           return;
         }
       } catch (error) {
-        console.error("Failed to check incomplete actions:", error);
+        logger.error("Failed to check incomplete actions:", error);
       }
     }
 
@@ -706,7 +707,7 @@ export function TreeView({
             });
             if (res.ok) void fetchTreeData(false);
           } catch (e) {
-            console.error("Update failed:", e);
+            logger.error("Update failed:", e);
           }
         };
         return (

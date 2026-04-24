@@ -32,6 +32,7 @@ import { UserMenu } from "@/components/user-menu";
 import { getCurrentWorkspace, getUserWorkspaces } from "@/lib/workspace";
 import { createClient } from "@/lib/supabase/client";
 import { getChartDisplayTitle } from "@/lib/chart-display";
+import { logger } from "@/lib/logger";
 
 const RECENT_CHARTS_KEY = "zenshin_recent_charts";
 const QUICK_ACCESS_COLLAPSED_KEY = "zenshin_quickaccess_collapsed";
@@ -129,7 +130,7 @@ export function Sidebar(props?: SidebarProps) {
       // Full page navigation to properly load the new workspace layout
       window.location.href = `/workspaces/${workspace.id}/charts`;
     } catch (error) {
-      console.error("Failed to create workspace:", error);
+      logger.error("Failed to create workspace:", error);
       setIsSavingWs(false);
     }
   };
@@ -176,7 +177,7 @@ export function Sidebar(props?: SidebarProps) {
         setFetchedWorkspace(current);
         setFetchedAllWorkspaces(all);
       } catch (error) {
-        console.error("[Sidebar] Failed to load workspaces:", error);
+        logger.error("[Sidebar] Failed to load workspaces:", error);
       }
     }
     loadWorkspaces();

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 /**
  * ログイン後の着地先として適切なワークスペースIDを取得する。
@@ -141,7 +142,7 @@ export async function createInvitation(
     });
 
   if (error) {
-    console.error("Failed to create invitation:", error);
+    logger.error("Failed to create invitation:", error);
     return null;
   }
 
@@ -219,7 +220,7 @@ export async function joinWorkspaceByInvite(
     if (error.code === "23505") {
       return { success: true };
     }
-    console.error("[joinWorkspaceByInvite] Failed to join workspace:", error);
+    logger.error("[joinWorkspaceByInvite] Failed to join workspace:", error);
     return { success: false, error: "joinFailed" };
   }
 
@@ -387,7 +388,7 @@ export async function removeMember(
     .eq("user_id", targetUserId);
 
   if (error) {
-    console.error("[removeMember] Failed:", error);
+    logger.error("[removeMember] Failed:", error);
     return { success: false, error: "deleteFailed" };
   }
 
@@ -414,7 +415,7 @@ export async function createNewWorkspace(
     .single();
 
   if (wsError) {
-    console.error("[createNewWorkspace] Failed:", wsError);
+    logger.error("[createNewWorkspace] Failed:", wsError);
     return null;
   }
 
@@ -427,7 +428,7 @@ export async function createNewWorkspace(
     });
 
   if (memberError) {
-    console.error("[createNewWorkspace] Failed to add owner:", memberError);
+    logger.error("[createNewWorkspace] Failed to add owner:", memberError);
     return null;
   }
 

@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ItemType } from "./ModalHeader";
 import type { Tension, Area } from "@/types/chart";
+import { logger } from "@/lib/logger";
 
 interface ChartHistoryEntry {
   id: string;
@@ -142,7 +143,7 @@ export function ChangeHistorySummary({
         const data: ChartHistoryEntry[] = res.ok ? await res.json() : [];
         if (!cancelled) setHistory(data);
       } catch (e) {
-        if (!cancelled) console.error("[ChangeHistorySummary] fetch error:", e);
+        if (!cancelled) logger.error("[ChangeHistorySummary] fetch error:", e);
       } finally {
         if (!cancelled) setIsLoading(false);
       }

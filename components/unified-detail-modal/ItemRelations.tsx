@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Target, Search, Zap, Play, GitBranch, ChevronRight } from "lucide-react";
 import { getItemRelations, type ItemRelation } from "@/app/workspaces/[wsId]/charts/[id]/actions";
 import type { ItemType } from "./ModalHeader";
+import { logger } from "@/lib/logger";
 
 // Vision: Target, Reality: Search, Tension: Zap, Action: Play
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -94,7 +95,7 @@ export function ItemRelations({
         setIsExpanded(true);
       }
     } catch (error) {
-      console.error("[ItemRelations] load error:", error);
+      logger.error("[ItemRelations] load error:", error);
       setData({ references: [], referencedBy: [] });
     } finally {
       setIsLoading(false);

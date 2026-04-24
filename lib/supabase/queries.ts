@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { logger } from "@/lib/logger";
 import type {
   Chart,
   ChartStatus,
@@ -27,14 +28,16 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
       .single();
 
     if (chartError) {
-      console.error("Error code:", chartError.code);
-      console.error("Error message:", chartError.message);
-      console.error("Error details:", chartError.details);
+      logger.error("[getChartById] Supabase error", chartError, {
+        chartIdHash: logger.hashId(chartId),
+      });
       return null;
     }
 
     if (!chart) {
-      console.warn("Chart not found:", chartId);
+      logger.warn("[getChartById] Chart not found", {
+        chartIdHash: logger.hashId(chartId),
+      });
       return null;
     }
     // 並列クエリ: Visions, Realities, Tensions, Areas, Actionsを同時に取得
@@ -73,10 +76,10 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
         .order("created_at", { ascending: true }),
     ]);
 
-    if (visionsError) console.error("Error fetching visions:", visionsError);
-    if (realitiesError) console.error("Error fetching realities:", realitiesError);
-    if (tensionsError) console.error("Error fetching tensions:", tensionsError);
-    if (areasError) console.error("Error fetching areas:", areasError);
+    if (visionsError) logger.error("[getChartById] fetching visions failed", visionsError);
+    if (realitiesError) logger.error("[getChartById] fetching realities failed", realitiesError);
+    if (tensionsError) logger.error("[getChartById] fetching tensions failed", tensionsError);
+    if (areasError) logger.error("[getChartById] fetching areas failed", areasError);
 
     // Tension関係を並列取得
     const tensionIds = tensions?.map((t: { id: string }) => t.id) || [];
@@ -215,7 +218,7 @@ export async function getChartById(chartId: string): Promise<Chart | null> {
       breadcrumbs: breadcrumbsList,
     };
   } catch (error) {
-    console.error("Error in getChartById:", error);
+    logger.error("[getChartById] Exception", error);
     return null;
   }
 }
@@ -232,7 +235,7 @@ async function getBreadcrumbsFromSQL(
     });
 
     if (error) {
-      console.error("Error calling get_breadcrumbs function:", error);
+      logger.error("[getBreadcrumbsFromSQL] RPC error", error);
       return [];
     }
 
@@ -260,7 +263,7 @@ async function getBreadcrumbsFromSQL(
 
     return deduplicated;
   } catch (error) {
-    console.error("Error in getBreadcrumbsFromSQL:", error);
+    logger.error("[getBreadcrumbsFromSQL] Exception", error);
     return [];
   }
 }
@@ -357,13 +360,12 @@ export async function createVision(
       .single();
 
     if (error) {
-      console.error("[createVision] Supabase error:", error);
-      console.error("[createVision] Error details:", JSON.stringify(error, null, 2));
+      logger.error("[createVision] Supabase error", error);
       return null;
     }
 
     if (!data) {
-      console.error("[createVision] No data returned from insert");
+      logger.error("[createVision] No data returned from insert");
       return null;
     }
 
@@ -379,7 +381,7 @@ export async function createVision(
       area_id: data.area_id || null,
     };
   } catch (error) {
-    console.error("[createVision] Exception:", error);
+    logger.error("[createVision] Exception", error);
     return null;
   }
 }
@@ -411,7 +413,7 @@ export async function updateVision(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("Error updating vision:", error);
+      logger.error("[updateVision] Supabase update error", error);
       return false;
     }
 
@@ -438,13 +440,13 @@ export async function updateVision(
             .eq("id", chart.parent_action_id);
         }
       } catch (syncError) {
-        console.error("Failed to sync with parent action:", syncError);
+        logger.error("[updateVision] Failed to sync with parent action", syncError);
       }
     }
 
     return true;
   } catch (error) {
-    console.error("Error in updateVision:", error);
+    logger.error("[updateVision] Exception", error);
     return false;
   }
 }
@@ -463,13 +465,13 @@ export async function deleteVision(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("Error deleting vision:", error);
+      logger.error("[deleteVision] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in deleteVision:", error);
+    logger.error("[deleteVision] Exception", error);
     return false;
   }
 }
@@ -500,13 +502,12 @@ export async function createReality(
       .single();
 
     if (error) {
-      console.error("[createReality] Supabase error:", error);
-      console.error("[createReality] Error details:", JSON.stringify(error, null, 2));
+      logger.error("[createReality] Supabase error", error);
       return null;
     }
 
     if (!data) {
-      console.error("[createReality] No data returned from insert");
+      logger.error("[createReality] No data returned from insert");
       return null;
     }
 
@@ -521,7 +522,7 @@ export async function createReality(
       created_by_profile: null,
     };
   } catch (error) {
-    console.error("[createReality] Exception:", error);
+    logger.error("[createReality] Exception", error);
     return null;
   }
 }
@@ -551,13 +552,13 @@ export async function updateReality(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("Error updating reality:", error);
+      logger.error("[updateReality] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in updateReality:", error);
+    logger.error("[updateReality] Exception", error);
     return false;
   }
 }
@@ -576,13 +577,13 @@ export async function deleteReality(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("Error deleting reality:", error);
+      logger.error("[deleteReality] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in deleteReality:", error);
+    logger.error("[deleteReality] Exception", error);
     return false;
   }
 }
@@ -609,7 +610,7 @@ export async function createTension(
       .single();
 
     if (error) {
-      console.error("Error creating tension:", error);
+      logger.error("[createTension] Supabase error", error);
       return null;
     }
 
@@ -624,7 +625,7 @@ export async function createTension(
       actionPlans: [],
     };
   } catch (error) {
-    console.error("Error in createTension:", error);
+    logger.error("[createTension] Exception", error);
     return null;
   }
 }
@@ -650,13 +651,13 @@ export async function updateTension(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("[updateTension] Error updating tension:", error);
+      logger.error("[updateTension] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in updateTension:", error);
+    logger.error("[updateTension] Exception", error);
     return false;
   }
 }
@@ -675,13 +676,13 @@ export async function deleteTension(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("Error deleting tension:", error);
+      logger.error("[deleteTension] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in deleteTension:", error);
+    logger.error("[deleteTension] Exception", error);
     return false;
   }
 }
@@ -704,7 +705,7 @@ export async function toggleTensionVisionLink(
         .eq("vision_id", visionId);
 
       if (error) {
-        console.error("Error removing vision link:", error);
+        logger.error("[toggleTensionVisionLink] remove error", error);
         return false;
       }
     } else {
@@ -719,14 +720,14 @@ export async function toggleTensionVisionLink(
         });
 
       if (error) {
-        console.error("Error adding vision link:", error);
+        logger.error("[toggleTensionVisionLink] add error", error);
         return false;
       }
     }
 
     return true;
   } catch (error) {
-    console.error("Error in toggleTensionVisionLink:", error);
+    logger.error("[toggleTensionVisionLink] Exception", error);
     return false;
   }
 }
@@ -749,7 +750,7 @@ export async function toggleTensionRealityLink(
         .eq("reality_id", realityId);
 
       if (error) {
-        console.error("Error removing reality link:", error);
+        logger.error("[toggleTensionRealityLink] remove error", error);
         return false;
       }
     } else {
@@ -764,14 +765,14 @@ export async function toggleTensionRealityLink(
         });
 
       if (error) {
-        console.error("Error adding reality link:", error);
+        logger.error("[toggleTensionRealityLink] add error", error);
         return false;
       }
     }
 
     return true;
   } catch (error) {
-    console.error("Error in toggleTensionRealityLink:", error);
+    logger.error("[toggleTensionRealityLink] Exception", error);
     return false;
   }
 }
@@ -795,7 +796,7 @@ export async function createAction(
         .single();
 
       if (tensionError || !tension) {
-        console.error("Error fetching tension:", tensionError);
+        logger.error("[createAction] Error fetching tension", tensionError);
         return { action: null, chartId: null };
       }
 
@@ -803,7 +804,7 @@ export async function createAction(
     }
 
     if (!chartId) {
-      console.error("Error creating action: chartId is required");
+      logger.error("[createAction] chartId is required");
       return { action: null, chartId: null };
     }
 
@@ -825,7 +826,7 @@ export async function createAction(
       .single();
 
     if (error) {
-      console.error("Error creating action:", error);
+      logger.error("[createAction] Supabase error", error);
       return { action: null, chartId };
     }
 
@@ -843,7 +844,7 @@ export async function createAction(
       chartId,
     };
   } catch (error) {
-    console.error("Error in createAction:", error);
+    logger.error("[createAction] Exception", error);
     return { action: null, chartId: null };
   }
 }
@@ -884,7 +885,7 @@ export async function updateAction(
       .eq("id", actionId);
 
     if (error) {
-      console.error("Error updating action:", error);
+      logger.error("[updateAction] Supabase error", error);
       return false;
     }
 
@@ -915,13 +916,13 @@ export async function updateAction(
             .eq("chart_id", childChartId);
         }
       } catch (syncError) {
-        console.error("Failed to sync with child visions:", syncError);
+        logger.error("[updateAction] Failed to sync child visions", syncError);
       }
     }
 
     return true;
   } catch (error) {
-    console.error("Error in updateAction:", error);
+    logger.error("[updateAction] Exception", error);
     return false;
   }
 }
@@ -946,13 +947,13 @@ export async function deleteAction(
     const { error } = await query;
 
     if (error) {
-      console.error("Error deleting action:", error);
+      logger.error("[deleteAction] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in deleteAction:", error);
+    logger.error("[deleteAction] Exception", error);
     return false;
   }
 }
@@ -972,7 +973,7 @@ export async function updateChartStatus(
     if (error) return { error: error.message };
     return {};
   } catch (error) {
-    console.error("Error in updateChartStatus:", error);
+    logger.error("[updateChartStatus] Exception", error);
     return { error: "予期せぬエラーが発生しました" };
   }
 }
@@ -1000,13 +1001,13 @@ export async function updateChart(
       .eq("id", chartId);
 
     if (error) {
-      console.error("Error updating chart:", error);
+      logger.error("[updateChart] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error in updateChart:", error);
+    logger.error("[updateChart] Exception", error);
     return false;
   }
 }
@@ -1037,7 +1038,7 @@ export async function telescopeAction(
     const { data: action, error: actionError } = await actionQuery.single();
 
     if (actionError || !action) {
-      console.error("Error fetching action:", actionError);
+      logger.error("[telescopeAction] Error fetching action", actionError);
       return null;
     }
     // 2. 既に子チャートが存在する場合はそのIDを返す
@@ -1071,7 +1072,7 @@ export async function telescopeAction(
       .single();
 
     if (chartError || !newChart) {
-      console.error("Error creating chart:", chartError);
+      logger.error("[telescopeAction] Error creating chart", chartError);
       return null;
     }
     // 3-2. 親アクションのタグを1つだけ子チャートにコピー
@@ -1084,7 +1085,9 @@ export async function telescopeAction(
         .single();
 
       if (parentAreaError) {
-        console.warn("[telescopeAction] Failed to fetch parent area:", parentAreaError);
+        logger.warn("[telescopeAction] Failed to fetch parent area", {
+          error: logger.extractSafeError(parentAreaError),
+        });
       } else if (parentArea) {
         const { data: createdArea, error: areaError } = await serverSupabase
           .from("areas")
@@ -1099,7 +1102,9 @@ export async function telescopeAction(
           .single();
 
         if (areaError) {
-          console.warn("[telescopeAction] Failed to copy area:", areaError);
+          logger.warn("[telescopeAction] Failed to copy area", {
+            error: logger.extractSafeError(areaError),
+          });
         } else {
           childAreaId = createdArea?.id ?? null;
         }
@@ -1119,7 +1124,7 @@ export async function telescopeAction(
       });
 
     if (visionError) {
-      console.error("Error creating vision:", visionError);
+      logger.error("[telescopeAction] Error creating vision", visionError);
       // Visionの作成に失敗してもチャートは作成されているので、チャートIDを返す
     }
     // 3-4. 親アクションのchild_chart_idを更新
@@ -1129,13 +1134,13 @@ export async function telescopeAction(
       .eq("id", actionId);
 
     if (updateActionError) {
-      console.error("Error updating action:", updateActionError);
+      logger.error("[telescopeAction] Error updating action", updateActionError);
       // チャートは作成されたが、アクションの更新に失敗した場合もチャートIDを返す
       return newChart.id;
     }
     return newChart.id;
   } catch (error) {
-    console.error("Error in telescopeAction:", error);
+    logger.error("[telescopeAction] Exception", error);
     return null;
   }
 }
@@ -1219,7 +1224,7 @@ export async function getParentChartInfo(
       parentActionTitle,
     };
   } catch (error) {
-    console.error("Error in getParentChartInfo:", error);
+    logger.error("[getParentChartInfo] Exception", error);
     return null;
   }
 }
@@ -1273,7 +1278,7 @@ export async function getChildChartProgress(
       percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   } catch (error) {
-    console.error("Error in getChildChartProgress:", error);
+    logger.error("[getChildChartProgress] Exception", error);
     return null;
   }
 }
@@ -1312,12 +1317,12 @@ export async function createArea(
       .single();
 
     if (error) {
-      console.error("[createArea] Supabase error:", error);
+      logger.error("[createArea] Supabase error", error);
       return null;
     }
 
     if (!data) {
-      console.error("[createArea] No data returned from insert");
+      logger.error("[createArea] No data returned from insert");
       return null;
     }
 
@@ -1331,7 +1336,7 @@ export async function createArea(
       updated_at: data.updated_at,
     };
   } catch (error) {
-    console.error("[createArea] Exception:", error);
+    logger.error("[createArea] Exception", error);
     return null;
   }
 }
@@ -1355,13 +1360,13 @@ export async function updateArea(
       .eq("chart_id", chartId);
 
     if (error) {
-      console.error("[updateArea] Supabase error:", error);
+      logger.error("[updateArea] Supabase error", error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("[updateArea] Exception:", error);
+    logger.error("[updateArea] Exception", error);
     return false;
   }
 }
@@ -1381,7 +1386,7 @@ export async function deleteArea(
       .eq("chart_id", chartId);
 
     if (visionError) {
-      console.error("[deleteArea] Error updating visions:", visionError);
+      logger.error("[deleteArea] Error updating visions", visionError);
       return false;
     }
 
@@ -1392,7 +1397,7 @@ export async function deleteArea(
       .eq("chart_id", chartId);
 
     if (realityError) {
-      console.error("[deleteArea] Error updating realities:", realityError);
+      logger.error("[deleteArea] Error updating realities", realityError);
       return false;
     }
 
@@ -1404,13 +1409,13 @@ export async function deleteArea(
       .eq("chart_id", chartId);
 
     if (deleteError) {
-      console.error("[deleteArea] Supabase error:", deleteError);
+      logger.error("[deleteArea] Supabase error", deleteError);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("[deleteArea] Exception:", error);
+    logger.error("[deleteArea] Exception", error);
     return false;
   }
 }
@@ -1430,7 +1435,7 @@ export async function getItemHistory(
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[getItemHistory] Supabase error:", error);
+      logger.error("[getItemHistory] Supabase error", error);
       return [];
     }
 
@@ -1442,7 +1447,7 @@ export async function getItemHistory(
       createdBy: item.created_by || undefined,
     }));
   } catch (error) {
-    console.error("[getItemHistory] Exception:", error);
+    logger.error("[getItemHistory] Exception", error);
     return [];
   }
 }
@@ -1472,7 +1477,7 @@ export async function addItemHistory(
       .single();
 
     if (error) {
-      console.error("[addItemHistory] Supabase error:", error);
+      logger.error("[addItemHistory] Supabase error", error);
       return null;
     }
 
@@ -1504,7 +1509,7 @@ export async function addItemHistory(
       createdBy: data.created_by || undefined,
     };
   } catch (error) {
-    console.error("[addItemHistory] Exception:", error);
+    logger.error("[addItemHistory] Exception", error);
     return null;
   }
 }

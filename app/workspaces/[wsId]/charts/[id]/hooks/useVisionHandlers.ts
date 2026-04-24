@@ -1,5 +1,6 @@
 import type { VisionItem, Area, RealityItem, ActionPlan, Tension } from "@/types/chart";
 import type { MutableRefObject } from "react";
+import { logger } from "@/lib/logger";
 
 type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
@@ -71,10 +72,10 @@ export function useVisionHandlers({
         // 失敗: 楽観的に追加したものを削除
         setVisions((prev) => prev.filter((v) => v.id !== tempId));
         newVisionInput.setValue(contentToAdd);
-        console.error("[handleAddVision] 保存失敗 - ロールバック");
+        logger.error("[handleAddVision] 保存失敗 - ロールバック");
       }
     } catch (error) {
-      console.error("[handleAddVision] エラー:", error);
+      logger.error("[handleAddVision] エラー:", error);
       setVisions((prev) => prev.filter((v) => v.id !== tempId));
       newVisionInput.setValue(contentToAdd);
     } finally {
@@ -114,10 +115,10 @@ export function useVisionHandlers({
         if (!success) {
           setVisions(previousState);
           toast.error(tt("moveFailed"), { duration: 5000 });
-          console.error("[handleUpdateVision] 更新失敗");
+          logger.error("[handleUpdateVision] 更新失敗");
         }
       } catch (error) {
-        console.error("[handleUpdateVision] エラー:", error);
+        logger.error("[handleUpdateVision] エラー:", error);
         setVisions(previousState);
         toast.error(tt("moveFailed"), { duration: 5000 });
       } finally {
@@ -132,7 +133,7 @@ export function useVisionHandlers({
         router.refresh();
       }
     } else {
-      console.error("[handleUpdateVision] 更新失敗");
+      logger.error("[handleUpdateVision] 更新失敗");
       // 失敗時はロールバック
       if (field === "assignee" || field === "dueDate" || field === "targetDate" || field === "description") {
         router.refresh();

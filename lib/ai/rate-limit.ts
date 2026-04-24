@@ -1,5 +1,6 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 const LIMITS = {
   USER_DAILY: 100,
@@ -7,7 +8,7 @@ const LIMITS = {
   USER_PER_MINUTE: 10,
 };
 
-// 失敗時の設計方針: fail-open + console.error
+// 失敗時の設計方針: fail-open + logger.error
 // ベータ段階ではユーザー体験優先、Anthropic Console のハードリミットが最終防衛線。
 // 詳細は CLAUDE.md の「レート制限の設計思想」セクション参照。
 
@@ -28,13 +29,11 @@ export async function checkRateLimit(
     .gte("created_at", oneMinAgo);
 
   if (userMinuteError) {
-    console.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed", userMinuteError, {
       scope: "user_minute",
       endpoint,
-      userId,
-      workspaceId,
-      error: userMinuteError.message,
-      code: userMinuteError.code,
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
     // fail-open: エラー時は制限をスキップして処理を継続
     // （本番安定後に fail-closed への切り替えを検討）
@@ -55,13 +54,11 @@ export async function checkRateLimit(
     .gte("created_at", oneDayAgo);
 
   if (userDailyError) {
-    console.error("[checkRateLimit] count query failed:", {
+    logger.error("[checkRateLimit] count query failed", userDailyError, {
       scope: "user_daily",
       endpoint,
-      userId,
-      workspaceId,
-      error: userDailyError.message,
-      code: userDailyError.code,
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
     // fail-open: 同上
   }
@@ -82,13 +79,11 @@ export async function checkRateLimit(
       .gte("created_at", oneDayAgo);
 
     if (wsDailyError) {
-      console.error("[checkRateLimit] count query failed:", {
+      logger.error("[checkRateLimit] count query failed", wsDailyError, {
         scope: "workspace_daily",
         endpoint,
-        userId,
-        workspaceId,
-        error: wsDailyError.message,
-        code: wsDailyError.code,
+        userId: logger.hashId(userId),
+        workspaceId: logger.hashId(workspaceId),
       });
       // fail-open: 同上
     }
@@ -121,20 +116,17 @@ export async function logAiUsage(
       tokens_output: tokensOutput ?? null,
     });
     if (error) {
-      console.error("[logAiUsage] insert failed:", {
+      logger.error("[logAiUsage] insert failed", error, {
         endpoint,
-        userId,
-        workspaceId,
-        error: error.message,
-        code: error.code,
+        userId: logger.hashId(userId),
+        workspaceId: logger.hashId(workspaceId),
       });
     }
   } catch (err) {
-    console.error("[logAiUsage] unexpected error:", {
+    logger.error("[logAiUsage] unexpected error", err, {
       endpoint,
-      userId,
-      workspaceId,
-      error: err instanceof Error ? err.message : String(err),
+      userId: logger.hashId(userId),
+      workspaceId: logger.hashId(workspaceId),
     });
   }
 }

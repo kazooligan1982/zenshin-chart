@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { AI_MODEL, AI_MAX_TOKENS } from "@/lib/ai-config";
 import { checkRateLimit, logAiUsage } from "@/lib/ai/rate-limit";
+import { logger } from "@/lib/logger";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -123,17 +124,25 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result);
       } catch (parseError) {
         if (parseError instanceof SyntaxError) {
-          console.error("JSON parse error:", parseError);
+          logger.error("[ai/coach] structurize JSON parse error", parseError, {
+            userId: logger.hashId(user.id),
+          });
           return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
         }
         const err = parseError as { status?: number; message?: string };
         const status = err?.status || 500;
         if (status === 529 && attempt < MAX_RETRIES - 1) {
-          console.log(`AI structurize: retrying (attempt ${attempt + 2}/${MAX_RETRIES})...`);
+          logger.info("[ai/coach] structurize retrying after 529", {
+            attempt: attempt + 2,
+            maxRetries: MAX_RETRIES,
+          });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
           continue;
         }
-        console.error("AI structurize error:", err?.message || err);
+        logger.error("[ai/coach] structurize error", err, {
+          userId: logger.hashId(user.id),
+          status,
+        });
         const errorMessage = err?.message?.includes("credit")
           ? "API credits insufficient"
           : status === 529
@@ -168,13 +177,17 @@ export async function POST(req: NextRequest) {
         const err = error as { status?: number; message?: string };
         const status = err?.status || 500;
         if (status === 529 && attempt < MAX_RETRIES - 1) {
-          console.log(
-            `AI comparison_analyze: retrying (attempt ${attempt + 2}/${MAX_RETRIES})...`
-          );
+          logger.info("[ai/coach] comparison_analyze retrying after 529", {
+            attempt: attempt + 2,
+            maxRetries: MAX_RETRIES,
+          });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
           continue;
         }
-        console.error("AI comparison_analyze error:", err?.message || err);
+        logger.error("[ai/coach] comparison_analyze error", err, {
+          userId: logger.hashId(user.id),
+          status,
+        });
         const errorMessage =
           err?.message?.includes("credit")
             ? "API credits insufficient"
@@ -227,17 +240,25 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result);
       } catch (parseError) {
         if (parseError instanceof SyntaxError) {
-          console.error("extract_vrta JSON parse error:", parseError);
+          logger.error("[ai/coach] extract_vrta JSON parse error", parseError, {
+            userId: logger.hashId(user.id),
+          });
           return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
         }
         const err = parseError as { status?: number; message?: string };
         const status = err?.status || 500;
         if (status === 529 && attempt < MAX_RETRIES - 1) {
-          console.log(`AI extract_vrta: retrying (attempt ${attempt + 2}/${MAX_RETRIES})...`);
+          logger.info("[ai/coach] extract_vrta retrying after 529", {
+            attempt: attempt + 2,
+            maxRetries: MAX_RETRIES,
+          });
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
           continue;
         }
-        console.error("AI extract_vrta error:", err?.message || err);
+        logger.error("[ai/coach] extract_vrta error", err, {
+          userId: logger.hashId(user.id),
+          status,
+        });
         const errorMessage = err?.message?.includes("credit")
           ? "API credits insufficient"
           : status === 529
@@ -308,12 +329,20 @@ export async function POST(req: NextRequest) {
 
       // Retry on 529 (overloaded) or 529-like errors
       if (status === 529 && attempt < MAX_RETRIES - 1) {
-        console.log(`AI coach: retrying (attempt ${attempt + 2}/${MAX_RETRIES}) after ${RETRY_DELAYS[attempt]}ms...`);
+        logger.info("[ai/coach] retrying after 529", {
+          attempt: attempt + 2,
+          maxRetries: MAX_RETRIES,
+          delayMs: RETRY_DELAYS[attempt],
+        });
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]));
         continue;
       }
 
-      console.error("AI coach error:", err?.message || err);
+      logger.error("[ai/coach] error", err, {
+        userId: logger.hashId(user.id),
+        mode,
+        status,
+      });
       const errorMessage = err?.message?.includes("credit")
         ? "API credits insufficient"
         : status === 529

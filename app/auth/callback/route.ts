@@ -5,6 +5,7 @@ import {
   getPreferredWorkspaceId,
   getUserWorkspaces,
 } from "@/lib/workspace";
+import { logger } from "@/lib/logger";
 
 async function autoAcceptPendingInvitations(supabase: Awaited<ReturnType<typeof createClient>>) {
   try {
@@ -50,7 +51,7 @@ async function autoAcceptPendingInvitations(supabase: Awaited<ReturnType<typeof 
 
     return lastWorkspaceId;
   } catch (error) {
-    console.error("[auth/callback] auto-accept invitations error:", error);
+    logger.error("[auth/callback] auto-accept invitations error:", error);
     return null;
   }
 }
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
           }
         }
       } catch (error) {
-        console.error("[auth/callback] workspace resolution error:", error);
+        logger.error("[auth/callback] workspace resolution error:", error);
       }
     }
   }

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, LayoutGrid, ListTree, Zap } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface Action {
   id: string;
@@ -113,10 +114,10 @@ export function KanbanBoard({ projectId, currentUserId = "", currentUser = null,
         const data = await response.json();
         setActions(data);
       } else {
-        console.error("Failed to fetch actions");
+        logger.error("Failed to fetch actions");
       }
     } catch (error) {
-      console.error("Error fetching actions:", error);
+      logger.error("Error fetching actions:", error);
     } finally {
       setIsLoading(false);
     }
@@ -248,7 +249,7 @@ export function KanbanBoard({ projectId, currentUserId = "", currentUser = null,
       await updateActionStatus(actionId, newStatus);
       await fetchActions();
     } catch (error) {
-      console.error("Error updating action status:", error);
+      logger.error("Error updating action status:", error);
       await fetchActions();
     }
   };
@@ -600,7 +601,7 @@ export function KanbanBoard({ projectId, currentUserId = "", currentUser = null,
               throw new Error(data.error || "Update failed");
             }
           } catch (e) {
-            console.error("Update failed:", e);
+            logger.error("Update failed:", e);
           }
         };
         return (

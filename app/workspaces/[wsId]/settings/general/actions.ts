@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { isPersonalWorkspace } from "@/lib/workspace-utils";
+import { logger } from "@/lib/logger";
 
 export async function updateWorkspaceName(wsId: string, name: string) {
   const trimmed = name.trim();
@@ -65,7 +66,7 @@ export async function deleteWorkspace(wsId: string) {
     .delete()
     .eq("workspace_id", wsId);
   if (chartsError) {
-    console.error("[deleteWorkspace] charts:", chartsError);
+    logger.error("[deleteWorkspace] charts:", chartsError);
     throw new Error(`Failed to delete charts: ${chartsError.message}`);
   }
 
@@ -76,7 +77,7 @@ export async function deleteWorkspace(wsId: string) {
     .eq("id", wsId);
 
   if (error) {
-    console.error("[deleteWorkspace] workspace:", error);
+    logger.error("[deleteWorkspace] workspace:", error);
     throw new Error(`Failed to delete workspace: ${error.message}`);
   }
 }

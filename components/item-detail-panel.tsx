@@ -17,6 +17,7 @@ import {
   fetchRealityComments,
   fetchVisionComments,
 } from "@/app/workspaces/[wsId]/charts/[id]/actions";
+import { logger } from "@/lib/logger";
 
 interface ItemDetailPanelProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export function ItemDetailPanel({
       const comments = await fetchActionComments(itemId);
       setActionComments(comments);
     } catch (error) {
-      console.error("コメントの取得に失敗しました:", error);
+      logger.error("コメントの取得に失敗しました:", error);
       setActionComments([]);
     }
   }, [itemId, itemType]);
@@ -93,7 +94,7 @@ export function ItemDetailPanel({
       const comments = await fetchVisionComments(itemId);
       setVisionComments(comments);
     } catch (error) {
-      console.error("コメントの取得に失敗しました:", error);
+      logger.error("コメントの取得に失敗しました:", error);
       setVisionComments([]);
     }
   }, [itemId, itemType]);
@@ -104,7 +105,7 @@ export function ItemDetailPanel({
       const comments = await fetchRealityComments(itemId);
       setRealityComments(comments);
     } catch (error) {
-      console.error("コメントの取得に失敗しました:", error);
+      logger.error("コメントの取得に失敗しました:", error);
       setRealityComments([]);
     }
   }, [itemId, itemType]);
@@ -166,7 +167,7 @@ export function ItemDetailPanel({
       setCommentText("");
       setUpdateMainContent(false);
     } catch (error) {
-      console.error("履歴の追加に失敗しました:", error);
+      logger.error("履歴の追加に失敗しました:", error);
     } finally {
       setIsSubmitting(false);
     }

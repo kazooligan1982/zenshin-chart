@@ -5,6 +5,7 @@ type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action"
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import {
   addActionPlan,
   updateActionPlanItem,
@@ -108,10 +109,10 @@ export function useActionHandlers({
           setLooseActions((prev) => [...prev, newAction]);
         }
       } else {
-        console.error("[handleAddActionPlan] 保存失敗");
+        logger.error("[handleAddActionPlan] save failed");
       }
     } catch (error) {
-      console.error("[handleAddActionPlan] エラー:", error);
+      logger.error("[handleAddActionPlan] error", error);
     } finally {
       setIsSubmittingAction({ ...isSubmittingAction, [submitKey]: false });
     }
@@ -163,7 +164,7 @@ export function useActionHandlers({
         chartId
       );
       if (!success) {
-        console.error("[handleUpdateActionPlan] 更新失敗");
+        logger.error("[handleUpdateActionPlan] update failed (assignee)");
       }
       return;
     }
@@ -282,7 +283,7 @@ export function useActionHandlers({
 
     const success = await updateActionPlanItem(actionId, tensionId, field, value, chartId);
     if (!success) {
-      console.error("[handleUpdateActionPlan] 更新失敗");
+      logger.error("[handleUpdateActionPlan] update failed");
       // 失敗時はロールバック
       if (field === "dueDate" || field === "status" || field === "isCompleted") {
         router.refresh();
@@ -390,15 +391,12 @@ export function useActionHandlers({
         // 成功: 新しいチャートに遷移
         router.push(`${basePath}/${newChartId}`);
       } else {
-        // エラー: ローディング状態を解除
         setTelescopingActionId(null);
-        console.error("4. Failed - result:", newChartId);
-        console.error("Failed to create child chart");
+        logger.error("[handleTelescopeClick] failed to create child chart");
       }
     } catch (error) {
       setTelescopingActionId(null);
-      console.error("5. Exception caught:", error);
-      console.error("Error in telescope:", error);
+      logger.error("[handleTelescopeClick] exception", error);
     }
   };
 

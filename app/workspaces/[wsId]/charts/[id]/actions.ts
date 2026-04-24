@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { detectService, SERVICE_LABELS } from "@/lib/link-utils";
+import { logger } from "@/lib/logger";
 
 async function revalidateChartPath(chartId: string) {
   const supabaseClient = await createClient();
@@ -36,9 +37,9 @@ async function recordChartHistory(
       new_value: newValue ?? null,
       user_id: user.id,
     });
-    if (error) console.error("[chart_history]", error);
+    if (error) logger.error("[chart_history]", error);
   } catch (e) {
-    console.error("[chart_history] unexpected:", e);
+    logger.error("[chart_history] unexpected", e);
   }
 }
 
@@ -95,7 +96,7 @@ export async function addVision(chartId: string, content: string, areaId?: strin
     await recordChartHistory(chartId, "vision", result.id, "created", null, null, content);
     await revalidateChartPath(chartId);
   } else {
-    console.error("[addVision] 失敗 - result is null");
+    logger.error("[addVision] failed - result is null");
   }
   return result;
 }
@@ -120,7 +121,7 @@ export async function updateVisionItem(
     await recordChartHistory(chartId, "vision", visionId, "updated", field, null, String(value ?? ""));
     await revalidateChartPath(chartId);
   } else {
-    console.error("[updateVisionItem] 失敗");
+    logger.error("[updateVisionItem] failed");
   }
   return result;
 }
@@ -131,7 +132,7 @@ export async function removeVision(visionId: string, chartId: string) {
     await recordChartHistory(chartId, "vision", visionId, "deleted");
     await revalidateChartPath(chartId);
   } else {
-    console.error("[removeVision] 失敗");
+    logger.error("[removeVision] failed");
   }
   return result;
 }
@@ -143,7 +144,7 @@ export async function addReality(chartId: string, content: string, areaId?: stri
     await recordChartHistory(chartId, "reality", result.id, "created", null, null, content);
     await revalidateChartPath(chartId);
   } else {
-    console.error("[addReality] 失敗 - result is null");
+    logger.error("[addReality] failed - result is null");
   }
   return result;
 }
@@ -165,7 +166,7 @@ export async function updateRealityItem(
     await recordChartHistory(chartId, "reality", realityId, "updated", field, null, String(value ?? ""));
     await revalidateChartPath(chartId);
   } else {
-    console.error("[updateRealityItem] 失敗");
+    logger.error("[updateRealityItem] failed");
   }
   return result;
 }
@@ -176,7 +177,7 @@ export async function addArea(chartId: string, name: string, color?: string) {
   if (result) {
     await revalidateChartPath(chartId);
   } else {
-    console.error("[addArea] 失敗 - result is null");
+    logger.error("[addArea] failed - result is null");
   }
   return result;
 }
@@ -190,7 +191,7 @@ export async function updateAreaItem(
   if (result) {
     await revalidateChartPath(chartId);
   } else {
-    console.error("[updateAreaItem] 失敗");
+    logger.error("[updateAreaItem] failed");
   }
   return result;
 }
@@ -200,7 +201,7 @@ export async function removeArea(areaId: string, chartId: string) {
   if (result) {
     await revalidateChartPath(chartId);
   } else {
-    console.error("[removeArea] 失敗");
+    logger.error("[removeArea] failed");
   }
   return result;
 }
@@ -218,14 +219,16 @@ export async function updateAreaOrder(
         .eq("id", areaId)
         .eq("chart_id", chartId);
       if (error) {
-        console.error("[updateAreaOrder] Error updating area:", areaId, error);
+        logger.error("[updateAreaOrder] Error updating area", error, {
+          areaIdHash: logger.hashId(areaId),
+        });
         return false;
       }
     }
     await revalidateChartPath(chartId);
     return true;
   } catch (error) {
-    console.error("[updateAreaOrder] Exception:", error);
+    logger.error("[updateAreaOrder] Exception", error);
     return false;
   }
 }
@@ -236,7 +239,7 @@ export async function removeReality(realityId: string, chartId: string) {
     await recordChartHistory(chartId, "reality", realityId, "deleted");
     await revalidateChartPath(chartId);
   } else {
-    console.error("[removeReality] 失敗");
+    logger.error("[removeReality] failed");
   }
   return result;
 }
@@ -253,7 +256,7 @@ export async function addTension(
     await recordChartHistory(chartId, "tension", result.id, "created", null, null, title);
     await revalidateChartPath(chartId);
   } else {
-    console.error("[addTension] 失敗");
+    logger.error("[addTension] failed");
   }
   return result;
 }
@@ -280,7 +283,7 @@ export async function updateTensionItem(
     await recordChartHistory(chartId, "tension", tensionId, eventType, field, null, String(value ?? ""));
     await revalidateChartPath(chartId);
   } else {
-    console.error("[updateTensionItem] 失敗");
+    logger.error("[updateTensionItem] failed");
   }
   return result;
 }
@@ -291,7 +294,7 @@ export async function removeTension(tensionId: string, chartId: string) {
     await recordChartHistory(chartId, "tension", tensionId, "deleted");
     await revalidateChartPath(chartId);
   } else {
-    console.error("[removeTension] 失敗");
+    logger.error("[removeTension] failed");
   }
   return result;
 }
@@ -323,7 +326,7 @@ export async function toggleVisionRealityLinkAction(
   if (result) {
     await revalidateChartPath(chartId);
   } else {
-    console.error("[toggleVisionRealityLinkAction] 失敗");
+    logger.error("[toggleVisionRealityLinkAction] failed");
   }
   return result;
 }
@@ -340,7 +343,7 @@ export async function addActionPlan(
     await recordChartHistory(result.chartId, "action", result.action.id, "created", null, null, title);
     await revalidateChartPath(result.chartId);
   } else {
-    console.error("[addActionPlan] 失敗 - action or chartId is null");
+    logger.error("[addActionPlan] failed - action or chartId is null");
   }
   return result.action;
 }
@@ -394,27 +397,21 @@ export async function updateActionPlanItem(
           .eq("id", actionId)
           .single();
         if (actionError) {
-          console.error(
-            "[updateActionPlanItem] child chart fetch error:",
-            actionError
-          );
+          logger.error("[updateActionPlanItem] child chart fetch error", actionError);
         } else if (action?.child_chart_id) {
           const { error: chartUpdateError } = await supabase
             .from("charts")
             .update({ due_date: value })
             .eq("id", action.child_chart_id);
           if (chartUpdateError) {
-            console.error(
-              "[updateActionPlanItem] child chart due_date update error:",
+            logger.error(
+              "[updateActionPlanItem] child chart due_date update error",
               chartUpdateError
             );
           }
         }
       } catch (error) {
-        console.error(
-          "[updateActionPlanItem] child chart due_date update failed:",
-          error
-        );
+        logger.error("[updateActionPlanItem] child chart due_date update failed", error);
       }
     }
     // dueDateが変更された場合は並び順が変わる可能性があるため、revalidatePathを呼ぶ
@@ -422,8 +419,8 @@ export async function updateActionPlanItem(
       await revalidateChartPath(chartId);
     }
   } else {
-    console.error("[updateActionPlanItem] DB save failed for field:", field);
-    console.error("[updateActionPlanItem] 失敗");
+    logger.error("[updateActionPlanItem] DB save failed", undefined, { field });
+    logger.error("[updateActionPlanItem] failed");
   }
   return result;
 }
@@ -452,7 +449,7 @@ export async function updateListOrder(
       // chart_idまたはtension_idでフィルタリング（セキュリティのため）
       if (table === "visions" || table === "realities" || table === "tensions") {
         if (!chartId) {
-          console.error("[updateListOrder] chartId is required for", table);
+          logger.error("[updateListOrder] chartId is required", undefined, { table });
           return false;
         }
         query = query.eq("chart_id", chartId);
@@ -462,14 +459,16 @@ export async function updateListOrder(
         } else if (chartId) {
           query = query.eq("chart_id", chartId).is("tension_id", null);
         } else {
-          console.error("[updateListOrder] chartId is required for loose actions");
+          logger.error("[updateListOrder] chartId is required for loose actions");
           return false;
         }
       }
 
       const { error } = await query;
       if (error) {
-        console.error(`[updateListOrder] Error updating ${item.id}:`, error);
+        logger.error("[updateListOrder] Error updating item", error, {
+          itemIdHash: logger.hashId(item.id),
+        });
         return false;
       }
     }
@@ -479,7 +478,7 @@ export async function updateListOrder(
     }
     return true;
   } catch (error) {
-    console.error("[updateListOrder] Exception:", error);
+    logger.error("[updateListOrder] Exception", error);
     return false;
   }
 }
@@ -530,7 +529,7 @@ export async function updateVisionArea(
       .eq("id", visionId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -539,7 +538,7 @@ export async function updateVisionArea(
     const result = { success: true };
     return result;
   } catch (error) {
-    console.error("❌❌❌ Server action exception:", error);
+    logger.error("Server action exception", error);
     return {
       success: false,
       error: "error",
@@ -588,7 +587,7 @@ export async function updateRealityArea(
       .eq("id", realityId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -596,7 +595,7 @@ export async function updateRealityArea(
     await revalidateChartPath(projectId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -646,7 +645,7 @@ export async function updateTensionArea(
       .eq("id", tensionId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -659,7 +658,7 @@ export async function updateTensionArea(
         .eq("tension_id", tensionId);
 
       if (actionsError) {
-        console.warn("⚠️ Failed to update child actions:", actionsError);
+        logger.warn("Failed to update child actions", { error: logger.extractSafeError(actionsError) });
       }
 
       try {
@@ -670,7 +669,7 @@ export async function updateTensionArea(
           .not("child_chart_id", "is", null);
 
         if (childActionsError) {
-          console.warn("⚠️ Failed to fetch child charts:", childActionsError);
+          logger.warn("Failed to fetch child charts", { error: logger.extractSafeError(childActionsError) });
         } else {
           const childChartIds = (childActions || [])
             .map((action) => action.child_chart_id)
@@ -683,7 +682,7 @@ export async function updateTensionArea(
               .in("chart_id", childChartIds);
 
             if (visionError) {
-              console.warn("⚠️ Failed to update child visions:", visionError);
+              logger.warn("Failed to update child visions", { error: logger.extractSafeError(visionError) });
             } else {
               for (const childChartId of childChartIds) {
                 await revalidateChartPath(childChartId);
@@ -692,14 +691,14 @@ export async function updateTensionArea(
           }
         }
       } catch (syncError) {
-        console.error("⚠️ Failed to sync child visions:", syncError);
+        logger.error("Failed to sync child visions", syncError);
       }
     }
 
     await revalidateChartPath(projectId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -722,7 +721,7 @@ export async function updateActionArea(
       .eq("id", actionId)
       .single();
     if (actionMetaError) {
-      console.warn("[DEBUG] Failed to fetch action child_chart_id:", actionMetaError);
+      logger.warn("Failed to fetch action child_chart_id", { error: logger.extractSafeError(actionMetaError) });
     } else {
     }
     const baseActionQuery = supabase
@@ -754,7 +753,7 @@ export async function updateActionArea(
     const { error } = await supabase.from("actions").update(updateData).eq("id", actionId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -769,7 +768,7 @@ export async function updateActionArea(
             .update({ area_id: null, updated_at: new Date().toISOString() })
             .eq("chart_id", actionMeta.child_chart_id);
           if (clearError) {
-            console.warn("⚠️ Failed to clear child vision area:", clearError);
+            logger.warn("Failed to clear child vision area", { error: logger.extractSafeError(clearError) });
           }
         } else {
           const { data: parentArea, error: parentAreaError } = await supabase
@@ -778,7 +777,7 @@ export async function updateActionArea(
             .eq("id", areaId)
             .single();
           if (parentAreaError || !parentArea) {
-            console.warn("⚠️ Failed to fetch parent area:", parentAreaError);
+            logger.warn("Failed to fetch parent area", { error: logger.extractSafeError(parentAreaError) });
           } else {
             const { data: childArea, error: childAreaError } = await supabase
               .from("areas")
@@ -788,27 +787,27 @@ export async function updateActionArea(
               .eq("color", parentArea.color)
               .single();
             if (childAreaError || !childArea) {
-              console.warn("⚠️ No matching child area found:", childAreaError);
+              logger.warn("No matching child area found", { error: logger.extractSafeError(childAreaError) });
             } else {
               const { error: syncError } = await supabase
                 .from("visions")
                 .update({ area_id: childArea.id, updated_at: new Date().toISOString() })
                 .eq("chart_id", actionMeta.child_chart_id);
               if (syncError) {
-                console.warn("⚠️ Failed to sync child visions:", syncError);
+                logger.warn("Failed to sync child visions", { error: logger.extractSafeError(syncError) });
               }
             }
           }
         }
       } catch (syncError) {
-        console.warn("⚠️ Failed to sync child vision area:", syncError);
+        logger.warn("Failed to sync child vision area", { error: logger.extractSafeError(syncError) });
       }
     }
 
     await revalidateChartPath(projectId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -836,7 +835,7 @@ export async function moveActionToTension(
       .eq("id", tensionId)
       .single();
     if (tensionError) {
-      console.warn("⚠️ Failed to fetch tension area:", tensionError);
+      logger.warn("Failed to fetch tension area", { error: logger.extractSafeError(tensionError) });
     }
     const { error } = await supabase
       .from("actions")
@@ -844,7 +843,7 @@ export async function moveActionToTension(
       .eq("id", actionId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -852,7 +851,7 @@ export async function moveActionToTension(
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -880,7 +879,7 @@ export async function moveActionToLoose(
       .eq("id", actionId);
 
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -888,7 +887,7 @@ export async function moveActionToLoose(
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -908,12 +907,12 @@ export async function fetchActionComments(actionId: string) {
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("❌ Supabase fetch error:", error);
+      logger.error("Supabase fetch error", error);
       return [];
     }
     return data ?? [];
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return [];
   }
 }
@@ -946,7 +945,7 @@ async function recordItemRelationsFromMentions(
         }
       );
     } catch (e) {
-      console.error("[recordItemRelations] insert error:", e);
+      logger.error("[recordItemRelations] insert error", e);
     }
   }
 }
@@ -957,7 +956,7 @@ export async function createComment(actionId: string, content: string, chartId: 
   try {
     user = await getAuthenticatedUser();
   } catch (error) {
-    console.error("[createComment] Auth Error:", error);
+    logger.error("[createComment] Auth Error", error);
     return { success: false, error: "authRequired" };
   }
   try {
@@ -972,7 +971,7 @@ export async function createComment(actionId: string, content: string, chartId: 
       .single();
 
     if (error) {
-      console.error("❌ Supabase insert error:", error);
+      logger.error("Supabase insert error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -983,7 +982,7 @@ export async function createComment(actionId: string, content: string, chartId: 
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1032,7 +1031,7 @@ async function getIncompleteActionsRecursive(
     .eq("chart_id", chartId);
 
   if (actionsError) {
-    console.error("[getIncompleteActionsRecursive] actions fetch error", actionsError);
+    logger.error("[getIncompleteActionsRecursive] actions fetch error", actionsError);
     return result;
   }
 
@@ -1076,14 +1075,14 @@ export async function updateComment(
       .update({ content: newContent.trim(), updated_at: new Date().toISOString() })
       .eq("id", commentId);
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "updateFailed" };
     }
     await recordChartHistory(chartId, "comment", commentId, "updated", "action", null, newContent);
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1101,13 +1100,13 @@ export async function deleteComment(commentId: string, chartId: string) {
       .delete()
       .eq("id", commentId);
     if (deleteError) {
-      console.error("❌ Supabase delete error:", deleteError);
+      logger.error("Supabase delete error", deleteError);
       throw deleteError;
     }
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "deleteFailed",
@@ -1128,12 +1127,12 @@ export async function fetchVisionComments(visionId: string) {
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("❌ Supabase fetch error:", error);
+      logger.error("Supabase fetch error", error);
       return [];
     }
     return data ?? [];
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return [];
   }
 }
@@ -1148,7 +1147,7 @@ export async function createVisionComment(
   try {
     user = await getAuthenticatedUser();
   } catch (error) {
-    console.error("[createVisionComment] Auth Error:", error);
+    logger.error("[createVisionComment] Auth Error", error);
     return { success: false, error: "authRequired" };
   }
   try {
@@ -1163,7 +1162,7 @@ export async function createVisionComment(
       .single();
 
     if (error) {
-      console.error("❌ Supabase insert error:", error);
+      logger.error("Supabase insert error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -1174,7 +1173,7 @@ export async function createVisionComment(
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1195,14 +1194,14 @@ export async function updateVisionComment(
       .update({ content: newContent.trim(), updated_at: new Date().toISOString() })
       .eq("id", commentId);
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "updateFailed" };
     }
     await recordChartHistory(chartId, "comment", commentId, "updated", "vision", null, newContent);
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1220,13 +1219,13 @@ export async function deleteVisionComment(commentId: string, chartId: string) {
       .delete()
       .eq("id", commentId);
     if (deleteError) {
-      console.error("❌ Supabase delete error:", deleteError);
+      logger.error("Supabase delete error", deleteError);
       throw deleteError;
     }
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "deleteFailed",
@@ -1247,12 +1246,12 @@ export async function fetchRealityComments(realityId: string) {
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("❌ Supabase fetch error:", error);
+      logger.error("Supabase fetch error", error);
       return [];
     }
     return data ?? [];
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return [];
   }
 }
@@ -1267,7 +1266,7 @@ export async function createRealityComment(
   try {
     user = await getAuthenticatedUser();
   } catch (error) {
-    console.error("[createRealityComment] Auth Error:", error);
+    logger.error("[createRealityComment] Auth Error", error);
     return { success: false, error: "authRequired" };
   }
   try {
@@ -1282,7 +1281,7 @@ export async function createRealityComment(
       .single();
 
     if (error) {
-      console.error("❌ Supabase insert error:", error);
+      logger.error("Supabase insert error", error);
       return { success: false, error: "saveFailed" };
     }
 
@@ -1293,7 +1292,7 @@ export async function createRealityComment(
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1314,14 +1313,14 @@ export async function updateRealityComment(
       .update({ content: newContent.trim(), updated_at: new Date().toISOString() })
       .eq("id", commentId);
     if (error) {
-      console.error("❌ Supabase update error:", error);
+      logger.error("Supabase update error", error);
       return { success: false, error: "updateFailed" };
     }
     await recordChartHistory(chartId, "comment", commentId, "updated", "reality", null, newContent);
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "error",
@@ -1339,13 +1338,13 @@ export async function deleteRealityComment(commentId: string, chartId: string) {
       .delete()
       .eq("id", commentId);
     if (deleteError) {
-      console.error("❌ Supabase delete error:", deleteError);
+      logger.error("Supabase delete error", deleteError);
       throw deleteError;
     }
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("❌ Server action error:", error);
+    logger.error("Server action error", error);
     return {
       success: false,
       error: "deleteFailed",
@@ -1367,7 +1366,7 @@ export async function updateChartData(
   if (result) {
     await revalidateChartPath(chartId);
   } else {
-    console.error("[updateChartData] 更新失敗");
+    logger.error("[updateChartData] update failed");
   }
   return result;
 }
@@ -1414,7 +1413,7 @@ export async function updateChartStatusAction(
           }
         }
       } catch (error) {
-        console.error("[updateChartStatusAction] 親Action更新エラー:", error);
+        logger.error("[updateChartStatusAction] parent Action update error", error);
         // 親Action更新失敗はチャートステータス更新自体には影響させない
       }
     }
@@ -1449,7 +1448,7 @@ export async function updateChartStatusAction(
           }
         }
       } catch (error) {
-        console.error("[updateChartStatusAction] 親Action復元エラー:", error);
+        logger.error("[updateChartStatusAction] parent Action restore error", error);
       }
     }
   }
@@ -1466,7 +1465,7 @@ export async function telescopeActionPlan(
     const result = await telescopeAction(actionId, tensionId, chartId);
     return result;
   } catch (error) {
-    console.error("[Server] telescopeActionPlan error:", error);
+    logger.error("[Server] telescopeActionPlan error", error);
     return null;
   }
 }
@@ -1610,7 +1609,7 @@ export async function createSnapshot(
     try {
       user = await getAuthenticatedUser();
     } catch (error) {
-      console.error("[createSnapshot] Auth Error:", error);
+      logger.error("[createSnapshot] Auth Error", error);
       return { success: false, error: "authRequired" };
     }
 
@@ -1633,14 +1632,14 @@ export async function createSnapshot(
       .single();
 
     if (insertError) {
-      console.error("[createSnapshot] Error inserting snapshot:", insertError);
+      logger.error("[createSnapshot] Error inserting snapshot", insertError);
       return { success: false, error: "saveFailed" };
     }
 
     await revalidateChartPath(chartId);
     return { success: true, snapshotId: snapshot?.id };
   } catch (error) {
-    console.error("[createSnapshot] Exception:", error);
+    logger.error("[createSnapshot] Exception", error);
     return {
       success: false,
       error: "error",
@@ -1659,7 +1658,7 @@ export async function createTreeSnapshot(
     try {
       user = await getAuthenticatedUser();
     } catch (error) {
-      console.error("[createTreeSnapshot] Auth Error:", error);
+      logger.error("[createTreeSnapshot] Auth Error", error);
       return { success: false, error: "authRequired" };
     }
 
@@ -1679,7 +1678,7 @@ export async function createTreeSnapshot(
     await revalidateChartPath(chartId);
     return { success: true, snapshotId };
   } catch (error) {
-    console.error("[createTreeSnapshot] Error:", error);
+    logger.error("[createTreeSnapshot] Error", error);
     return { success: false, error: "unknown" };
   }
 }
@@ -1696,13 +1695,13 @@ export async function getSnapshotDetail(snapshotId: string) {
       .single();
 
     if (error) {
-      console.error("[getSnapshotDetail] Error:", error);
+      logger.error("[getSnapshotDetail] Error", error);
       throw new Error(error.message);
     }
 
     return data;
   } catch (error) {
-    console.error("[getSnapshotDetail] Exception:", error);
+    logger.error("[getSnapshotDetail] Exception", error);
     throw error;
   }
 }
@@ -1721,13 +1720,13 @@ export async function updateComparisonDescription(
       .eq("id", comparisonId);
 
     if (error) {
-      console.error("[updateComparisonDescription] Error:", error);
+      logger.error("[updateComparisonDescription] Error", error);
       return { success: false };
     }
 
     return { success: true };
   } catch (error) {
-    console.error("[updateComparisonDescription] Error:", error);
+    logger.error("[updateComparisonDescription] Exception", error);
     return { success: false };
   }
 }
@@ -1752,13 +1751,13 @@ export async function updateActionStatus(
       .eq("id", actionId);
 
     if (error) {
-      console.error("[updateActionStatus] Error:", error);
+      logger.error("[updateActionStatus] Error", error);
       throw new Error(error.message);
     }
 
     return { success: true };
   } catch (error) {
-    console.error("[updateActionStatus] Exception:", error);
+    logger.error("[updateActionStatus] Exception", error);
     throw error;
   }
 }
@@ -1862,7 +1861,7 @@ export async function getItemRelations(
     ]);
     return { references, referencedBy };
   } catch (error) {
-    console.error("[getItemRelations] Error:", error);
+    logger.error("[getItemRelations] Error", error);
     return { references: [], referencedBy: [] };
   }
 }
@@ -1931,7 +1930,7 @@ export async function getActionDependencies(
       blocking: blocking.map(({ depId: d, ...rest }) => ({ ...rest, id: d })),
     };
   } catch (error) {
-    console.error("[getActionDependencies] Error:", error);
+    logger.error("[getActionDependencies] Error", error);
     return { blockedBy: [], blocking: [] };
   }
 }
@@ -1954,7 +1953,7 @@ export async function searchChartActions(chartId: string, query: string): Promis
       status: (a as { status: string | null }).status,
     }));
   } catch (error) {
-    console.error("[searchChartActions] Error:", error);
+    logger.error("[searchChartActions] Error", error);
     return [];
   }
 }
@@ -1994,7 +1993,7 @@ export async function addActionDependency(
     await revalidateChartPath(chartId);
     return { success: true };
   } catch (error) {
-    console.error("[addActionDependency] Error:", error);
+    logger.error("[addActionDependency] Error", error);
     throw error;
   }
 }
@@ -2031,7 +2030,7 @@ export async function removeActionDependency(dependencyId: string, actionId: str
     }
     return { success: true };
   } catch (error) {
-    console.error("[removeActionDependency] Error:", error);
+    logger.error("[removeActionDependency] Error", error);
     throw error;
   }
 }
@@ -2050,12 +2049,12 @@ export async function getItemLinks(
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("[getItemLinks] Error:", error);
+      logger.error("[getItemLinks] Error", error);
       return [];
     }
     return data ?? [];
   } catch (error) {
-    console.error("[getItemLinks] Exception:", error);
+    logger.error("[getItemLinks] Exception", error);
     return [];
   }
 }
@@ -2089,7 +2088,7 @@ export async function addItemLink(
       .single();
 
     if (error) {
-      console.error("[addItemLink] Error:", error);
+      logger.error("[addItemLink] Error", error);
       throw new Error(error.message);
     }
 
@@ -2100,7 +2099,7 @@ export async function addItemLink(
     await revalidateChartPath(chartId);
     return data;
   } catch (error) {
-    console.error("[addItemLink] Exception:", error);
+    logger.error("[addItemLink] Exception", error);
     throw error;
   }
 }
@@ -2124,7 +2123,7 @@ export async function deleteItemLink(linkId: string) {
       .eq("created_by", user.id);
 
     if (error) {
-      console.error("[deleteItemLink] Error:", error);
+      logger.error("[deleteItemLink] Error", error);
       throw new Error(error.message);
     }
 
@@ -2146,7 +2145,7 @@ export async function deleteItemLink(linkId: string) {
     }
     return { success: true };
   } catch (error) {
-    console.error("[deleteItemLink] Exception:", error);
+    logger.error("[deleteItemLink] Exception", error);
     throw error;
   }
 }

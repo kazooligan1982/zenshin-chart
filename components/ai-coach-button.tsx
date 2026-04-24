@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ChartDataForAI } from "@/lib/ai/collect-chart-data";
+import { logger } from "@/lib/logger";
 
 interface Message {
   role: "user" | "assistant";
@@ -252,7 +253,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         { role: "assistant", content: data.response },
       ]);
     } catch (error) {
-      console.error("AI Coach error:", error);
+      logger.error("AI Coach error:", error);
       setMessages([
         ...newMessages,
         {
@@ -310,7 +311,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
       ]);
       if (ctx) setEscalationContext(null);
     } catch (error) {
-      console.error("AI Coach error:", error);
+      logger.error("AI Coach error:", error);
       setMessages([
         ...newMessages,
         {
@@ -355,7 +356,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
       const data = await res.json();
       setAddResult(data);
     } catch (error) {
-      console.error("Structurize error:", error);
+      logger.error("Structurize error:", error);
       setAddResult({
         visions: [],
         realities: [],
@@ -376,7 +377,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
       setAddText("");
       setViewMode("select");
     } catch (error) {
-      console.error("Add items error:", error);
+      logger.error("Add items error:", error);
     } finally {
       setIsAdding(false);
     }
@@ -498,7 +499,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
         structural_diagnosis: data.structural_diagnosis || null,
       });
     } catch (error) {
-      console.error("VRTA extraction error:", error);
+      logger.error("VRTA extraction error:", error);
       toast.error(t("brainstorm.extractFailed"));
       setShowBrainstormPreview(false);
     } finally {
@@ -547,7 +548,7 @@ export function AICoachButton({ chartData, chartId, onAddItems, hiddenFab = fals
       setShowBrainstormPreview(false);
       setExtractedVrta(null);
     } catch (error) {
-      console.error("Save proposal error:", error);
+      logger.error("Save proposal error:", error);
       toast.error(locale === "ja" ? "提案の保存に失敗しました" : "Failed to save proposal");
     } finally {
       setIsApplyingVrta(false);

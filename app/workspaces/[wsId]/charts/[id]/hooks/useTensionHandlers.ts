@@ -1,4 +1,5 @@
 import type { Tension, TensionStatus, ActionPlan, VisionItem, RealityItem, Area } from "@/types/chart";
+import { logger } from "@/lib/logger";
 
 type PendingDeletionMap = Record<string, { type: "vision" | "reality" | "action" | "tension"; item: VisionItem | RealityItem | ActionPlan | Tension; tensionId?: string | null; timeoutId: NodeJS.Timeout }>;
 import { useRouter } from "next/navigation";
@@ -73,10 +74,10 @@ export function useTensionHandlers({
       } else {
         // 失敗: ロールバック
         setTensions((prev) => prev.filter((t) => t.id !== tempId));
-        console.error("[handleAddTension] 保存失敗 - ロールバック");
+        logger.error("[handleAddTension] 保存失敗 - ロールバック");
       }
     } catch (error) {
-      console.error("[handleAddTension] エラー:", error);
+      logger.error("[handleAddTension] エラー:", error);
       setTensions((prev) => prev.filter((t) => t.id !== tempId));
     }
   };
@@ -125,10 +126,10 @@ export function useTensionHandlers({
         // router.refresh() 不要 — revalidatePathがサーバー側で自動処理
       } else {
         setTensions(previousState);
-        console.error("[handleUpdateTension] 更新失敗");
+        logger.error("[handleUpdateTension] 更新失敗");
       }
     } catch (error) {
-      console.error("[handleUpdateTension] エラー:", error);
+      logger.error("[handleUpdateTension] エラー:", error);
       setTensions(previousState);
     }
   };
@@ -165,7 +166,7 @@ export function useTensionHandlers({
         toast.error(tt("moveFailed"), { duration: 5000 });
       }
     } catch (error) {
-      console.error("[handleMoveTensionArea] エラー:", error);
+      logger.error("[handleMoveTensionArea] エラー:", error);
       setTensions(previousState);
       toast.error(tt("moveFailed"), { duration: 5000 });
     }
@@ -254,7 +255,7 @@ export function useTensionHandlers({
       // 成功時はページを再取得
       router.refresh();
     } else {
-      console.error("[toggleVisionRealityLink] 更新失敗");
+      logger.error("[toggleVisionRealityLink] 更新失敗");
     }
   };
 

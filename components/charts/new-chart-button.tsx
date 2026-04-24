@@ -7,6 +7,7 @@ import { createChart } from "@/lib/charts-actions";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export function NewChartButton({ workspaceId }: { workspaceId?: string }) {
   const router = useRouter();
@@ -23,7 +24,7 @@ export function NewChartButton({ workspaceId }: { workspaceId?: string }) {
       toast.success(tt("chartCreated"), { duration: 3000 });
       router.push(workspaceId ? `/workspaces/${workspaceId}/charts/${chart.id}` : `/charts/${chart.id}`);
     } catch (error) {
-      console.error("Failed to create chart:", error);
+      logger.error("Failed to create chart:", error);
       toast.error(tt("chartCreateFailed"), { duration: 5000 });
       setIsCreating(false);
     }

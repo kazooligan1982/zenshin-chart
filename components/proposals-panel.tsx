@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 // --- Types ---
 
@@ -213,7 +214,7 @@ export default function ProposalsPanel({
         setSelectedItems(selected);
       }
     } catch {
-      console.error("Failed to fetch proposals");
+      logger.error("Failed to fetch proposals");
     } finally {
       setLoading(false);
     }

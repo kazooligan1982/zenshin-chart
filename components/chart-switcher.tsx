@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 interface ChartSwitcherProps {
   currentChartTitle: string;
@@ -73,7 +74,7 @@ export function ChartSwitcher({ currentChartTitle, subPage }: ChartSwitcherProps
           }
         }
       } catch (e) {
-        console.error("[ChartSwitcher] Failed to fetch data:", e);
+        logger.error("[ChartSwitcher] Failed to fetch data:", e);
       }
     };
     fetchData();

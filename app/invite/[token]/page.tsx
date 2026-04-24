@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getInvitationByCode, joinWorkspaceByInvite } from "@/lib/workspace";
 import { acceptInvitation } from "@/app/workspaces/[wsId]/settings/members/actions";
+import { logger } from "@/lib/logger";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Crown, Stethoscope, Shield, Eye, User } from "lucide-react";
@@ -57,7 +58,10 @@ export default async function InvitePage({
       ? requestInvitation.workspaces[0]
       : requestInvitation.workspaces;
     workspaceName = (wsData as { name?: string } | null)?.name;
-    console.log("[invite] workspace from JOIN:", { wsData, workspaceName });
+    logger.info("[invite] workspace from JOIN", {
+      hasWorkspace: !!wsData,
+      hasWorkspaceName: !!workspaceName,
+    });
 
     if (!workspaceName && requestInvitation.workspace_id) {
       const { data: ws, error: wsError } = await supabase
@@ -66,11 +70,11 @@ export default async function InvitePage({
         .eq("id", requestInvitation.workspace_id)
         .single();
       workspaceName = ws?.name;
-      console.log("[invite] workspace from separate query:", {
-        workspace_id: requestInvitation.workspace_id,
-        ws,
-        wsError,
-        workspaceName,
+      logger.info("[invite] workspace from separate query", {
+        workspaceIdHash: logger.hashId(requestInvitation.workspace_id),
+        hasWs: !!ws,
+        hasWorkspaceName: !!workspaceName,
+        ...(wsError ? { error: logger.extractSafeError(wsError) } : {}),
       });
     }
     workspaceName = workspaceName || t("workspaceFallback");

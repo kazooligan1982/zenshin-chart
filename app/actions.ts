@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 // ダッシュボード用データ取得
 export async function getDashboardData() {
@@ -28,7 +29,7 @@ export async function getDashboardData() {
       .order("updated_at", { ascending: false });
 
     if (chartsError) {
-      console.error("[getDashboardData] Error fetching charts:", chartsError);
+      logger.error("[getDashboardData] Error fetching charts:", chartsError);
       return [];
     }
 
@@ -44,7 +45,7 @@ export async function getDashboardData() {
 
     return formattedCharts;
   } catch (error) {
-    console.error("[getDashboardData] Exception:", error);
+    logger.error("[getDashboardData] Exception:", error);
     return [];
   }
 }
@@ -67,7 +68,7 @@ export async function createChart(
     .single();
 
   if (insertError) {
-    console.error("[createChart] Error creating chart:", insertError);
+    logger.error("[createChart] Error creating chart:", insertError);
     throw new Error(insertError.message);
   }
 
@@ -85,7 +86,7 @@ export async function deleteChart(chartId: string): Promise<void> {
   // ユーザー確認
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
-    console.error("[deleteChart] Auth Error:", authError);
+    logger.error("[deleteChart] Auth Error:", authError);
     throw new Error("Unauthorized");
   }
 
@@ -96,7 +97,7 @@ export async function deleteChart(chartId: string): Promise<void> {
     .eq("id", chartId);
 
   if (deleteError) {
-    console.error("[deleteChart] Error deleting chart:", deleteError);
+    logger.error("[deleteChart] Error deleting chart:", deleteError);
     throw new Error(deleteError.message);
   }
 

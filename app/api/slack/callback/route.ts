@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
   const tokenData = await tokenResponse.json();
 
   if (!tokenData.ok) {
-    console.error("Slack OAuth error:", tokenData.error);
+    logger.error("Slack OAuth error:", tokenData.error);
     return NextResponse.redirect(
       `${baseUrl}/workspaces/${wsId}/settings/slack?error=oauth_failed`
     );
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     );
 
   if (dbError) {
-    console.error("DB save error:", dbError);
+    logger.error("DB save error:", dbError);
     return NextResponse.redirect(
       `${baseUrl}/workspaces/${wsId}/settings/slack?error=db_failed`
     );

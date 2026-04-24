@@ -1,11 +1,13 @@
 import { supabase } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 // すべてのチャートを取得（プロジェクト一覧用）
 export async function getAllCharts() {
   if (!supabase) {
-    console.warn("[getAllCharts] Supabase client not initialized.");
-    console.warn("[getAllCharts] URL:", process.env.NEXT_PUBLIC_SUPABASE_URL ? "設定済み" : "未設定");
-    console.warn("[getAllCharts] Key:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "設定済み" : "未設定");
+    logger.warn("[getAllCharts] Supabase client not initialized", {
+      hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    });
     return [];
   }
 
@@ -16,28 +18,22 @@ export async function getAllCharts() {
       .order("updated_at", { ascending: false });
 
     if (error) {
-      console.error("[getAllCharts] Error fetching charts:", error);
-      console.error("[getAllCharts] Error code:", error.code);
-      console.error("[getAllCharts] Error message:", error.message);
-      console.error("[getAllCharts] Error details:", error.details);
-      console.error("[getAllCharts] Error hint:", error.hint);
-      
-      // よくあるエラーの説明
+      logger.error("[getAllCharts] Error fetching charts", error);
+
       if (error.code === "PGRST116") {
-        console.error("[getAllCharts] ⚠️ テーブル 'charts' が見つかりません。supabase/schema.sql を実行してください。");
+        logger.error("[getAllCharts] Table 'charts' not found. Run supabase/schema.sql");
       } else if (error.code === "42501") {
-        console.error("[getAllCharts] ⚠️ 権限エラーです。RLSポリシーを確認してください。");
+        logger.error("[getAllCharts] Permission denied. Check RLS policy");
       } else if (error.code === "PGRST301") {
-        console.error("[getAllCharts] ⚠️ リクエストが拒否されました。APIキーが正しいか確認してください。");
+        logger.error("[getAllCharts] Request rejected. Check API key");
       }
-      
+
       return [];
     }
 
     return data || [];
   } catch (error) {
-    console.error("[getAllCharts] 予期しないエラー:", error);
+    logger.error("[getAllCharts] Unexpected error", error);
     return [];
   }
 }
-
