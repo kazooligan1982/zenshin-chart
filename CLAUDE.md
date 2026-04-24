@@ -665,6 +665,77 @@ Kaz（安田一斗）の詳細プロファイルは `~/brain-bot/profile/KAZ.md`
 
 ---
 
+## ログ出力ポリシー（PII-Safe Logger）
+
+**全ての `console.*` の利用を原則禁止**。代わりに `lib/logger.ts` の
+`logger.info` / `logger.warn` / `logger.error` を経由すること。
+
+理由: 本番環境では Fritz 本人・麦ちゃん・RFC ちかさん・W社の実チャートが
+稼働しており、Supabase / Anthropic の error オブジェクトに Vision/Reality/
+Tension/Action 本文や email が混入すると Vercel Logs（stdout/stderr）に
+平文で流出するため。
+
+### 使い方
+
+```ts
+import { logger } from "@/lib/logger";
+
+logger.info("chart loaded", { chartId: logger.hashId(chart.id) });
+logger.warn("missing feature flag", { flag: "foo" });
+logger.error("failed to save vision", error, {
+  chartId: logger.hashId(chartId),
+  userId: logger.hashId(userId),
+});
+```
+
+シグネチャ:
+- `logger.info(msg: string, ctx?: LogContext)`
+- `logger.warn(msg: string, ctx?: LogContext)`
+- `logger.error(msg: string, err?: unknown, ctx?: LogContext)`
+
+`ctx` 内の `content` / `title` / `description` / `vision(s)` /
+`reality(realities)` / `tension(s)` / `action(s)` / `prompt` / `response` /
+`messages` / `email` / `name` / `token` 等のキーは自動で `[REDACTED]` に
+置換される（`FORBIDDEN_KEYS` 参照）。
+
+### 禁止事項
+
+- `console.error("msg", supabaseError)` のように error オブジェクトを
+  そのまま渡す（`error.details` / `error.hint` に失敗行の実値が入る）
+- AI エンドポイント（`app/api/ai/**`）で prompt / response / messages を
+  ログする（`err?.message || err` パターンも SDK が prompt 断片を
+  含め得るため禁止）
+- `user_id` / `workspace_id` / `chart_id` / `invite_token` / `email` を
+  平文でログに含める（必ず `logger.hashId()` でハッシュ化）
+- Supabase の `error.details` / `error.hint` を残して出力する
+  （`extractSafeError()` が自動で落とすので、`logger.error(msg, err)`
+  の形式で渡せば安全）
+
+### 許可事項
+
+- retry counter（attempt 数、delay ms）
+- HTTP status code / Supabase error code
+- ハッシュ化された ID（`logger.hashId(id)` → 8 文字 hex）
+- model name（例: `claude-sonnet-4-5`）、endpoint 名、mode
+- token_count（`ai_usage_log` テーブル経由推奨、stdout も可）
+- latency（ms）
+
+### 監査と検証
+
+- 新規 `console.*` 呼び出しは PR レビューで必ず検出する
+- `grep -rn "console\." --include="*.ts" --include="*.tsx" --exclude-dir=e2e-vision .`
+  を CI に組み込むのを検討
+- `tests/unit/logger.test.ts` で sanitize 挙動を常時保証
+- 監査履歴: `docs/log-pii-audit.md`（Step 1 時点のスナップショット）
+
+### Sentry 導入時
+
+`NEXT_PUBLIC_SENTRY_DSN` が設定された瞬間に `logger` の `sendToSentry()`
+スタブが呼ばれるようになっている。`@sentry/nextjs` を導入する際は
+`lib/logger.ts` の TODO コメント箇所に数行追加するだけで対応可能。
+
+---
+
 ## AI エンドポイント・レート制限の設計思想
 
 ### 対象エンドポイント
@@ -672,7 +743,7 @@ Kaz（安田一斗）の詳細プロファイルは `~/brain-bot/profile/KAZ.md`
 - `ai_usage_log` テーブルに利用ログ、`rate_limit` テーブル（または同等の仕組み）で上限管理
 
 ### レート制限の方針（`ai_usage_log`）
-- 現在の方針: **fail-open + console.error**
+- 現在の方針: **fail-open + logger.error**
 - 根拠: ベータ段階ではユーザー体験優先。Anthropic Console のハードリミットが最終防衛線として存在する
 - 運用: Vercel Logs で `[logAiUsage]` `[checkRateLimit]` を週次監視
 - 本番安定後に fail-closed（エラー時は 429 で拒否）への切り替えを検討
