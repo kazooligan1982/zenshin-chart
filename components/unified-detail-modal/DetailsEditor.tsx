@@ -37,11 +37,6 @@ export function DetailsEditor({
   const latestValueRef = useRef(value);
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
 
-  // 親のvalueが変わったら追跡
-  useEffect(() => {
-    latestValueRef.current = value;
-  }, [value]);
-
   const debouncedSave = useCallback((html: string) => {
     const trimmed = html === "<p></p>" ? "" : html;
     if (trimmed === latestValueRef.current) return;
@@ -104,8 +99,13 @@ export function DetailsEditor({
   }, [editor]);
 
   useEffect(() => {
-    if (editor && value !== undefined) {
+    if (
+      editor &&
+      value !== undefined &&
+      value !== latestValueRef.current
+    ) {
       editor.commands.setContent(value || "<p></p>", { emitUpdate: false });
+      latestValueRef.current = value;
     }
   }, [editor, value]);
 
